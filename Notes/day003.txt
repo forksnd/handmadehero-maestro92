@@ -1,0 +1,12 @@
+closing the window properly
+
+10:42
+having very symmetry construct and destructor programming style is a really bad way to program
+
+things are better acquired and released in aggregate
+instead of thinking about things individually, think of them as a group together
+
+
+36:04
+DIB_PAL_COLORS
+
