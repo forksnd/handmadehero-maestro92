@@ -1,0 +1,7 @@
+5:49
+often times on x86 architecture, there's a penalty for unaligned accessing
+so favor 32 over 24 bit, so that we are touching a 4 byte boundary
+
+30:55
+pointer arithmetic
+
