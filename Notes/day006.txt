@@ -1,6 +1,25 @@
-4:48
+9:28
+I do not usually use bool, cuz bool is defined in c++ to have some kind of odd semantics
+bool is defined to either be 0 or 1
 
-interrupts based input does not really happen anymore, but in the old days, everyone does that.
-nowadays, everyone are either polled or like network packets
+
+when bool is compiled with optimizations on
+Example:
+					bool flag0 = (flag1 & (1<<30));
+
+you might get "forcing value to bool 'true' or 'false' (performance warning)"
+
+this is becuz in C++, the value of flag0 is either gonna be 0 or the value of flag1 with its 30 bit being set, so it is not gonna 
+be 0 or 1
+
+so C++ has to check if it is 0 or 1. if not he has to change from the 0 or (somevalue) to 0 or 1
 
 
+
+19:00
+how audio programming works
+
+48khz
+60fps
+
+800 samples per second

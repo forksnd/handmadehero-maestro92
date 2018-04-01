@@ -1,21 +1,27 @@
 #include <windows.h>
 #include <stdint.h>
 #include <Xinput.h>
+#include <dsound.h>
+
+
 // static bool running = false;
 
 #define internal static 
 #define local_persistent static 
 #define global_variable static 
 
-typedef uint8_t uint8;
-typedef uint16_t uint16;
-typedef uint32_t uint32;
-typedef uint64_t uint64;
 
 typedef int8_t int8;
 typedef int16_t int16;
 typedef int32_t int32;
 typedef int64_t int64;
+typedef int32 bool32;	// see day7
+
+
+typedef uint8_t uint8;
+typedef uint16_t uint16;
+typedef uint32_t uint32;
+typedef uint64_t uint64;
 
 struct win32_offscreen_buffer
 {
@@ -43,7 +49,7 @@ global_variable win32_offscreen_buffer globalBackBuffer;
 typedef X_INPUT_GET_STATE(x_input_get_state);
 X_INPUT_GET_STATE(XInputGetStateStub)
 {
-	return(0);
+	return(ERROR_DEVICE_NOT_CONNECTED);
 }
 global_variable x_input_get_state* XInputGetState_ = XInputGetStateStub;
 #define XInputGetState XInputGetState_
@@ -53,21 +59,111 @@ global_variable x_input_get_state* XInputGetState_ = XInputGetStateStub;
 typedef X_INPUT_SET_STATE(x_input_set_state);
 X_INPUT_SET_STATE(XInputSetStateStub)
 {
-	return(0);
+	return(ERROR_DEVICE_NOT_CONNECTED);
 }
 global_variable x_input_set_state* XInputSetState_ = XInputSetStateStub;
 #define XInputSetState XInputSetState_
 
+#define DIRECT_SOUND_CREATE(name) HRESULT WINAPI name(LPCGUID pcGuidDevice, LPDIRECTSOUND* ppDS, LPUNKNOWN pUnkOuter)
+typedef DIRECT_SOUND_CREATE(direct_sound_create);
 
 internal void win32LoadXInput(void)
 {
+	// TODO(casey): Test this on windows 8
 	HMODULE XInputLibrary = LoadLibraryA("xinput1_4.dll");
+	if (!XInputLibrary)
+	{
+		XInputLibrary = LoadLibraryA("xinput1_3.dll");
+	}
+
 	if (XInputLibrary)
 	{
 		XInputGetState = (x_input_get_state*)GetProcAddress(XInputLibrary, "XInputGetState");
+		if (!XInputGetState)
+		{
+			XInputGetState = XInputGetStateStub;
+		}
+
 		XInputSetState = (x_input_set_state*)GetProcAddress(XInputLibrary, "XInputSetState");
+		if (!XInputSetState)
+		{
+			XInputSetState = XInputSetStateStub;
+		}
+
 	}
 
+}
+
+
+internal void win32InitDSound(HWND window, int32 samplesPerSecond, int32 bufferSize)
+{
+	// Load the library
+	HMODULE dSoundLibrary = LoadLibraryA("dsound.dll");
+
+	if (dSoundLibrary)
+	{
+		// Get a DirectSound object!
+		direct_sound_create* directSoundCreate = (direct_sound_create*) GetProcAddress(dSoundLibrary, "DirectSoundCreate");
+		
+		LPDIRECTSOUND directSound;
+		if (directSoundCreate && SUCCEEDED(directSoundCreate(0, &directSound, 0)))
+		{
+			
+			WAVEFORMATEX waveFormat = {};
+			waveFormat.wFormatTag = WAVE_FORMAT_PCM;
+			waveFormat.nChannels = 2;
+			waveFormat.nSamplesPerSec = samplesPerSecond;
+			waveFormat.nBlockAlign = (waveFormat.nChannels * waveFormat.wBitsPerSample) / 8;
+			waveFormat.nAvgBytesPerSec = waveFormat.nSamplesPerSec * waveFormat.nBlockAlign;
+			waveFormat.wBitsPerSample = 16;
+			waveFormat.cbSize = 0;
+
+			if (SUCCEEDED(directSound->SetCooperativeLevel(window, DSSCL_PRIORITY)))
+			{
+				DSBUFFERDESC bufferDescription = {};
+				bufferDescription.dwSize = sizeof(bufferDescription);
+				bufferDescription.dwFlags = DSBCAPS_PRIMARYBUFFER;
+
+				// "Create" a primary buffer. This primary buffer is mainly for legacy code
+				LPDIRECTSOUNDBUFFER primaryBuffer;
+				if (SUCCEEDED(directSound->CreateSoundBuffer(&bufferDescription, &primaryBuffer, 0)))
+				{
+					if (SUCCEEDED(primaryBuffer->SetFormat(&waveFormat)))
+					{
+
+					}
+					else
+					{
+
+					}
+				}
+			}
+			else
+			{
+
+			}
+
+
+			// "create" a secondary buffer,
+			// where you will actually write to
+			DSBUFFERDESC bufferDescription = {};
+			bufferDescription.dwSize = sizeof(bufferDescription);
+			bufferDescription.dwFlags = 0;
+			bufferDescription.dwBufferBytes = bufferSize;
+			bufferDescription.lpwfxFormat = &waveFormat;
+			LPDIRECTSOUNDBUFFER secondBuffer;
+			if (SUCCEEDED(directSound->CreateSoundBuffer(&bufferDescription, &secondBuffer, 0)))
+			{
+				// Start it playing
+
+			}
+		}
+		else
+		{
+
+		}
+		
+	}
 }
 
 // we don't want to link with Xinput.lib, so we are gonna loading windows functions ourselves
@@ -272,6 +368,14 @@ LRESULT CALLBACK win32MainWindowCallback(
 				{
 				}
 			}
+
+			bool32 altKeyWasDown = (lparam & (1 << 29));
+			if ((vkCode == VK_F4) && altKeyWasDown)
+			{
+				running = false;
+			}
+			 
+
 			break;
 		}
 
@@ -347,6 +451,9 @@ int CALLBACK WinMain(
 		{
 			int xOffset = 0;
 			int yOffset = 0;
+
+
+			win32InitDSound(window, 48000, 48000 * sizeof(int16) * 2);
 
 			running = true;
 			while(running)
