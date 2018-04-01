@@ -1,0 +1,6 @@
+4:48
+
+interrupts based input does not really happen anymore, but in the old days, everyone does that.
+nowadays, everyone are either polled or like network packets
+
+

@@ -64,13 +64,16 @@ the code transformations, that the optimizers gets a bunch bytecode or intermedi
 30:22
 by default, we do not have any pages in our virtual memory space. so if we touch some address space that points to an invalid page. 
 
-
-
 50:07
 small demo on analyzing stack on visual studio
 
-
-
 56:23
+for security reasons, our stack will be at randomized locations. 
+
+1:08:00
+every address space for every process is different. A pointer does not uniquely identify memory in the system. It uniquely identify memory in one process
+
+
+
 
 
