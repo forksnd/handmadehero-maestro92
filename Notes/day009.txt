@@ -1,0 +1,27 @@
+18:42
+
+he defined float and double becuz he wants to define the size of his variable
+
+float and double obviously corresponds to the two types in c and c++
+
+float is 32 bit wide
+double is 64 bit wide 
+
+but of course there is the IEEE standard who defines it
+
+
+27:00
+explaining fixed point math
+
+43:18
+64 bit double math is almost always slower. 
+
+u can do 64 bit math as fast as 32 bit float usually becuz of SIMD
+
+usually best not to go double unless you really have a reason to
+
+
+
+
+
+
