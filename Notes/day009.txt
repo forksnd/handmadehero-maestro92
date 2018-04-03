@@ -21,6 +21,22 @@ u can do 64 bit math as fast as 32 bit float usually becuz of SIMD
 usually best not to go double unless you really have a reason to
 
 
+1:22:00
+Question: how does x <<= 1 actually work?
+this is done in "Go To Disassembly" in visual studio
+
+					x <<= 1;
+				009E2BD6  mov         eax,dword ptr [x]  
+				009E2BD9  shl         eax,1  
+				009E2BDB  mov         dword ptr [x],eax  
+
+stuff does not get operated on in memory, they get operated on in a register
+
+look at what does x <<= 1 actually do 
+
+- load from memory to register
+- shift register
+- write from register to memory
 
 
 

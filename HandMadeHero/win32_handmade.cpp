@@ -588,11 +588,7 @@ int CALLBACK WinMain(
 					DWORD byteToLock = (soundOutput.runningSampleIndex * soundOutput.bytesPerSample) % soundOutput.secondaryBufferSize;
 					DWORD bytesToWrite;
 
-					if (byteToLock == playCursor)
-					{
-						bytesToWrite = 0;
-					}
-					else if (byteToLock > playCursor)
+					if (byteToLock > playCursor)
 					{
 						bytesToWrite = soundOutput.secondaryBufferSize - byteToLock;
 						bytesToWrite += playCursor;
