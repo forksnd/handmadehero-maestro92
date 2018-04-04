@@ -478,6 +478,10 @@ int CALLBACK WinMain(
 	int       showCode
 )
 {
+	LARGE_INTEGER perfCounterFrequencyResult;
+	QueryPerformanceFrequency(&perfCounterFrequencyResult);
+	int64 perfCountFrequency = perfCounterFrequencyResult.QuadPart;
+
 	win32LoadXInput();
 
 	WNDCLASSA windowClass = {};
@@ -492,6 +496,7 @@ int CALLBACK WinMain(
 	windowClass.hInstance = instance;
 	//	lpszMenuName;
 	windowClass.lpszClassName = "HandmadeHeroWindowClass";
+
 
 	if (RegisterClass(&windowClass))
 	{
@@ -528,9 +533,17 @@ int CALLBACK WinMain(
 			win32FillSoundBuffer(&soundOutput, 0, soundOutput.secondaryBufferSize);
 			globalSecondBuffer->Play(0, 0, DSBPLAY_LOOPING);
 
+
+			LARGE_INTEGER lastCounter;
+			QueryPerformanceCounter(&lastCounter);
+
+			uint64 lastCycleCount = __rdtsc();
+
+
 			running = true;
 			while (running)
 			{
+
 				MSG message;
 				while (PeekMessage(&message, 0, 0, 0, PM_REMOVE))
 				{
@@ -604,6 +617,24 @@ int CALLBACK WinMain(
 
 				win32_window_dimension dim = win32GetWindowDimension(window);
 				win32DisplayBufferInWindow(&globalBackBuffer, deviceContext, dim.width, dim.height);
+			
+				uint64 endCycleCount = __rdtsc();
+
+				LARGE_INTEGER endCounter;
+				QueryPerformanceCounter(&endCounter);
+
+				uint64 cyclesElapsed = endCycleCount - lastCycleCount;
+				int64 counterElapsed = endCounter.QuadPart - lastCounter.QuadPart;
+				int32 msPerFrame = (int32)((1000 * counterElapsed) / perfCountFrequency);
+				int32 fps = perfCountFrequency / counterElapsed;
+				int32 megaCyclesPerFrame = (int32)(cyclesElapsed / (1000 * 1000));
+
+				char buffer[256];
+				wsprintf(buffer, "%dms/f, %dmf/s, %dmc/f\n", msPerFrame, fps, megaCyclesPerFrame);
+				OutputDebugStringA(buffer);
+
+				lastCounter = endCounter;
+				lastCycleCount = endCycleCount;
 			}
 		}
 		else
