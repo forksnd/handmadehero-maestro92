@@ -1,18 +1,12 @@
 #ifndef GLOBALS_H_
 #define GLOBALS_H_
-#include <stdio.h>
+
+#include <math.h>
 #include <stdint.h>
 
 #define internal static 
 #define local_persistent static 
 #define global_variable static 
-#include <stdint.h>
-
-/*
-#define internal static
-#define local_persistent static
-#define global_variable static
-*/
 
 #define Pi32 3.14159265359
 
@@ -29,4 +23,5 @@ typedef uint64_t uint64;
 
 typedef float real32;
 typedef double real64;
+
 #endif

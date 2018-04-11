@@ -1,0 +1,26 @@
+23:10
+sound is just not very big
+
+48000 samples per second for sound
+60 frames / second 
+
+each frame 800 samples. Each sample is 2 bytes long
+
+1600 bytes per second 
+
+1600 * 2 cuz there are two of them for stereo
+
+3200 bytes.
+
+so 3200 is literally nothing
+
+
+1:05:30
+we dont know going into a game, what is gonna be feasible, frame rate wise
+
+1:17：08
+allocate is not a function call, it is intrisic to the compiler
+
+
+
+
