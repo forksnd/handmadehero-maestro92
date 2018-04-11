@@ -1,39 +1,24 @@
+
+
+
+#include "handmade.h"
+#include "handmade.cpp"
+
 #include <windows.h>
-#include <stdint.h>
+#include <stdio.h>
 #include <Xinput.h>
 #include <dsound.h>
 #include <math.h>
 
-// static bool running = false;
-
-#define internal static 
-#define local_persistent static 
-#define global_variable static 
-
-#define Pi32 3.14159265359
-
-typedef int8_t int8;
-typedef int16_t int16;
-typedef int32_t int32;
-typedef int64_t int64;
-typedef int32 bool32;	// see day7
-
-typedef uint8_t uint8;
-typedef uint16_t uint16;
-typedef uint32_t uint32;
-typedef uint64_t uint64;
-
-typedef float real32;
-typedef double real64;
 
 struct win32_offscreen_buffer
 {
+	// NOTE(casey): Pixels are alwasy 32-bits wide, Memory Order BB GG RR XX
 	BITMAPINFO info;
-	void* memory;
+	void *memory;
 	int width;
 	int height;
 	int pitch;
-	int bytesPerPixel;
 };
 
 
@@ -187,56 +172,6 @@ internal win32_window_dimension win32GetWindowDimension(HWND window)
 	return result;
 }
 
-internal void renderWeirdGradient(win32_offscreen_buffer* buffer, int xOffset, int yOffset)
-{
-	uint8* row = (uint8 *)buffer->memory;
-
-	for (int y = 0; y < buffer->height; ++y)
-	{
-		uint32* pixel = (uint32*)row;
-		for (int x = 0; x < buffer->width; ++x)
-		{
-			uint8 b = (x + xOffset);
-			uint8 g = (y + yOffset);
-
-			/*
-			Memory:		BB GG RR xx
-			Register:	xx RR GG BB
-
-			Pixel (32-bits)
-			*/
-
-			*pixel++ = ((g << 8) | b);
-		}
-		row += buffer->pitch;
-	}
-
-	/*
-	for (int y = 0; y < bitmapHeight; ++y)
-	{
-	uint8* pixel = (uint8*)row;
-	for (int x = 0; x < bitmapWidth; ++x)
-	{
-	//	pixel in memory: 00, 00, 00, 00
-	*pixel = (uint8)(x + xOffset);
-	++pixel;
-
-	*pixel = (uint8)(y + yOffset);
-	++pixel;
-
-	*pixel = 0;
-	++pixel;
-
-	*pixel = 0;
-	++pixel;
-	}
-	row += pitch;
-	}
-	*/
-
-}
-
-
 internal void win32ResizeDibSection(win32_offscreen_buffer* buffer, int width, int height)
 {
 	if (buffer->memory)
@@ -246,7 +181,8 @@ internal void win32ResizeDibSection(win32_offscreen_buffer* buffer, int width, i
 
 	buffer->width = width;
 	buffer->height = height;
-	buffer->bytesPerPixel = 4;
+	
+	int bytesPerPixel = 4;
 
 	// When the bitHeight field is negative, this is the clue to Windows to treat this bitmap
 	// as top-down, not bottom-up, meaning that the first three bytes of the image are the other for the top left pixel
@@ -259,10 +195,11 @@ internal void win32ResizeDibSection(win32_offscreen_buffer* buffer, int width, i
 	buffer->info.bmiHeader.biCompression = BI_RGB;
 
 
-	int bitmapMemorySize = buffer->bytesPerPixel * buffer->width * buffer->height;
+	int bitmapMemorySize = bytesPerPixel * buffer->width * buffer->height;
+
 	buffer->memory = VirtualAlloc(0, bitmapMemorySize, MEM_COMMIT, PAGE_READWRITE);
 
-	buffer->pitch = width * buffer->bytesPerPixel;
+	buffer->pitch = width * bytesPerPixel;
 
 }
 
@@ -471,6 +408,12 @@ internal void win32FillSoundBuffer(win32_sound_output* soundOutput, DWORD byteTo
 }
 
 
+struct platform_window
+{
+	HWND handle;
+};
+
+
 int CALLBACK WinMain(
 	HINSTANCE instance,
 	HINSTANCE prevInstance,
@@ -591,7 +534,14 @@ int CALLBACK WinMain(
 					}
 				}
 
-				renderWeirdGradient(&globalBackBuffer, xOffset, yOffset);
+				game_offscreen_buffer buffer = {};
+				buffer.memory = globalBackBuffer.memory;
+				buffer.width = globalBackBuffer.width;
+				buffer.height = globalBackBuffer.height;
+				buffer.pitch = globalBackBuffer.pitch;
+				gameUpdateAndRender(&buffer, xOffset, yOffset);
+
+				//			renderWeirdGradient(&globalBackBuffer, xOffset, yOffset);
 
 				// DirectSound output test
 				DWORD playCursor;
@@ -629,9 +579,11 @@ int CALLBACK WinMain(
 				int32 fps = perfCountFrequency / counterElapsed;
 				int32 megaCyclesPerFrame = (int32)(cyclesElapsed / (1000 * 1000));
 
+#if 0
 				char buffer[256];
 				wsprintf(buffer, "%dms/f, %dmf/s, %dmc/f\n", msPerFrame, fps, megaCyclesPerFrame);
 				OutputDebugStringA(buffer);
+#endif
 
 				lastCounter = endCounter;
 				lastCycleCount = endCycleCount;
