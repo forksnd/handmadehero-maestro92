@@ -73,9 +73,33 @@ internal void GameOutputSound(game_sound_output_buffer* soundBuffer, int toneHz)
 
 
 
-internal void gameUpdateAndRender(game_offscreen_buffer* buffer, int blueOffset, int greenOffset,
-	game_sound_output_buffer* soundBuffer, int toneHz)
+internal void gameUpdateAndRender(game_input* input, game_offscreen_buffer* buffer,
+	game_sound_output_buffer* soundBuffer)
 {
+	local_persistent int blueOffset;
+	local_persistent int greenOffset;
+	local_persistent int toneHz = 256;
+
+	game_controller_input* input0 = &input->controllers[0];
+	
+	if (input0->isAnalog)
+	{
+		toneHz = 256 + (int)(128.0f * (input0->endX));
+		blueOffset += (int) 4.0f * (input0->endY);
+
+	}
+	else
+	{
+
+	}
+
+	if (input0->down.endedDown)
+	{
+		greenOffset += 1;
+	}
+
+
+
 	GameOutputSound(soundBuffer, toneHz);
 	renderWeirdGradient(buffer, blueOffset, greenOffset);
 }
