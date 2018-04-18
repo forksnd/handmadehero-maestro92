@@ -1,5 +1,36 @@
 #ifndef HANDMADE_H_
 #define HANDMADE_H_
+
+#include "globals.h"
+
+//	if false, we want to halt the program
+//	if not true, we write to zero
+
+/*
+	HANDMADE_INTERNAL:
+		0	-	build for public release	(external build)
+		1	-	build for developer only	(internal build)
+
+	HANDMADE_SLOW:
+		0	-	no slow code allowed!		(with asserts off)
+		1	-	slow code welcome			(with asserts on)
+*/
+  
+
+#if HANDMADE_SLOW
+#define Assert(expression)	\
+	if(!(expression))	{*(int*)0=0;}
+// this is done cuz this is the fastest way to do it platform independently
+#else
+#define Assert(expression)
+#endif
+
+#define Kilobytes(value)	((value) * 1024)
+#define Megabytes(value)	(Kilobytes(value) * 1024)
+#define Gigabytes(value)	(Megabytes(value) * 1024)
+#define Terabytes(value)	(Gigabytes(value) * 1024)
+
+#define ArrayCount(Array)	(sizeof(Array) / sizeof((Array)[0]))
 /*
  services that the platform layer provides to the game
 
@@ -15,9 +46,7 @@
 //					bitmap buffer to use
 //					sound buffer to use
 
-#include "globals.h"
 
-#define ArrayCount(Array) (sizeof(Array) / sizeof((Array)[0]))
 
 struct game_offscreen_buffer
 {
@@ -73,11 +102,34 @@ struct game_controller_input
 
 struct game_input
 {
+	// insert clock value here
 	game_controller_input controllers[4];
 };
 
-internal void gameUpdateAndRender(game_input* input, game_offscreen_buffer* buffer, 
+
+// using a uint64 if we every want to be giant
+struct game_memory
+{
+	bool32 isInitialized;
+	uint64 permanentStorageSize;
+	void* permenantStorage;	// required to be cleared to zero at startup
+
+	uint64 transientStorageSize;
+	void* transientStorage;	// required to be cleared to zero at startup
+};
+
+
+
+internal void gameUpdateAndRender(game_memory* memory, game_input* input, game_offscreen_buffer* buffer, 
 									game_sound_output_buffer* soundBuffer);
+
+
+struct game_state
+{
+	int toneHz;
+	int greenOffset;
+	int blueOffset;
+};
 
 
 

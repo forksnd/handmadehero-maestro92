@@ -72,35 +72,42 @@ internal void GameOutputSound(game_sound_output_buffer* soundBuffer, int toneHz)
 }
 
 
+internal void GameShutdown(game_state* gameState)
+{
 
-internal void gameUpdateAndRender(game_input* input, game_offscreen_buffer* buffer,
+}
+
+
+internal void gameUpdateAndRender(game_memory* memory, game_input* input, game_offscreen_buffer* buffer,
 	game_sound_output_buffer* soundBuffer)
 {
-	local_persistent int blueOffset;
-	local_persistent int greenOffset;
-	local_persistent int toneHz = 256;
+	// we have a requirement here. which is that our game state has to fit in permanentStorageSize
+	Assert(sizeof(game_state) <= memory->permanentStorageSize);
+
+	game_state* gameState = (game_state*)memory->permenantStorage;
+	if (!memory->isInitialized)
+	{
+		gameState->toneHz = 256;
+		gameState->greenOffset = 0;
+		gameState->blueOffset = 0;
+
+		// TODO: this may be more appropriate to do in the platform layer
+		memory->isInitialized = true;
+	}
+
 
 	game_controller_input* input0 = &input->controllers[0];
 	
-	if (input0->isAnalog)
-	{
-		toneHz = 256 + (int)(128.0f * (input0->endX));
-		blueOffset += (int) 4.0f * (input0->endY);
 
-	}
-	else
-	{
-
-	}
 
 	if (input0->down.endedDown)
 	{
-		greenOffset += 1;
+		gameState->greenOffset += 1;
 	}
 
 
 
-	GameOutputSound(soundBuffer, toneHz);
-	renderWeirdGradient(buffer, blueOffset, greenOffset);
+	GameOutputSound(soundBuffer, gameState->toneHz);
+	renderWeirdGradient(buffer, gameState->blueOffset, gameState->greenOffset);
 }
 
