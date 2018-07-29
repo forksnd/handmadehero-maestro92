@@ -78,10 +78,13 @@ internal void GameShutdown(game_state* gameState)
 }
 
 
-internal void gameUpdateAndRender(game_memory* memory, game_input* input, game_offscreen_buffer* buffer,
+internal void gameUpdateAndRender(game_memory* memory, game_input* Input, game_offscreen_buffer* buffer,
 	game_sound_output_buffer* soundBuffer)
 {
 	// we have a requirement here. which is that our game state has to fit in permanentStorageSize
+	Assert((&Input->Controllers[0].Terminator - &Input->Controllers[0].Buttons[0]) ==
+		(ArrayCount(Input->Controllers[0].Buttons)));
+
 	Assert(sizeof(game_state) <= memory->permanentStorageSize);
 	 
 	game_state* gameState = (game_state*)memory->permenantStorage;
@@ -106,23 +109,33 @@ internal void gameUpdateAndRender(game_memory* memory, game_input* input, game_o
 		memory->isInitialized = true;
 	}
 
-
-	game_controller_input* input0 = &input->controllers[0];
-	if (input0->isAnalog)
+	for (int ControllerIndex = 0; ControllerIndex < ArrayCount(Input->controllers); ++ControllerIndex)
 	{
-		gameState->blueOffset += (int)(4.0f*input0->endX);
-		gameState->toneHz += 256 + (int)(128.0f * input0->endY);
-	}
-	else
-	{
+		game_controller_input* Controller = GetController(Input, ControllerIndex);
+		if (Controller->IsAnalog)
+		{
+			gameState->blueOffset += (int)(4.0f*Controller->StickAverageX);
+			gameState->toneHz += 256 + (int)(128.0f * Controller->StickAverageY);
+		}
+		else
+		{
+			if(Controller->MoveLeft.endedDown)
+			{
+				gameState->blueOffset -= 1;
+			}
 
-	}
+			if (Controller->MoveRight.endedDown)
+			{
+				gameState->blueOffset += 1;
+			}
 
-	if (input0->down.endedDown)
-	{
-		gameState->greenOffset += 1;
-	}
+		}
 
+		if (Controller->ActionDown.endedDown)
+		{
+			gameState->greenOffset += 1;
+		}
+	}
 	GameOutputSound(soundBuffer, gameState->toneHz);
 	renderWeirdGradient(buffer, gameState->blueOffset, gameState->greenOffset);
 }

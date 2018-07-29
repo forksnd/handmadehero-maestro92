@@ -1,0 +1,20 @@
+5:48
+a functional function is one that does not modify anything other than the parameters that it is passed in and the things that it returns
+
+Example:
+			int FunctionFunction(int X, int Y)
+			{
+				
+			}
+
+X and Y can't be pointers or handles, or anything that represents writeable memory
+
+
+
+functional functiosn dont' change the state
+
+
+
+
+
+

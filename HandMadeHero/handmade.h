@@ -106,31 +106,33 @@ struct game_button_state
 
 struct game_controller_input
 {
-	bool32 isAnalog;
-
-	real32 startX;
-	real32 startY;
-
-	real32 minX;
-	real32 minY;
-
-	real32 maxX;
-	real32 maxY;
-
-	real32 endX;
-	real32 endY;
+	bool32 IsConnected;
+	bool32 IsAnalog;
+	real32 StickAverageX;
+	real32 StickAverageY;
 
 	union
 	{
-		game_button_state buttons[6];
+		game_button_state buttons[12];
 		struct
 		{
-			game_button_state up;
-			game_button_state down;
-			game_button_state left;
-			game_button_state right;
-			game_button_state leftShoulder;
-			game_button_state rightShoulder;
+			game_button_state MoveUp;
+			game_button_state MoveDown;
+			game_button_state MoveLeft;
+			game_button_state MoveRight;
+
+			game_button_state ActionUp;
+			game_button_state ActionDown;
+			game_button_state ActionLeft;
+			game_button_state ActionRight;
+
+			game_button_state LeftShoulder;
+			game_button_state RightShoulder;
+
+			game_button_state Back;
+			game_button_state Start;
+
+			game_button_state Terminator;
 		};
 	};
 };
@@ -138,8 +140,15 @@ struct game_controller_input
 struct game_input
 {
 	// insert clock value here
-	game_controller_input controllers[4];
+	game_controller_input controllers[5];
 };
+
+inline game_controller_input* GetController(game_input* Input, int ControllerIndex)
+{
+	Assert(ControllerIndex < ArrayCount(Input->Controllers));
+	game_controller_input * Result = &Input->controllers[ControllerIndex];
+	return Result;
+}
 
 
 // using a uint64 if we every want to be giant
