@@ -332,67 +332,8 @@ LRESULT CALLBACK win32MainWindowCallback(
 	case WM_KEYDOWN:
 	case WM_KEYUP:
 	{
-		uint32 vkCode = wparam;
-		bool wasDown = ((lparam & (1 << 30)) != 0);
-		bool isDown = ((lparam & (1 << 31)) == 0);
+		Assert(!"Keybaord input came in through a non-displatch event");
 
-		if (wasDown != isDown)
-		{
-			if (vkCode = 'W')
-			{
-			}
-			else if (vkCode = 'A')
-			{
-			}
-			else if (vkCode = 'S')
-			{
-			}
-			else if (vkCode = 'D')
-			{
-			}
-			else if (vkCode = 'Q')
-			{
-			}
-			else if (vkCode = 'E')
-			{
-			}
-			else if (vkCode = VK_UP)
-			{
-			}
-			else if (vkCode = VK_LEFT)
-			{
-			}
-			else if (vkCode = VK_DOWN)
-			{
-			}
-			else if (vkCode = VK_RIGHT)
-			{
-			}
-			else if (vkCode = VK_ESCAPE)
-			{
-				if (isDown)
-				{
-
-				}
-
-				if (wasDown)
-				{
-
-				}
-			}
-			else if (vkCode = VK_SPACE)
-			{
-			}
-		}
-
-		bool32 altKeyWasDown = (lparam & (1 << 29));
-		if ((vkCode == VK_F4) && altKeyWasDown)
-		{
-			running = false;
-		}
-
-
-		break;
 	}
 
 
@@ -496,14 +437,117 @@ internal void win32FillSoundBuffer(win32_sound_output* soundOutput, DWORD byteTo
 }
 
 
+internal void win32ProcessKeyboardMessage(game_button_state* newState, bool32 isDown)
+{
+	newState->endedDown = isDown;
+	++newState->halfTransitionCount;
+}
+
+
+
 internal void win32ProcessXInputDigitalButton(DWORD XInputButtonState, game_button_state* oldState, DWORD buttonBit, game_button_state* newState)
 {
 	newState->endedDown = ((XInputButtonState & buttonBit) == buttonBit);
 	newState->halfTransitionCount = (oldState->endedDown != newState->endedDown) ? 1 : 0;;
-
-
 }
 
+
+
+internal void
+Win32ProcessPendingMessages(game_controller_input* KeyboardController)
+{
+	MSG message;
+	while (PeekMessage(&message, 0, 0, 0, PM_REMOVE))
+	{
+
+		switch (message.message)
+		{
+			case WM_QUIT:
+			{
+				running = false;
+			}
+				break;
+			case WM_SYSKEYDOWN:
+			case WM_SYSKEYUP:
+			case WM_KEYDOWN:
+			case WM_KEYUP:
+			{
+				uint32 vkCode = (uint32)message.wParam;
+				bool wasDown = ((message.lParam & (1 << 30)) != 0);
+				bool isDown = ((message.lParam & (1 << 31)) == 0);
+
+				if (wasDown != isDown)
+				{
+					if (vkCode == 'W')
+					{
+					}
+					else if (vkCode == 'A')
+					{
+					}
+					else if (vkCode == 'S')
+					{
+					}
+					else if (vkCode == 'D')
+					{
+					}
+					else if (vkCode == 'Q')
+					{
+						win32ProcessKeyboardMessage(&KeyboardController->leftShoulder, isDown);
+					}
+					else if (vkCode == 'E')
+					{
+						win32ProcessKeyboardMessage(&KeyboardController->rightShoulder, isDown);
+					}
+					else if (vkCode == VK_UP)
+					{
+						win32ProcessKeyboardMessage(&KeyboardController->up, isDown);
+					}
+					else if (vkCode == VK_LEFT)
+					{
+						win32ProcessKeyboardMessage(&KeyboardController->left, isDown);
+					}
+					else if (vkCode == VK_DOWN)
+					{
+						win32ProcessKeyboardMessage(&KeyboardController->down, isDown);
+					}
+					else if (vkCode == VK_RIGHT)
+					{
+						win32ProcessKeyboardMessage(&KeyboardController->right, isDown);
+					}
+					else if (vkCode == VK_ESCAPE)
+					{
+						if (isDown)
+						{
+
+						}
+
+						if (wasDown)
+						{
+
+						}
+					}
+					else if (vkCode == VK_SPACE)
+					{
+					}
+				}
+
+				bool32 altKeyWasDown = (message.lParam & (1 << 29));
+				if ((vkCode == VK_F4) && altKeyWasDown)
+				{
+					running = false;
+				}
+			}
+			break;
+
+			default:
+			{
+				// translate message turns keyboard message to proper keyboard message
+				TranslateMessage(&message);
+				DispatchMessage(&message);
+			}
+		}
+	}
+}
 
 
 struct platform_window
@@ -603,22 +647,14 @@ int CALLBACK WinMain(
 
 				while (running)
 				{
-					MSG message;
+					game_controller_input* KeyboardController = &newInput->controllers[0];
+					game_controller_input ZeroController = {};
+					*KeyboardController = ZeroController;
 
-					while (PeekMessage(&message, 0, 0, 0, PM_REMOVE))
-					{
-						if (message.message == WM_QUIT)
-						{
-							running = false;
-						}
-
-						// translate message turns keyboard message to proper keyboard message
-						TranslateMessage(&message);
-						DispatchMessage(&message);
-					}
+					Win32ProcessPendingMessages(KeyboardController);
 
 					// should we poll this more frequenlty
-					int maxControllerCount = XUSER_MAX_COUNT;
+					DWORD maxControllerCount = XUSER_MAX_COUNT;
 					if (maxControllerCount > ArrayCount(newInput->controllers))
 					{
 						maxControllerCount = ArrayCount(newInput->controllers);

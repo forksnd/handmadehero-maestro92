@@ -1,0 +1,31 @@
+14:30
+pdb files are bascially read by the debugger
+pdb file size is a lot larger than the exe file
+
+
+15:43
+-zi compile options(which produces the pdb file) can be problematic sometimes
+
+
+18:40
+-oi flag says, even if you are in the debug build, I want you to do any intrinsic stuff if you can
+
+
+19:10
+-GR-
+
+turns off C++ runtime information
+
+
+
+
+32:00
+this error happens quite often when you try to distribute code on windows
+
+
+
+
+47:15
+C++ was originally written on top of a c-like tool chain
+
+compiler will come in and generate a unique name for each overloaded function 
