@@ -17,6 +17,8 @@
 */
   
 
+
+
 #if HANDMADE_SLOW
 #define Assert(expression)	\
 	if(!(expression))	{*(int*)0=0;}
@@ -31,10 +33,43 @@
 #define Terabytes(value)	(Gigabytes(value) * 1024)
 
 #define ArrayCount(Array)	(sizeof(Array) / sizeof((Array)[0]))
+
+
+inline uint32
+SafeTruncateUInt64(uint64 value)
+{
+	Assert(value <= 0xFFFFFFFF);
+	uint32 result = (uint32)value;
+	return (result);
+}
+
 /*
  services that the platform layer provides to the game
+ */
+
+#define HANDMADE_INTERNAL 1
+
+
+#if HANDMADE_INTERNAL
+/*	IMPORTANT(casey)
+
+	These are NOT for doing anything in the shipping game 
+	- they are blocking and the write doesn't protect against lost data!
 
 */
+
+
+struct debug_read_file_result
+{
+	uint32 contentSize;
+	void* contents;
+};
+
+debug_read_file_result DEBUGplatformReadEntireFile(char* filename);
+void DEBUGplatformFreeFileMemory(void* bitmapMemory);
+bool32 DEBUGplatformWriteEntireFile(char* filename, uint32 memorySize, void* memory);
+#endif
+
 
 /*
 	services that the game provides to the platform layer

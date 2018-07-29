@@ -1,6 +1,7 @@
 #ifndef WIN32_HANDMADE_H_
 #define WIN32_HANDMADE_H_
 
+
 struct win32_offscreen_buffer
 {
     // NOTE(casey): Pixels are alwasy 32-bits wide, Memory Order BB GG RR XX

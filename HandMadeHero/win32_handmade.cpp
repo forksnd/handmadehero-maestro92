@@ -15,7 +15,7 @@ global_variable bool running;
 global_variable win32_offscreen_buffer globalBackBuffer;
 global_variable LPDIRECTSOUNDBUFFER globalSecondBuffer;
 
-#define HANDMADE_INTERNAL 1
+
 
 #define X_INPUT_GET_STATE(name) DWORD WINAPI name(DWORD dwUserIndex, XINPUT_STATE* pState)
 typedef X_INPUT_GET_STATE(x_input_get_state);
@@ -38,6 +38,97 @@ global_variable x_input_set_state* XInputSetState_ = XInputSetStateStub;
 
 #define DIRECT_SOUND_CREATE(name) HRESULT WINAPI name(LPCGUID pcGuidDevice, LPDIRECTSOUND* ppDS, LPUNKNOWN pUnkOuter)
 typedef DIRECT_SOUND_CREATE(direct_sound_create);
+
+
+
+
+internal debug_read_file_result DEBUGplatformReadEntireFile(char* filename)
+{
+	debug_read_file_result result = {};
+	
+	HANDLE fileHandle = CreateFileA(filename,
+		GENERIC_READ,
+		FILE_SHARE_READ,
+		0,
+		OPEN_EXISTING,
+		0, 0);
+	
+	if (fileHandle != INVALID_HANDLE_VALUE)
+	{
+		LARGE_INTEGER fileSize;
+		if (GetFileSizeEx(fileHandle, &fileSize))
+		{
+			// TODO(casey): defiens for maximum values UInt32Max
+			uint32 fileSize32 = SafeTruncateUInt64(fileSize.QuadPart);
+			result.contents = VirtualAlloc(0, fileSize.QuadPart, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
+			if (result.contents)
+			{
+				DWORD bytesRead; 
+				if (ReadFile(fileHandle, result.contents, fileSize32, &bytesRead, 0) && 
+					(fileSize32 == bytesRead))
+				{
+					// NOTE(casey): file read successfully
+					result.contentSize = fileSize32;
+				}
+				else
+				{
+					DEBUGplatformFreeFileMemory(result.contents);
+					result.contents = NULL;
+				}
+			}
+			else
+			{
+				// TODO(casey): Logging
+			}
+		}
+
+		CloseHandle(fileHandle);
+	}
+
+	return (result);
+}
+
+internal void DEBUGplatformFreeFileMemory(void* memory)
+{
+	if (memory)
+	{
+		VirtualFree(memory, 0, MEM_RELEASE);
+	}
+}
+
+internal bool32 DEBUGplatformWriteEntireFile(char* filename, uint32 memorySize, void* memory)
+{
+	bool32 result = false;
+	
+	HANDLE fileHandle = CreateFileA(filename,
+		GENERIC_WRITE,
+		0,
+		0,
+		CREATE_ALWAYS,
+		0, 0);
+
+	if (fileHandle != INVALID_HANDLE_VALUE)
+	{
+		DWORD bytesWritten;
+		if (WriteFile(fileHandle, memory, memorySize, &bytesWritten, 0))
+		{
+			// NOTE(casey): file read successfully
+			result = (bytesWritten == memorySize);
+		}
+		else
+		{
+		
+		}
+		
+		CloseHandle(fileHandle);
+	}
+	else
+	{
+		// TODO(casey): Logging
+	}
+
+	return (result);
+}
 
 internal void win32LoadXInput(void)
 {
