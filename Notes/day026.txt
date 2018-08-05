@@ -105,6 +105,7 @@ if not, and don't
 memory-mapped virtual file system has some problems. The first thing is that u can't run on 32 bit
 if you have more than 4GB of audio or visual data, and you want to run on 32 bit system, then you can't memory map the file. So you have to memory map in chunks, and if you do that, you might as well load it
 
+
  
 
 

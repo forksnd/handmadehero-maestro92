@@ -1,0 +1,53 @@
+23:15
+-	tile map
+-	stuff moves on tile map
+-	fancy renderer
+-	totally procedural
+
+
+
+
+
+
+26:00 
+overworld map
+Dungeons
+consistent space
+no dimensions limits
+
+
+
+
+
+43:05
+in 3D games, you don't have to think really hard about what resolution you want to run in, cuz everything is always resampled
+1920 x 1080 target resolution
+
+
+
+1920 x 1080 x 60 hz (GPU)
+so for a software renderer, we'll just do 8 times less
+
+960 x 540 x 30 hz (software renderer)
+1/8 of the work
+
+
+
+1:03:14
+if you just cast a float to an int, the default thing that C will do is that it will truncate the value.
+so it will just get rid of the fractional part
+
+for example if you are 0.75, rounding it will give you 0, but what you really want is 1. 
+so we offset it with a 0.5.
+
+
+
+1:11:00
+about the the error that you see:
+
+	LINK : fatal error LNK1104: cannot open file 'win32_handmade.exe'"
+
+the debugger will have the exectuable locked, so we can't write to it
+
+
+
