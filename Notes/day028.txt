@@ -1,0 +1,6 @@
+1:05:30
+fixed point is a bad idea these days. hardware likes floating point
+fixed point end up costing u a lot of operations
+
+
+
