@@ -1,0 +1,25 @@
+6:10
+
+one benefit of doing scripting language is that you can edit things on the fly.
+
+
+8:14
+edit and continue
+
+
+
+
+
+9:08
+we have the platform code and the non-platform code compiled separately. Is there a way that doesn't kill the executable?
+
+
+
+
+9:40
+we have the ability to load code out of a library dynamically.
+
+we can load a "dll" file and call GetProcAddress on it. GetProcAddress will give us a pointer to that function, and we can just call the function that way.
+
+
+

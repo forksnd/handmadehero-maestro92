@@ -1,7 +1,6 @@
 
 
 #include "handmade.h"
-#include "handmade.cpp"
 
 #include <windows.h>
 #include <stdio.h>
@@ -42,7 +41,7 @@ typedef DIRECT_SOUND_CREATE(direct_sound_create);
 
 
 
-internal debug_read_file_result DEBUGplatformReadEntireFile(char* filename)
+debug_read_file_result DEBUGplatformReadEntireFile(char* filename)
 {
 	debug_read_file_result result = {};
 	
@@ -88,7 +87,7 @@ internal debug_read_file_result DEBUGplatformReadEntireFile(char* filename)
 	return (result);
 }
 
-internal void DEBUGplatformFreeFileMemory(void* memory)
+void DEBUGplatformFreeFileMemory(void* memory)
 {
 	if (memory)
 	{
@@ -96,7 +95,7 @@ internal void DEBUGplatformFreeFileMemory(void* memory)
 	}
 }
 
-internal bool32 DEBUGplatformWriteEntireFile(char* filename, uint32 memorySize, void* memory)
+bool32 DEBUGplatformWriteEntireFile(char* filename, uint32 memorySize, void* memory)
 {
 	bool32 result = false;
 	
@@ -129,6 +128,29 @@ internal bool32 DEBUGplatformWriteEntireFile(char* filename, uint32 memorySize, 
 
 	return (result);
 }
+
+
+struct win32_game_code
+{
+	game_update_and_render* UpdateAndRender;
+};
+
+internal win32_game_code
+Win32LoadGameCode()
+{
+	win32_game_code Result = {};
+
+	Result.UpdateAndRender = GameUpdateAndRenderStub;
+
+	HMODULE GameCodeDLL = LoadLibraryA("handmade.dll");
+	if (GameCodeDLL)
+	{
+		Result.UpdateAndRender = (game_update_and_render*)GetProcAddress(GameCodeDLL, "GameUpdateAndRender");
+	}
+
+	return Result;
+}
+
 
 internal void win32LoadXInput(void)
 {
@@ -594,6 +616,8 @@ int CALLBACK WinMain(
 	int       showCode
 )
 {
+	win32_game_code Game = Win32LoadGameCode();
+
 	LARGE_INTEGER perfCounterFrequencyResult;
 	QueryPerformanceFrequency(&perfCounterFrequencyResult);
 	GlobalPerfCountFrequency = perfCounterFrequencyResult.QuadPart;
@@ -622,7 +646,7 @@ int CALLBACK WinMain(
 	real32 TargetSecondsPerFrame = 1.0f / (real32)GameUpdateHz;
 
 
-	if (RegisterClass(&windowClass))
+	if (RegisterClassA(&windowClass))
 	{
 		HWND window = CreateWindowEx(0,
 			windowClass.lpszClassName,
@@ -863,7 +887,7 @@ int CALLBACK WinMain(
 					buffer.width = globalBackBuffer.width;
 					buffer.height = globalBackBuffer.height;
 					buffer.pitch = globalBackBuffer.pitch;
-					gameUpdateAndRender(&gameMemory, newInput, &buffer, &SoundBuffer);
+					Game.UpdateAndRender(&gameMemory, newInput, &buffer);
 
 					// NOTE(casey): DirectSound output test
 					if (soundIsValid)

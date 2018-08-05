@@ -163,9 +163,11 @@ struct game_memory
 };
 
 
-
-internal void gameUpdateAndRender(game_memory* memory, game_input* input, game_offscreen_buffer* buffer, 
-									game_sound_output_buffer* soundBuffer);
+#define GAME_UPDATE_AND_RENDER(name) void name(game_memory* Memory, game_input* Input, game_offscreen_buffer* buffer)
+typedef GAME_UPDATE_AND_RENDER(game_update_and_render);
+GAME_UPDATE_AND_RENDER(GameUpdateAndRenderStub)
+{
+}
 
 
 struct game_state
