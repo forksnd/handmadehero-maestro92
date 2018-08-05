@@ -23,3 +23,9 @@ we can load a "dll" file and call GetProcAddress on it. GetProcAddress will give
 
 
 
+
+22:50
+
+instead of actually callin functions that were in its executable that the linker resolved,
+now is that it makes function calls through pointers that we are loading dynamically
+

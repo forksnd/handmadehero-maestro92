@@ -1,0 +1,113 @@
+7:00 
+starting to talk about architecture
+
+- Reuse
+- Division of labor
+- mental clarity
+- temporal coupling
+- layout coupling
+- Fluidity
+
+
+34:33
+Game Architecture
+
+GUAR
+game update and render
+
+GSS
+Get sound samples
+
+
+
+42:40
+we want to process user input as close to the updating as possible to reduce input lag
+
+
+45:13
+thinking about how modern computers work, they have a high penalty for missing the cache
+the CPU really likes to do things with its cache
+
+cuz of this, I don't like to separate update and render, cuz of cache misses
+
+rendering in the in the final version is about sutffing data in the GPU
+
+think of Render more as render prep
+
+
+render is more like 
+the thing that prepares all the buffers for the graphics subsystem to handle
+
+
+50:51
+there's one form of game architecture known as the "Loading Screen" Architecture
+
+This is the type where you have some event, such as "Change level, enter the next door"
+
+and the loading screen goes into all the assets needed for the new level.
+
+So while loading, resources are loading either from disk or optical if you are on console, HD or SD drive if you are on PC
+
+
+
+54:05
+"Streaming mentality"
+
+I don't want the user to sit through a loading screen. And I want to be able to have a very large world
+
+
+
+the bidriectional communicatoin is gonna be a key part in our architecture
+
+
+IMGUI
+Immediate mode graphical user interface
+
+IM
+Immediate mode
+
+RM
+retained mode
+
+immediate mode is a way of describing an API boundary where the calling side does not have to remember handles to the targer side
+
+will expand ontop this in the future
+
+
+
+
+1:03:30
+if you can't run at 30 frames per second, u shouldn't be running a game. cuz anything less than 30 fames per second will look choppy
+
+
+1:05:12
+almost no games ship with virtual file system. 
+
+
+
+1:06:00
+the assumption is that you loop through a set of entities, and whatever is in the list first get updated first. 
+
+That is usually not a good way to write your update loop. I realize that is the way a lot of games write their update loop, but I would never do it that way. 
+
+you need to handle update dependencies
+
+
+
+1:08:04
+it's not that update and render has to be strictly tied together. It's more about not making an architectural division there.
+
+it's more that anything that can be updated and rendered together, do it
+if not, and don't
+
+
+1:12:30
+memory-mapped virtual file system has some problems. The first thing is that u can't run on 32 bit
+if you have more than 4GB of audio or visual data, and you want to run on 32 bit system, then you can't memory map the file. So you have to memory map in chunks, and if you do that, you might as well load it
+
+ 
+
+
+
+
+
