@@ -1,0 +1,13 @@
+1:23:56
+
+int in C is ambiguous
+it could be 8 bit on old old computers
+16 bit
+32 bit
+or 64 bit in the future
+
+
+1:25:00
+x86 and x64 are happy working with 32 bit values
+
+
