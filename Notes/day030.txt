@@ -1,0 +1,25 @@
+1:17:16
+floating point math is the fastest thing u can do
+
+doing the same operation in the fixed point math requires a bunch of operation
+
+typically the processors is as fast in integer as it is in floating point operations
+
+
+
+1:35:00
+why not just have an x and y position
+
+the answer is becuz of floating point precision.  
+
+
+either use doubles
+or use an int and a float
+
+
+
+1:42:22 
+Are there any consequences of hrader debugging if we use inlining
+
+No, cuz almost every compiler that I'm aware of has a compile switch that turns of inlining
+
