@@ -1,0 +1,33 @@
+mostly he's refactoring the code to work with 
+
+
+
+struct world_position
+{
+    /* TODO(casey):
+
+       Take the tile map x and y
+       and the tile x and y
+
+       and pack them into single 32-bit values for x and y
+       where there is some low bits for the tile index
+       and the high bits are the tile "page"
+
+       (NOTE we can eliminate the need for floor!)
+    */
+    uint32 AbsTileX;
+    uint32 AbsTileY;
+
+    // TODO(casey): Should these be from the center of a tile?
+    // TODO(casey): Rename to offset X and Y
+    real32 TileRelX;
+    real32 TileRelY;
+};
+
+
+where in AbsTileX
+the first 24 bit is tileMap Index
+the last 8 bit is tile Index
+
+
+nothing else interesting
