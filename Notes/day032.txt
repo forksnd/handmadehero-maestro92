@@ -1,0 +1,21 @@
+for the canonical_position
+consider 
+    real32 TileRelX;
+    real32 TileRelY;
+to either be relative to the tile or tile page.
+so he's gonna explore that later
+
+
+
+
+1:19:25
+
+inline just "suggests" to the compiler to inline it.
+the compiler is still free to inline it if it wants to
+
+
+
+1:12:13
+
+explaining canonicalization
+
