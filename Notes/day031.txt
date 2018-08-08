@@ -1,0 +1,69 @@
+7:57
+
+math.h is the C runtime library include file, it ships with any version of C
+
+13:23
+any intel chips nowadays will have sse2
+
+Streaming SIMD Extensions 2
+
+x64 instruction set is just the 64 bit version of the old x86 instruction set. it was made by AMD, so it is sometimes referred as the AMD64
+
+
+
+not every processor has the same set of x64 instructions. as the processor get revised over time, they add more instructions.
+so they have sse, sse2, sse4, avx. some even add more registers that you can access
+
+SSE2 has been around a long long time.
+
+https://msdn.microsoft.com/en-us/library/hh977023.aspx
+
+
+
+
+28:54
+finally starting to talk about the coordinate system
+
+
+34:22
+screenspace has a backwards coordiante system
+
+
+
+37:54
+1. pixels vs world units
+2. upside down y coordinate
+
+
+40:10
+proposing solution
+
+
+
+1:05:22
+dont like the approach of generate the world by seed on the spot
+
+
+
+
+
+1:07:43 
+compile with /fp:fast
+
+this will make it not have floating point consistencies
+
+
+
+1:11:20
+why the return value is on a separate line?
+
+for debugging
+
+
+
+1:24:20
+
+intel intrinsics guide
+
+https://software.intel.com/sites/landingpage/IntrinsicsGuide/
+
