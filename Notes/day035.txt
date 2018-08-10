@@ -1,0 +1,97 @@
+16:31
+if you just want random numbers and you do not want to use the C library and you dont want to write one yourself
+
+just go online, have the internet generate some, and put it in a random number array. Pretty smart.
+
+
+27:55
+
+we only start to allocate space for the tile when we need to store tiles there
+
+30:52
+tile chunks will be allocated just in time
+
+1:08:03
+De Morgan's laws
+
+1:09:00
+typically the compilers will do De Morgan's Laws for you
+
+
+
+1:11:16
+Voxel octree. Mainly used if you want to look at all three dimensions the same way
+
+(just like quad tree, voxel octree is just a 3d quadtree)
+
+
+
+
+1:14:20
+is there a reason why chunk size needs to be a power of 2?
+
+
+if it is not, this function won't function properly
+
+                handmade_tile.cpp
+
+                inline tile_chunk_position
+                GetChunkPositionFor(tile_map *TileMap, uint32 AbsTileX, uint32 AbsTileY, uint32 AbsTileZ)
+                {
+                    tile_chunk_position Result;
+
+                    Result.TileChunkX = AbsTileX >> TileMap->ChunkShift;
+                    Result.TileChunkY = AbsTileY >> TileMap->ChunkShift;
+                    Result.TileChunkZ = AbsTileZ;
+                    Result.RelTileX = AbsTileX & TileMap->ChunkMask;
+                    Result.RelTileY = AbsTileY & TileMap->ChunkMask;
+
+                    return(Result);
+                }
+
+this is just a divide and remainder operation
+
+
+he does explain using a graph at 1:15:20
+
+
+
+1:16:50
+global variables vs #define
+
+obviously everytime you need to have parameters, it needs to be a # define
+ir you are just defining a number, such as PI32, then it could be either obviously
+
+when you pound define, you don't specify the type, so it could be used anywhere. not signed or unsigned
+
+so it depends if you want to specify the type or not
+
+
+
+
+1:21:10
+why not have a door struct that points to to tile chunks?
+
+Flexibility in displaying the world. For example if you zoom out to display the world. The door pointer scheme won't work
+We always want to be able to query the world consistently, so we can see things
+
+
+he brings up another example of a monster shooting a bullet through the wall.
+
+it is very limiting to do it in the door pointer way
+
+Another example is sound. It is very easy to propogate sound with our current way.
+
+
+
+
+1:27:54
+the actual bool time has semantics that I do not like. bools converting to true or false can have performance implications
+
+
+1:33:30
+optimize for worst case
+
+
+1:40:00
+mega-texture
