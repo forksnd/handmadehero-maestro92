@@ -1,0 +1,38 @@
+3:50
+the proper low level debugging method an art Asset such an image
+
+use gimp to create an art file that is designed to help us debug easily
+
+essentially you want to create a file that you know the values when you load.
+
+for example, if you load a checkboard image, you would expect, black white black whtie black white black whtie patterns.
+
+so it's easier to debug taht way
+
+
+
+the first 30 minutes is just debugging the loading image
+
+
+
+
+45:29
+character head is not rendered properly
+
+
+
+
+1:10:21
+what's the advantage of defining the bitmap header yourself vs using the one that windows has?
+
+cuz this is platform-independent code. 
+
+
+
+
+
+
+1:15:27
+explaining subpixel rendering
+
+
