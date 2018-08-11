@@ -1,0 +1,213 @@
+20:30
+
+in the bmp file, we can only get Red, Green, Blue Mask. And the alpha is whatever the three masks is not
+so the wawy to obtain the alpha mask is as follow:
+
+		        uint32 RedMask = Header->RedMask;
+		        uint32 GreenMask = Header->GreenMask;
+		        uint32 BlueMask = Header->BlueMask;
+		        uint32 AlphaMask = ~(RedMask | GreenMask | BlueMask);    
+
+you do a reverse of the combined mask
+
+
+
+
+19:27
+msdn _BitScanForward
+
+24:41
+so he first implemented with the for loop. but obviously we would like for the processor to do it with the intrinsics.
+
+
+
+
+
+29:40
+Casey talks about how to properly manage calling intrinsics code depending on the platform.
+
+
+the idea is that if we are on a compiler that we can do it very quickly (namely, by calling intrinsics),
+we will do it, and not have to do it thru the for loop
+
+so the idea is that we need to figure out what compiler am I on. Recall that the compiler implements the intrinsics.
+
+
+				struct bit_scan_result
+				{
+				    bool32 Found;
+				    uint32 Index;
+				};
+				inline bit_scan_result
+				FindLeastSignificantSetBit(uint32 Value)
+				{
+				    bit_scan_result Result = {};
+
+				#if COMPILER_MSVC
+				    Result.Found = _BitScanForward((unsigned long *)&Result.Index, Value);
+				#else
+				    for(uint32 Test = 0;
+				        Test < 32;
+				        ++Test)
+				    {
+				        if(Value & (1 << Test))
+				        {
+				            Result.Index = Test;
+				            Result.Found = true;
+				            break;
+				        }
+				    }
+				#endif
+				    
+				    return(Result);
+				}
+
+
+the whole point of handmade_intrinsics.h is performance. So this file is the place where we allow to do platform specific stuff inside 
+platform independent stuff.
+
+so in handmade_platform.h
+
+
+				handmade_platform.h
+
+				#if !defined(COMPILER_MSVC)
+				#define COMPILER_MSVC 0
+				#endif
+				    
+				#if !defined(COMPILER_LLVM)
+				#define COMPILER_LLVM 0
+				#endif
+
+				#if !COMPILER_MSVC && !COMPILER_LLVM
+				
+				#if _MSC_VER
+				#undef COMPILER_MSVC
+				#define COMPILER_MSVC 1
+				#else
+				// TODO(casey): Moar compilerz!!!
+				#undef COMPILER_LLVM
+				#define COMPILER_LLVM 1
+				#endif
+
+				#endif
+
+				#if COMPILER_MSVC
+				#include <intrin.h>
+				#endif
+				    
+
+we are defiing MSVC and LLVM are two things he knows he will compile under
+
+so what we are doing here is that if the build system has not set the COMPILER_MSVC or COMPILER_LLVM,
+we will define these two variables
+
+and we detect the macro defined on microsoft _MSC_VER
+
+
+
+and then we have to include 
+
+				#if COMPILER_MSVC
+				#include <intrin.h>
+				#endif
+
+to actually call the intrinsics
+
+
+
+
+38:53
+if you go to examine the visual studio disassembly
+
+
+				#if COMPILER_MSVC
+				    Result.Found = _BitScanForward((unsigned long *)&Result.Index, Value);
+					00007FF9C43E3029  mov         eax,dword ptr [Value]  
+					00007FF9C43E302D  bsf         eax,eax  
+					00007FF9C43E3030  mov         dword ptr [rsp+4],eax  
+					00007FF9C43E3034  setne       al  
+					00007FF9C43E3037  movzx       eax,al  
+					00007FF9C43E303A  mov         dword ptr [rsp],eax  
+				#else
+				    for(uint32 Test = 0;
+				        Test < 32;
+				        ++Test)
+				    {
+				        if(Value & (1 << Test))
+				        {
+				            Result.Index = Test;
+				            Result.Found = true;
+				            break;
+				        }
+				    }
+				#endif
+
+
+and you can see that one line
+
+				00007FF9C43E302D  bsf         eax,eax  
+
+which is literraly one assembly line instruction (bsf: bit scan forward).
+that does all the work of that for loop
+
+do not be fooled though that assembly instruction might still take a while, but it certainly will be faster than our for loop
+
+
+
+
+51:47
+derivation of Linear blend
+
+
+
+1:11:37
+first of all you never do this. You would always do this as a SIMD vector as oppose to treating each channel individually
+
+
+1:14:10
+are there other ways to alpha blend?
+yes, what we have here is just a linear blend
+
+
+
+1:21:24
+for this code, do we care about the destination alpha?
+
+	            real32 A = (real32)((*Source >> 24) & 0xFF) / 255.0f;
+	            real32 SR = (real32)((*Source >> 16) & 0xFF);
+	            real32 SG = (real32)((*Source >> 8) & 0xFF);
+	            real32 SB = (real32)((*Source >> 0) & 0xFF);
+
+	            real32 DR = (real32)((*Dest >> 16) & 0xFF);
+	            real32 DG = (real32)((*Dest >> 8) & 0xFF);
+	            real32 DB = (real32)((*Dest >> 0) & 0xFF);
+
+	            // TODO(casey): Someday, we need to talk about premultiplied alpha!
+	            // (this is not premultiplied alpha)
+	            real32 R = (1.0f-A)*DR + A*SR;
+	            real32 G = (1.0f-A)*DG + A*SG;
+	            real32 B = (1.0f-A)*DB + A*SB;
+
+	            *Dest = (((uint32)(R + 0.5f) << 16) |
+	                     ((uint32)(G + 0.5f) << 8) |
+	                     ((uint32)(B + 0.5f) << 0));
+
+
+No. We never really write the destination alpha channel. Which is why in ths expression
+
+	            *Dest = (((uint32)(R + 0.5f) << 16) |
+	                     ((uint32)(G + 0.5f) << 8) |
+	                     ((uint32)(B + 0.5f) << 0));
+
+destination alpha channel is always zero. alpha channel is just something used to help our calculation of 
+RGB. It is the RGB that is more important. when we care about Alpha channel. that is just something that helps us calculate desired RGB
+when blending
+
+
+
+
+1:28:15
+clang is just a thing that spits out LLVM byte code
+
+

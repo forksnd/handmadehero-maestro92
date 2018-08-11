@@ -10,9 +10,41 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-    
-#include <stdint.h>
 
+//
+// NOTE(casey): Compilers
+//
+    
+#if !defined(COMPILER_MSVC)
+#define COMPILER_MSVC 0
+#endif
+    
+#if !defined(COMPILER_LLVM)
+#define COMPILER_LLVM 0
+#endif
+
+#if !COMPILER_MSVC && !COMPILER_LLVM
+
+#if _MSC_VER
+#undef COMPILER_MSVC
+#define COMPILER_MSVC 1
+#else
+// TODO(casey): Moar compilerz!!!
+#undef COMPILER_LLVM
+#define COMPILER_LLVM 1
+#endif
+
+#endif
+
+#if COMPILER_MSVC
+#include <intrin.h>
+#endif
+    
+//
+// NOTE(casey): Types
+//
+#include <stdint.h>
+    
 typedef int8_t int8;
 typedef int16_t int16;
 typedef int32_t int32;
