@@ -1,0 +1,103 @@
+12:07
+in the player movement code, we initially had something like this
+
+	            dPlayerX *= PlayerSpeed;
+	            dPlayerY *= PlayerSpeed;
+	            
+	            // TODO(casey): Diagonal will be faster!  Fix once we have vectors :)
+	            tile_map_position NewPlayerP = GameState->PlayerP;
+	            NewPlayerP.OffsetX += Input->dtForFrame*dPlayerX;
+	            NewPlayerP.OffsetY += Input->dtForFrame*dPlayerY;
+
+and of course, in this way, the player travels faster diagonally
+
+
+
+
+44:20
+I find that vectors are somewhere where I really like operator overloading. other places, I really dont find it all that useful
+
+
+
+
+45:07
+a good detail of writing the v2 class.
+
+
+				struct v2
+				{
+				    union
+				    {
+				        real32 X, Y;
+     				    real32 E[2];
+				    };
+				};
+
+this way u can access it both x and y, or u can access it procedurally like an array.
+this is very useful for for loops
+
+
+
+
+53:26
+different implementations of it
+
+				struct v2
+				{
+					real32 X, Y;
+					real32 &operator[](int Index)
+					{
+						return((&X)[Index]);
+					}
+				};
+
+
+
+
+
+1:02:34
+what are the drawbacks of union in C++?
+
+I like unions a lot. C++ support for unions are awful.
+
+apparently in the first implementation of v2
+
+
+				struct v2
+				{
+				    union
+				    {
+				        real32 X, Y;
+     				    real32 E[2];
+				    };
+				};
+
+as soon as you do this, u can not construct a v2 using the {} method. v2 v = {5, 4};				
+
+therefore he had to change it to the new way.
+
+				struct v2
+				{
+					real32 X, Y;
+					real32 &operator[](int Index)
+					{
+						return((&X)[Index]);
+					}
+				};
+
+
+
+1:15:34
+final version
+
+				union v2
+				{
+				    struct
+				    {
+				        real32 X, Y;
+				    };
+				    real32 E[2];
+				};
+
+
+				
