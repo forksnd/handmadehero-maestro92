@@ -1,0 +1,17 @@
+nothing interesting in the main section
+
+1:17:28
+detailed explanation of the clipping bug
+
+1:22:10
+unit tests are not very useful in games, becuz many states are not well defined. But sometimes you do need unit tests
+
+but we will have performance tests that is similar to unit tests
+
+usually if you have unit tests, you are just testing the easy parts. you are bullet proofing the easy parts.
+
+
+
+
+
+
