@@ -1,0 +1,66 @@
+49:07
+
+his method is that the dpad gives acceleration to palyers
+ddPlayer is acceleration
+
+	            v2 ddPlayer = {};
+	            
+	            if(Controller->MoveUp.EndedDown)
+	            {
+	                GameState->HeroFacingDirection = 1;
+	                ddPlayer.Y = 1.0f;
+	            }
+	            if(Controller->MoveDown.EndedDown)
+	            {
+	                GameState->HeroFacingDirection = 3;
+	                ddPlayer.Y = -1.0f;
+	            }
+	            if(Controller->MoveLeft.EndedDown)
+	            {
+	                GameState->HeroFacingDirection = 2;
+	                ddPlayer.X = -1.0f;
+	            }
+	            if(Controller->MoveRight.EndedDown)
+	            {
+	                GameState->HeroFacingDirection = 0;
+	                ddPlayer.X = 1.0f;
+	            }
+
+	            if((ddPlayer.X != 0.0f) && (ddPlayer.Y != 0.0f))
+	            {
+	                ddPlayer *= 0.707106781187f;
+	            }
+
+	            real32 PlayerSpeed = 10.0f; // m/s^2
+	            if(Controller->ActionUp.EndedDown)
+	            {
+	                PlayerSpeed = 50.0f; // m/s^2
+	            }
+	            ddPlayer *= PlayerSpeed;
+
+	            // TODO(casey): ODE here!
+	            ddPlayer += -1.5f*GameState->dPlayerP;
+
+	            tile_map_position NewPlayerP = GameState->PlayerP;
+	            NewPlayerP.Offset = (0.5f*ddPlayer*Square(Input->dtForFrame) +
+	                                 GameState->dPlayerP*Input->dtForFrame +
+	                                 NewPlayerP.Offset);
+	            GameState->dPlayerP = ddPlayer*Input->dtForFrame + GameState->dPlayerP;
+	            
+
+1:27:05
+the reason why you can sometimes have problems with integraiton systems is becuz they can sometimes get out of control
+
+he gives a graph explanation where the delta time can affect forward euler 
+
+one solution is to use backward euler
+
+really good for games.
+
+backwards euler is where you go to the next timestep, and find the derivative that points back to the previous step
+it will still be off the curve, but it will be off the curve in a less energetic place. 
+
+but backwards euler is often more expensive, which is why u dont always do it
+
+
+
