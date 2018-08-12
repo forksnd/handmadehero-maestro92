@@ -1,0 +1,80 @@
+51:24
+
+Minkowsky Algebra -> Collision Detection
+two typical uses of it: 
+1. GJK
+2. between two convex solids
+
+52:40
+apparently quake uses this technique
+
+
+
+53:55
+
+control theory: feedback systems, springs, "PDC"
+				used in robotics a lot
+
+				used a lot in controlling variables that we want to change over time. for example a missle changing its trajectory
+
+
+
+Interval Arithmithic
+
+				Arithimitic on ranges
+
+				allows you to evaluate equations for ranges of values
+
+
+
+Graph theory
+
+
+
+1:03:23
+torus vs sphere?
+you once mentioned that a toro topology is if you start walking in one direction, you will end up the same place.
+Doesn't a sphere also have this property?
+
+How do we know if we are on a torus vs a sphere?
+
+our space does not diminish in any direcion
+the number of tiles does not diminish in any direction
+
+whereas for a sphere, it will not be true.
+
+As we go up in y, we will have to modify the number of tiles.
+
+
+1:12:11
+quaternions are non-euclidean
+
+
+1:16:18
+Rotations matrix vs quaternion
+
+we assume that a Rotation matrix that is parameterized by an axis and an angle
+
+so we are comparing the Rotation matrix representation vs Quaternion representation
+
+the reason why you would prefer quaternions:
+
+1: 	efficiency. rot matrix will have atleast 3x3, 9 values. and these 9 values have to be re-normalized continuously
+
+	quaternion is 4 values
+
+
+2:	there are a number operations that are trivial in quaternions, but more complicated to do in rotations matrix 
+	
+	for example, to actually construction a rotaiton matrix, you will have to take all the consine and sine
+
+
+	quaternions, you only have to take the consine of the thing, and even that sometimes for consine, you just need to compute the dot product
+	so a lot of times, you can construct a quaternions without doing any trigs
+
+
+3:	quaternions has the nice property where it represents double rotations?
+
+	u can do blend annimiations much easier in quaternions
+
+	so easier to work on
