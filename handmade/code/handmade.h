@@ -7,18 +7,6 @@
    $Notice: (C) Copyright 2014 by Molly Rocket, Inc. All Rights Reserved. $
    ======================================================================== */
 
-/*
-  NOTE(casey):
-
-  HANDMADE_INTERNAL:
-    0 - Build for public release
-    1 - Build for developer only
-
-  HANDMADE_SLOW:
-    0 - Not slow code allowed!
-    1 - Slow code welcome.
-*/
-
 #include "handmade_platform.h"
 
 //

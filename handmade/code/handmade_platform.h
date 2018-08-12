@@ -7,6 +7,18 @@
    $Notice: (C) Copyright 2014 by Molly Rocket, Inc. All Rights Reserved. $
    ======================================================================== */
 
+/*
+  NOTE(casey):
+
+  HANDMADE_INTERNAL:
+    0 - Build for public release
+    1 - Build for developer only
+
+  HANDMADE_SLOW:
+    0 - Not slow code allowed!
+    1 - Slow code welcome.
+*/
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -60,8 +72,8 @@ typedef size_t memory_index;
 typedef float real32;
 typedef double real64;
 
-#define internal static 
-#define local_persist static 
+#define internal static
+#define local_persist static
 #define global_variable static
 
 #define Pi32 3.14159265359f
