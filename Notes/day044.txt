@@ -1,0 +1,29 @@
+
+Pretty much the entire stream is teaching about dot product, and how reflecting vectors work
+
+or you can just use the glm::reflect()
+
+recall for the glm implementation, reflect returns result = I - 2.0 * dot(N, I) * N.
+
+				genType glm::reflect (genType const & I, genType const & N
+				{
+					return I - 2.0 * dot(N, I) * N.
+				} 
+						
+https://glm.g-truc.net/0.9.4/api/a00131.html#gabe1fa0bef5f854242eb70ce56e5a7d03
+
+
+
+
+
+1:00:55
+explaining what he wishes to do with player-wall collision
+
+
+
+1:24:54
+The witness collision trick:
+
+The trick is to do movement as a search problem as oppose to a physics problem
+
+
