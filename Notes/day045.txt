@@ -1,0 +1,87 @@
+start addressing the sticking problem
+
+and problems with the current collision detection
+
+8:30
+the method described here reminds me of the GDC talk by that blizzard dude
+
+11:12
+talking about the approach he took when he worked on the witness
+
+search in t is not good
+what games sometimes do is that they do some loops of t
+
+so instead of doing search in t, he does search in p. (search in position)
+
+
+
+search in p is way better than search in t for collision detection
+
+
+
+18:40
+explaining how to implement it in a tilemap setting
+
+
+
+22:04 
+flood fill vs for loop in his proposed solution
+
+
+the first 28 minutes is explaining his method. So actually pay attention to it
+
+39:40
+in the new movement code, we do 
+	            for(uint32 AbsTileY = MinTileY; AbsTileY != OnePastMaxTileY;  ++AbsTileY)
+	            {
+	                for(uint32 AbsTileX = MinTileX; AbsTileX != OnePastMaxTileX; ++AbsTileX)
+	                {
+	                	...
+	                	...
+	                }
+	            }
+
+the reason is becuz we are doing "AbsTileY != OnePastMaxTileY" instead of "AbsTileY <= OnePastMaxTileY" is becuz of wrap around
+
+recall that we do the wrap around, so the left of 0 is 4 billion. So if you do the "AbsTileY <= OnePasMaxTileY", it won't work
+
+	 _______________________________
+    |       |       |       |       |
+    | 4b,1  |  0,1  |  1,1  | 2,1   |
+    |_______|_______|_______|_______|
+    |  		|       |       |       |
+    | 4b,0 	|  0,0  |  1,0  | 2,0   |
+    |_______|_______|_______|_______|
+    |       |       |       |       |
+    |       |  0,4b |       |       |
+    |_______|_______|_______|_______|
+
+
+
+
+50:02
+finding closest point between point to AABB
+
+
+
+I think the idea of his approach is that he searches through 
+
+		0 		1 		2 		3 		
+	 _______________________________
+    |       |       |       |       |
+0   | a 	|  		|  	    |		|
+    |_______|_______|_______|_______|
+    |  		|       |       |       |
+1   |   	|  p 	|   	| 	    |
+    |_______|_______|_______|_______|
+    |       |       |       |       |
+2   |       |   	|       |       |
+    |_______|_______|_______|_______|
+
+assume p wants to go to a, where cell (0,0) is a wall. he searches through all the cells that encloses the vector
+
+	cell(0,0), cell(0,1), 
+	cell(1,0), cell(1,1)
+
+the he finds the point on these cells that is closest to a. We do this cuz a is where he should have been. yet, since 
+cell(0,0) is wall, we can not be there. so we find next closest available. point.
