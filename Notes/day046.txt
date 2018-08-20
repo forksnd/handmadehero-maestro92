@@ -1,0 +1,22 @@
+11:36
+first defining the entity class
+
+I really like the entity Exist flag.
+
+
+23:57
+looping thru entities through pointer arithimetic. 
+I like it.
+
+
+
+1:32:44
+using _rotl intrinsics instruction to shift bits
+
+
+1:39:50
+_rotl, rotate will work, but it is microcoded. so it is best not to use it if u want performance
+
+
+https://stackoverflow.com/questions/40366643/what-is-a-microcoded-instruction
+

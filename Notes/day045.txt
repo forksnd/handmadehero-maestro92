@@ -85,3 +85,9 @@ assume p wants to go to a, where cell (0,0) is a wall. he searches through all t
 
 the he finds the point on these cells that is closest to a. We do this cuz a is where he should have been. yet, since 
 cell(0,0) is wall, we can not be there. so we find next closest available. point.
+
+
+1:19:50
+the way we are doing this makes the player glides along the wall
+
+
