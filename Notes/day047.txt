@@ -1,0 +1,73 @@
+21:16
+decided to go with search in t eventually
+
+Again, this reminds me of the physics talk that the blizzard guy mentioned
+
+
+
+28:49
+for the formulat
+A + t * (B-A)
+
+if (B-A) is not normalized
+that means t is from [0 ~ 1]
+
+
+if (B-A) is normalized
+then t will range from [0 ~ whatever it should be]
+
+
+
+43:46
+Min， Max Macros
+
+
+so in this collision code,
+he makes the decision of doing second method,
+where (B-A) is not normalized, and t is [0 ~ 1]
+
+this way in the ray tracing collision testing code, he sets tMin to be 1.0f
+
+
+
+55:40
+explaining more in depth why he is going with search in t instead of search in p
+
+
+-	search in p
+Pros:
+bounded in iterations
+smoothly ignoring geometry bugs
+much more geometryical complication
+
+Cons:
+does not handle bounciness very well
+
+
+
+-	search in t
+this is the more normal, general case
+
+Pros:
+never need to form search space
+the more efficient algorithm in the normal case
+handles bounciness better
+
+
+Cons:
+unbounded in iterations
+gets stuck on geometry bugs
+
+
+to address the unbounded in iterations:
+just simply produce the wrong answer by bounding it, and that is usually still more efficient 
+then search in P
+
+
+
+1:08:40
+Optimizations:
+
+we can see where the player is relative to the wall, and only take those walls that are pointing towards the player
+
+use dot product for that
