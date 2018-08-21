@@ -1,0 +1,44 @@
+Finishing up the character sticking on the wall problem
+
+24:45
+
+so he did a trick where he clamps the t
+
+				internal void
+				TestWall(real32 WallX, real32 RelX, real32 RelY, real32 PlayerDeltaX, real32 PlayerDeltaY,
+				         real32 *tMin, real32 MinY, real32 MaxY)
+				{
+				    real32 tEpsilon = 0.0001f;
+				    if(PlayerDeltaX != 0.0f)
+				    {
+				        real32 tResult = (WallX - RelX) / PlayerDeltaX;
+				        real32 Y = RelY + tResult*PlayerDeltaY;
+				        if((tResult >= 0.0f) && (*tMin > tResult))
+				        {
+				            if((Y >= MinY) && (Y <= MaxY))
+				            {
+				                *tMin = Maximum(0.0f, tResult - tEpsilon);
+				            }
+				        }
+				    }
+				}
+
+but apprently this is not how he wants it to be like in the final version
+
+
+32:47
+fixing a weird collision against the wall bug
+
+35:07
+turns out that is the result of the character glitching through the walls
+
+
+37:42
+addressing the issue with this current method, where we treat the walls as 4 infinitely thin layers
+as oppose to a single AABB box
+
+
+
+
+
+
