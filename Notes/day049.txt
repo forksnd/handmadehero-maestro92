@@ -1,0 +1,7 @@
+Just all Debugging
+nothing interesting
+
+
+1:06:20
+i do not want to use doubles cuz doubles are half as fast, or way less then half as fast
+
