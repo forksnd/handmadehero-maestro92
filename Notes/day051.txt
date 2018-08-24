@@ -211,3 +211,8 @@ apparently if you & it with 31, you can avoid the conditional
 
 31 is where the 5 bottom bits are set
  ~~~00000011111
+
+
+
+what it does is that it knocks out the negative part of the negative number and turn it into a positive number
+between 0 and 31 that inverts properly the original negative number.
