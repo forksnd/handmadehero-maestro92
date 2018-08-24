@@ -1,0 +1,213 @@
+
+talks about the addressing scheme and how to manage/store entities of different update frequency:
+entities that you want to update in high frequency, low frequency, dormant. With such organization, he also implements
+software culling. which is a fancy way of saying only rendering high frequency entities
+
+
+9:19
+proposes to organize entities into two sets of entities
+
+one set of entities, who are close to who we are, fully active, operating on float position space 
+(recall that our current world position coordinate system has tilemap space and float space)
+
+the other set of entities, existing in tilemap space, are updated at a much lower frequency
+
+
+so we will have a group of units in full resolution simulation
+
+everything not in the hot zone, to be in low resolution simulation
+
+
+
+13:20
+estimating how many entities we plan to have
+
+if we doing 2~60 hours of game play
+
+72000   60 hours    20 monsters a minute
+
+
+100 - 200 entities at full resolution
+
+
+
+
+17:15
+assume i have 3,000,000,000 cycles / second
+
+50,000,000 is the number of cycles I got per frame
+
+if we were to simulate 72000 entities
+
+u get 694.44, around 700 cycles per entity. 700 cycles is around a couple of memory fetches
+
+so you pretty much know that 72000 entities per frame is not gonna happen.
+
+
+one solution is to update those guys at a much lower frequency
+once entity are out of the hot zone, we can update each entity at a lower frequence (once a second or what not)
+
+
+21:14
+as the player move around the world, we will be moving entities from the high frequency set to low frequency set and vice versa
+so he starts talking about addressing schemes for managing entities in different frequency pools
+
+
+
+24:56
+the low frequency table will almost have all the entities in it
+
+Option 1 
+search entities in low frequency pool. if they are in hot zone, store the address in the high freq table
+
+Option 2
+have a 72,000 entry table, detailing who is in low freq and who is in high freq, and the address of it,
+kind of like
+                
+                bool: inLow         uint8*  address (or where it is in memory, or how I can access it)
+
+
+
+The bonus of doing option2 is that we can have a separate table of dormant entities, that are in neither table
+
+
+27:16
+
+we will just start with a 3 table scheme
+
+high freq:
+        storing everyone in float space (hot space), everyone around the camera
+
+
+low freq:
+        entities in tile space    
+
+
+dormant:
+        
+
+if we find out that if we do not like three tables, we can always collpase dormant entities table ot the low freq entities table
+
+
+
+
+the final solution: each entity will have three components 
+
+
+                struct entity
+                {
+                    uint32 Residence;
+                    low_entity* Low;
+                    dormant_entity* Dormant;
+                    high_entity* High;
+                };
+
+
+and we define each of the components below
+
+
+                struct high_entity
+                {
+                    bool32 Exists;
+                    v2 P; // NOTE(casey): Relative to the camera!
+                    v2 dP;
+                    uint32 FacingDirection;
+                };
+
+                struct low_entity
+                {
+                };
+
+                struct dormant_entity
+                {
+                    tile_map_position P;
+                    real32 Width, Height;
+                };
+
+                enum entity_residence
+                {
+                    EntityResidence_Nonexistent,
+                    EntityResidence_Dormant,
+                    EntityResidence_Low,
+                    EntityResidence_High,
+                };
+
+
+
+then in our game, we define 3 arrays
+
+
+                struct game_state
+                {
+                    ...
+                    ...
+
+                    uint32 EntityCount;
+                    entity_residence EntityResidence[256];
+                    high_entity HighEntities[256];
+                    low_entity LowEntities[256];
+                    dormant_entity DormantEntities[256];
+                };
+
+
+the index in each of these three array points to the same entity. For example, in the get entity function:
+
+
+                inline entity
+                GetEntity(game_state *GameState, entity_residence Residence, uint32 Index)
+                {
+                    entity Entity {};
+                    
+                    if((Index > 0) && (Index < GameState->EntityCount))
+                    {
+                        Entity.Residence = Residence;
+                        Entity.Dormant = &GameState->DormantEntities[Index];
+                        Entity.Low = &GameState->LowEntities[Index];
+                        Entity.High = &GameState->HighEntities[Index];
+                    }
+
+                    return(Entity);
+                }
+
+you can see how we access each component with the same index
+
+
+
+
+
+1:13:26
+todo an rotate operation:
+"shift bits" then do an "or" operation 
+
+
+
+1:20:56
+the way to do rotate on a number
+
+initially we had to do 
+
+                inline uint32
+                RotateLeft(uint32 Value, int32 Amount)
+                {
+                    
+                    uint32 Result = ((Amount > 0) ? 
+                        ((Value << Amount) | (Value >> (32 - Amount))) :  
+                        ((Value >> -Amount) | (Value << (32 + Amount))));
+
+                    return(Result);
+                }
+
+in which we have a conditional 
+
+apparently if you & it with 31, you can avoid the conditional
+
+                inline uint32
+                RotateLeft(uint32 Value, int32 Amount)
+                {
+                    Amount &= 31;
+                    uint32 Result = ((Value << Amount) | (Value >> (32 - Amount)));
+                    return(Result);
+                }
+
+31 is where the 5 bottom bits are set
+ ~~~00000011111
