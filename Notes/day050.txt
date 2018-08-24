@@ -1,0 +1,189 @@
+This episodes implemented Minkowski-based collision detection and finished up gliding when player moves up against the wall
+be sure to revisit this episode if you want to study movement code
+
+5:48
+Minkowski Sum / Difference
+
+
+8:50
+Minkowski found out that you can do a form of algebra on shapes
+
+in much the same way you learn about algebra
+
+				a + b = c
+
+
+10:24
+see picture at this time. He has an example of a 3 boxes colliding with each other
+
+The idea is that essentially shrink box A to a point, and expand the other two by the amout of the box A
+
+see 10:53 
+
+16:02
+you sweep the shape A around the perimeter of shape B
+
+square vs circle
+
+
+16:58
+in the case where you have two rectangles or two squares, it is very simple to represent it
+
+but how do you actually represent the rounded rectangle? (from the case of square vs circle)
+
+
+
+18:42 
+against very complicated Minkowski Sums, we can use GJK
+allows to you do any Minkowski Sum of any shape, as long as it is convex. If you have concave shapes, you just break concave shapes into
+multipel convex shapes. (We have done that for our zillow clone)
+
+
+
+
+
+24:03
+refactoring the code to do minkowski
+
+initially we have
+
+
+                v2 MinCorner = -0.5f*v2{TileMap->TileSideInMeters, TileMap->TileSideInMeters};
+                v2 MaxCorner = 0.5f*v2{TileMap->TileSideInMeters, TileMap->TileSideInMeters};
+
+                TestWall
+                TestWall
+                TestWall
+                TestWall
+
+
+now we have. We shrink object A to a point, and grow the other one by A_width and A_height
+
+                real32 DiameterW = TileMap->TileSideInMeters + Entity->Width;
+                real32 DiameterH = TileMap->TileSideInMeters + Entity->Height;
+                v2 MinCorner = -0.5f*v2{DiameterW, DiameterH};
+                v2 MaxCorner = 0.5f*v2{DiameterW, DiameterH};
+
+                TestWall
+                TestWall
+                TestWall
+                TestWall
+
+
+
+26:33
+we need to adjust the number of tiles we need to check after going AABB against walls instead of a just a point against walls  
+
+
+			    uint32 MinTileX = Minimum(OldPlayerP.AbsTileX, NewPlayerP.AbsTileX);
+			    uint32 MinTileY = Minimum(OldPlayerP.AbsTileY, NewPlayerP.AbsTileY);
+			    uint32 MaxTileX = Maximum(OldPlayerP.AbsTileX, NewPlayerP.AbsTileX);
+			    uint32 MaxTileY = Maximum(OldPlayerP.AbsTileY, NewPlayerP.AbsTileY);
+
+			    uint32 EntityTileWidth = CeilReal32ToInt32(Entity->Width / TileMap->TileSideInMeters);
+			    uint32 EntityTileHeight = CeilReal32ToInt32(Entity->Height / TileMap->TileSideInMeters);
+
+			    MinTileX -= EntityTileWidth;
+			    MinTileY -= EntityTileHeight;
+			    MaxTileX += EntityTileWidth;
+			    MaxTileY += EntityTileHeight;
+			    
+
+
+
+48:40
+
+he puts a for loop in the movement code for iteration corrections 
+                                
+
+the idea is that we want to move the full distance of playerDelta
+so we intialize tRemaining to be 1.0f. And then within the for loop, we use tMin to be like a percentage, and
+we update tMin to be however we actually moved
+
+so for example, if we hit the wall, we wont move the full amount of playerDelta, so we have to do more iterations
+to try to move
+
+also we have have to update PlayerDelta and Entity->dP, to chop away the portions that is going into the wall
+
+
+
+                v2 PlayerDelta = (0.5f*ddP*Square(dt) + Entity->dP*dt);
+
+                ...
+                ...
+
+                real32 tRemaining = 1.0f;
+                for(uint32 Iteration = 0; (Iteration < 4) && (tRemaining > 0.0f); ++Iteration)
+                {
+                    real32 tMin = 1.0f;
+                    ...
+                    ...
+
+                    for all tiles I will cover
+
+                        // test walls 
+
+                        // test walls 
+
+                        // test walls 
+
+                        // test walls 
+                         
+                    ...
+                    ...
+
+                    Entity->P = Offset(TileMap, Entity->P, tMin*PlayerDelta);
+                    Entity->dP = Entity->dP - 1*Inner(Entity->dP, WallNormal)*WallNormal;
+                    PlayerDelta = PlayerDelta - 1*Inner(PlayerDelta, WallNormal)*WallNormal;
+                    tRemaining -= tMin*tRemaining;
+                }
+
+
+
+52:40
+
+he shows a graph explaining how tMin is used as a percentage
+
+
+1:19:50
+you do not really think about it when you play games. but when you think about it, being able to slide smoothly
+around corners and doors are so important
+
+in my FPS, characters are spheres, so I do sphere vs AABB
+currently in this game, he does AABB vs AABB (Character vs wall), and he is still able to implement sliding 
+with his method.
+
+so it is definitely worth a try to do what he did
+
+
+
+1:22:07
+the minkowski stuff works equally well in 3D. 
+Concave shapes, universally, almost always the solution is to break the concave shape into convex shapes
+
+
+1:24:35
+Plus, we only have one file, the more files you try to push through the compiler, the slower it gets. 
+
+
+1:30:02
+minkowski does not care if your object is rotated
+
+GJK will handle rotations just fine
+
+minkowsi can handle static rotation, what minkowski can not handle is animated rotation
+
+Example if a rectangle rotates from 90 to 105 degrees during the game
+
+the reason why it does not work in games is becuz it produces concave shapes, and there is no way to subdivide
+
+
+1:36:23
+representation rotations are usually not the worst of your problems. it is usually contact. 
+
+it is rotations's non-linearity in contact that makes it hard
+
+
+1:37:51
+the way that the collision detection worked in braid is that we had rounded rectangles
+it stored the sum of a rectangle and a circle
