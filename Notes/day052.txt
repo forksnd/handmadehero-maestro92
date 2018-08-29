@@ -1,0 +1,104 @@
+This episodes implements the ChangeEntityResidence function
+
+
+
+
+
+
+24:25
+we have made the decision that we will update the dormant_entity all the time, hence the ChangeEntityResidence only 
+has to change entity residence from low to High
+
+                internal void
+                ChangeEntityResidence(game_state *GameState, uint32 EntityIndex, entity_residence Residence)
+                {
+                    // TODO(casey): Implement this!
+                    if(Residence == EntityResidence_High)
+                    {
+                        if(GameState->EntityResidence[EntityIndex] != EntityResidence_High)
+                        {
+                            high_entity *EntityHigh = &GameState->HighEntities[EntityIndex];
+                            dormant_entity *EntityDormant = &GameState->DormantEntities[EntityIndex];
+
+                            // NOTE(casey): Map the entity into camera space
+                            tile_map_difference Diff = Subtract(GameState->World->TileMap,
+                                                                &EntityDormant->P, &GameState->CameraP);
+                            EntityHigh->P = Diff.dXY;
+                            EntityHigh->dP = V2(0, 0);
+                            EntityHigh->AbsTileZ = EntityDormant->P.AbsTileZ;
+                            EntityHigh->FacingDirection = 0;
+                        }
+                    }
+
+                    GameState->EntityResidence[EntityIndex] = Residence;
+                }
+
+
+we will have a separate step that updates dormant precision all the time. The idea is that we always want to make sure that
+Entity.Dormant is valid. so we update it every tick
+
+
+
+                Entity.Dormant->P = MapIntoTileSpace(GameState->World->TileMap, GameState->CameraP, Entity.High->P);
+
+
+
+59:18
+depth sorting
+maybe x,y + z based depth formula
+
+
+
+
+1:07:13
+how good is this addressing scheme for the cache?
+not very good right now. It is not good for cache 4 for SIMD operations
+
+
+1:09:52 
+implements jumping
+
+
+
+1:24:36
+when you jump, you would want the shadow to shrink. When you are furthur away from the ground, your shadow shrinks
+
+
+
+
+1:24:49
+to put in the hack, for the shadow, we edit the DrawBitmap function to pass in a CAlpha argument
+and we multiple our alpha channel with it.
+
+                real32 A = (real32)((*Source >> 24) & 0xFF) / 255.0f;
+                A *= CAlpha;
+                
+                real32 SR = (real32)((*Source >> 16) & 0xFF);
+                real32 SG = (real32)((*Source >> 8) & 0xFF);
+                real32 SB = (real32)((*Source >> 0) & 0xFF);
+
+                real32 DR = (real32)((*Dest >> 16) & 0xFF);
+                real32 DG = (real32)((*Dest >> 8) & 0xFF);
+                real32 DB = (real32)((*Dest >> 0) & 0xFF);
+
+                // TODO(casey): Someday, we need to talk about premultiplied alpha!
+                // (this is not premultiplied alpha)
+                real32 R = (1.0f-A)*DR + A*SR;
+                real32 G = (1.0f-A)*DG + A*SG;
+                real32 B = (1.0f-A)*DB + A*SB;
+
+                *Dest = (((uint32)(R + 0.5f) << 16) |
+                         ((uint32)(G + 0.5f) << 8) |
+                         ((uint32)(B + 0.5f) << 0));
+                
+                ++Dest;
+                ++Source;
+
+
+
+1:39:10
+
+                pixel by pixel is totaly doable, but it does not deal with swept volume very well 
+                so things can tunnel
+
+                
