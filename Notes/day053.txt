@@ -1,0 +1,163 @@
+Summary:
+This episode goes to write the SetCamera function. Whenever you set the camera to a different screen
+for example, going from screen A to screen B, we have to move all the entities that was initially in the high frequency
+to the low frequency group. Then we set all the entities in screen B to high frequency.
+
+     _______________
+    |       |       |
+    |   A   |   B   |
+    |_______|_______|
+
+
+
+also Casey makes all the walls as entities
+
+in the Q&A, it also fixes a crucial bug in the collision resolve step
+
+
+18:20
+removing high entities once the camera goes to a different screen
+
+
+
+56:03
+the code that moves entities to different group is as such
+I get all the entities within the camera bounds. I do this by going through all the entity and see if it is the rectangle
+and I move them to Dormant
+
+Then I find the new rectangle bounds centered at my new camera position, and then I see if the entity is within the new rectangle
+
+                internal void
+                SetCamera(game_state *GameState, tile_map_position NewCameraP)
+                {
+                    tile_map *TileMap = GameState->World->TileMap;
+
+                    ...
+                    ...
+                    rectangle2 CameraBounds = RectCenterDim(V2(0, 0),
+                                                            TileMap->TileSideInMeters*V2((real32)TileSpanX,
+                                                                                         (real32)TileSpanY));
+                    
+                    for(uint32 EntityIndex = 1; EntityIndex < ArrayCount(GameState->HighEntities); ++EntityIndex)
+                    {
+                        if(GameState->EntityResidence[EntityIndex] == EntityResidence_High)
+                        {
+                            high_entity *High = GameState->HighEntities + EntityIndex;
+
+                            ...
+                            ...
+
+                            if(!IsInRectangle(CameraBounds, High->P))
+                            {
+                                ChangeEntityResidence(GameState, EntityIndex, EntityResidence_Dormant);
+                            }
+                        }
+                    }
+
+                    uint32 MinTileX = NewCameraP.AbsTileX - TileSpanX/2;
+                    uint32 MaxTileX = NewCameraP.AbsTileX + TileSpanX/2;
+                    uint32 MinTileY = NewCameraP.AbsTileY - TileSpanY/2;
+                    uint32 MaxTileY = NewCameraP.AbsTileY + TileSpanY/2;
+                    for(uint32 EntityIndex = 1; EntityIndex < ArrayCount(GameState->DormantEntities); ++EntityIndex)
+                    {
+                        if(GameState->EntityResidence[EntityIndex] == EntityResidence_Dormant)
+                        {
+                            dormant_entity *Dormant = GameState->DormantEntities + EntityIndex;
+
+                            if((Dormant->P.AbsTileZ == NewCameraP.AbsTileZ) &&
+                               (Dormant->P.AbsTileX >= MinTileX) &&
+                               (Dormant->P.AbsTileX <= MaxTileX) &&
+                               (Dormant->P.AbsTileY <= MinTileY) &&
+                               (Dormant->P.AbsTileY >= MaxTileY))
+                           
+                            {
+                                ChangeEntityResidence(GameState, EntityIndex, EntityResidence_High);
+                            }
+                        }
+                    }
+                }
+
+
+1:01:40
+difference between static and non-static functions?
+
+any functions that is not defined as static can be linked by the linker to other compiled modules.
+
+static means, when I compile a translation unit (usually one single cpp file), static says do not put this function
+in the table of functions that are in this compiled module. Do not export it, no one outside can call it
+
+
+goes on the explain how linker takes obj files, resolves functions calls
+
+
+Unity build means: you are putting a bunch of cpp files into one file
+
+
+
+
+
+
+
+1:07:47
+why consider walls as entities?
+
+1. I prefer a uniform way of processing logic
+2. I might want to do things to wall. Having wall as entity, I can damage it, or give it health. So walls will also be "active"
+
+
+
+1:12:27
+fixing a crucial bug in the collision detection
+
+see graph Casey drawn at 1:11:32
+
+New Version: 
+the new version also gets rid of tRemaining
+
+                for(uint32 Iteration = 0; Iteration < 4;  ++Iteration)
+                {
+                    real32 tMin = 1.0f;
+
+                    ...
+                    ...
+
+                    v2 DesiredPosition = Entity.High->P + PlayerDelta;
+                    
+                    for(uint32 EntityIndex = 1; EntityIndex < GameState->EntityCount; ++EntityIndex)
+                    {
+                        if(TestWall( ... ))
+                        {
+                            ...
+                        }
+                    
+                        if(TestWall( ... ))
+                        {
+                            ...
+                        }
+                    
+                        if(TestWall( ... ))
+                        {
+                            ...
+                        }
+                    
+                        if(TestWall( ... ))
+                        {
+                            ...
+                        }                        
+                    }
+
+                    Entity.High->P += tMin*PlayerDelta;        
+                    if(HitEntityIndex)
+                    {
+                        Entity.High->dP = Entity.High->dP - 1*Inner(Entity.High->dP, WallNormal)*WallNormal;
+                        PlayerDelta = DesiredPosition - Entity.High->P;
+                        PlayerDelta = PlayerDelta - 1*Inner(PlayerDelta, WallNormal)*WallNormal;
+
+                        entity HitEntity = GetEntity(GameState, EntityResidence_Dormant, HitEntityIndex);
+                        Entity.High->AbsTileZ += HitEntity.Dormant->dAbsTileZ;
+                    }
+                    else
+                    {
+                        break;
+                    }
+
