@@ -1,0 +1,197 @@
+Summary
+
+Got rid of dormant entities. eseentially replacing dormant entities with low_frequency entities
+changing the concept of Adding Entities: entities are always added to the low frequency, then moved to high frequency
+
+Writes two core functions
+MakeEntityHighFrequency(), MakeEntityLowFrequency()
+
+writes code to manage the two arrays: HighEntities and LowEntities
+
+
+7:11
+high_entity and low_entity no longer have 1 to 1 correspondence
+
+
+                struct game_state
+                {
+                    ...
+                    ...
+
+                    uint32 LowEntityCount;
+                    low_entity LowEntities[4096];
+
+                    uint32 HighEntityCount;
+                    high_entity HighEntities_[256];
+
+                    ....
+                    ....
+                };
+
+
+it used to be both 
+
+                struct game_state
+                {
+                    ...
+                    ...
+
+                    uint32 LowEntityCount;
+                    low_entity LowEntities[256];
+
+                    uint32 HighEntityCount;
+                    high_entity HighEntities_[256];
+
+                    ....
+                    ....
+                };
+
+but now they want more low entities
+
+
+
+
+8:50
+to keep track of each other, we added a LowEntityIndex and HighEntityIndex to each other
+
+                struct high_entity
+                {    
+                    ...
+                    ...
+
+                    uint32 LowEntityIndex;
+                };
+
+
+                struct low_entity
+                {
+                    ...
+                    ...
+
+                    uint32 HighEntityIndex;
+                };
+
+
+13:52
+#define InvalidCodePath
+
+                #define InvalidCodePath Assert(!"InvalidCodePath");
+
+15:44
+it is important to point out that, reason why we set the high_entity array fixed is becuz
+high entities are the performance cost ones. So that means I will have a budget for processing high entities
+
+how ever I can afford is limited by the CPU time per frame, which we will find out later. 
+
+Therefore I can not just make this into an unbounded array that grows. It has to be limited in a realistic way.
+
+When we actually focus on memory managment, we will be focusing on the LowEntities[4096] array
+
+
+
+20:06
+when writing the function MakeEntityLowFrequency(), entities will be taken off of the HighEntities[] array,
+which will leave gaps in it
+
+two ways to solve it
+1.  keep a free index list
+2.  swap with last
+
+this is exactly what Cake said as well
+
+If you want to keep the array compact, do the swap with last way. Casey prefers it this way
+
+
+
+39:51
+so in the SetCamera function, 
+
+the idea behind this function is as follow. when I move from A to B,
+     _______________
+    |       |       |
+    |   A   |   B   |
+    |_______|_______|
+
+I first have to move all entities in A to low frequency. Then I have to add entities in B to high frequency.
+
+we first call the OffsetAndCheckFrequencyByArea, to do the "move all entities in A to low frequency" part.
+The second for loop does the "add entities in B to high frequency" part
+
+
+                internal void
+                SetCamera(game_state *GameState, tile_map_position NewCameraP)
+                {
+                    tile_map *TileMap = GameState->World->TileMap;
+
+                    tile_map_difference dCameraP = Subtract(TileMap, &NewCameraP, &GameState->CameraP);
+                    GameState->CameraP = NewCameraP;
+
+                    // TODO(casey): I am totally picking these numbers randomly!
+                    uint32 TileSpanX = 17*3;
+                    uint32 TileSpanY = 9*3;
+                    rectangle2 CameraBounds = RectCenterDim(V2(0, 0),
+                                                            TileMap->TileSideInMeters*V2((real32)TileSpanX,
+                                                                                         (real32)TileSpanY));
+                    v2 EntityOffsetForFrame = -dCameraP.dXY;
+                    OffsetAndCheckFrequencyByArea(GameState, EntityOffsetForFrame, CameraBounds);
+
+                    ...
+                    ...
+
+                    for(uint32 EntityIndex = 1;
+                        EntityIndex < GameState->LowEntityCount;
+                        ++EntityIndex)
+                    {
+                        low_entity *Low = GameState->LowEntities + EntityIndex;
+                        if(Low->HighEntityIndex == 0)
+                        {
+                            if((Low->P.AbsTileZ == NewCameraP.AbsTileZ) &&
+                               (Low->P.AbsTileX >= MinTileX) &&
+                               (Low->P.AbsTileX <= MaxTileX) &&
+                               (Low->P.AbsTileY <= MinTileY) &&
+                               (Low->P.AbsTileY >= MaxTileY))
+                            {
+                                MakeEntityHighFrequency(GameState, EntityIndex);
+                            }
+                        }
+                    }
+                }
+
+
+
+if you notice in this for loop, the for loop declaration does have the "++EntityIndex". This is becuz in the MakeEntityLowFrequency
+function, we are doing the "swap with last one when removing an entry" method. Therefore we do not want to skip our "current" one, 
+cuz our current one has just been swapped in from the last index.
+
+                inline void
+                OffsetAndCheckFrequencyByArea(game_state *GameState, v2 Offset, rectangle2 CameraBounds)
+                {
+                    for(uint32 EntityIndex = 1; EntityIndex < GameState->HighEntityCount; )
+                    {
+                        high_entity *High = GameState->HighEntities_ + EntityIndex;
+
+                        High->P += Offset;
+                        if(IsInRectangle(CameraBounds, High->P))
+                        {
+                            ++EntityIndex;
+                        }
+                        else
+                        {
+                            MakeEntityLowFrequency(GameState, High->LowEntityIndex);
+                        }
+                    }
+                }
+
+
+
+
+
+
+
+
+
+
+
+1:07:20
+fixed point usually does thing in 2 operations while floating point can do it in 1
+
