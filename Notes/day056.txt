@@ -1,0 +1,37 @@
+Summary:
+added entity indices in tile_chunk storages, 
+this way we have spatial information of entities (which tile chunks contains which entities)
+
+we renamed handmade_tile files to handmade_world
+
+
+19:11
+talks about the ways he can store the low entities, and the reasons of to do and not to do both things
+
+1.  put the entities directly into the storage of the world. 
+the problem of this method is that referencing specific entities becomes very difficult
+
+                
+
+
+
+2.  The world is just a spatial index into the low entity set
+essentially the world stores the index of the entities 
+
+
+We are making the assumption that we do not need references to entities most of the time.
+most entities are not being referenced most of the time
+
+the ability to refer to entities is a less heavyweight operation than the standard spatial processing of entity, which seems more common
+
+final approach
+tiles chunks stores indices of low entitiy arrays
+
+
+
+
+
+
+
+
+
