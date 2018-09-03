@@ -67,7 +67,7 @@ struct high_entity
 {
     v2 P; // NOTE(casey): Relative to the camera!
     v2 dP;
-    uint32 AbsTileZ;
+    uint32 ChunkZ;
     uint32 FacingDirection;
 
     real32 Z;
@@ -125,6 +125,8 @@ struct game_state
     loaded_bitmap Backdrop;
     loaded_bitmap Shadow;
     hero_bitmaps HeroBitmaps[4];
+
+    loaded_bitmap Tree;
 };
 
 #define HANDMADE_H

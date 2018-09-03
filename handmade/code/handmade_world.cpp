@@ -127,7 +127,7 @@ RecanonicalizeCoord(world *World, int32 *Tile, real32 *TileRel)
 }
 
 inline world_position
-MapIntoTileSpace(world *World, world_position BasePos, v2 Offset)
+MapIntoChunkSpace(world *World, world_position BasePos, v2 Offset)
 {
     world_position Result = BasePos;
 
@@ -147,6 +147,7 @@ ChunkPositionFromTilePosition(world *World, int32 AbsTileX, int32 AbsTileY, int3
     Result.ChunkY = AbsTileY / TILES_PER_CHUNK;    
     Result.ChunkZ = AbsTileZ / TILES_PER_CHUNK;
 
+    // TODO(casey): DECIDE ON TILE ALIGNMENT IN CHUNKS!
     Result.Offset_.X = (real32)(AbsTileX - (Result.ChunkX*TILES_PER_CHUNK)) * World->TileSideInMeters;
     Result.Offset_.Y = (real32)(AbsTileY - (Result.ChunkY*TILES_PER_CHUNK)) * World->TileSideInMeters;
     // TODO(casey): Move to 3D Z!!!
@@ -200,13 +201,14 @@ ChangeEntityLocation(memory_arena *Arena, world *World, uint32 LowEntityIndex,
             Assert(Chunk);            
             if(Chunk)
             {
+                bool32 NotFound = true;
                 world_entity_block *FirstBlock = &Chunk->FirstBlock;
                 for(world_entity_block *Block = FirstBlock;
-                    Block;
+                    Block && NotFound;
                     Block = Block->Next)
                 {
                     for(uint32 Index = 0;
-                        Index < Block->EntityCount;
+                        (Index < Block->EntityCount) && NotFound;
                         ++Index)
                     {
                         if(Block->LowEntityIndex[Index] == LowEntityIndex)
@@ -226,8 +228,7 @@ ChangeEntityLocation(memory_arena *Arena, world *World, uint32 LowEntityIndex,
                                 }
                             }
 
-                            Block = 0;
-                            break;
+                            NotFound = false;
                         }
                     }    
                 }
