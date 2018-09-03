@@ -1,0 +1,27 @@
+Summary: 
+finished up spatial partition from last episode
+
+writes functions for adding, removing entity to different blocks
+
+lots of debugging
+
+
+
+
+26:50
+when adding entities to world_entity_block, we make the filled ones to the back and new emtpy ones in the front
+
+
+32:13
+again, we always want to keep the empty ones in front
+
+
+36:27
+mentions the function call FreeBlock
+
+
+38:26
+does a swap with last entry operation
+
+
+

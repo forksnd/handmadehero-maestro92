@@ -21,14 +21,11 @@ struct world_position
     // out _where they are_ (or rather, which world_chunk they are
     // in?)
     
-    // NOTE(casey): These are fixed point tile locations.  The high
-    // bits are the tile chunk index, and the low bits are the tile
-    // index in the chunk.
-    int32 AbsTileX;
-    int32 AbsTileY;
-    int32 AbsTileZ;
+    int32 ChunkX;
+    int32 ChunkY;
+    int32 ChunkZ;
 
-    // NOTE(casey): These are the offsets from the tile center
+    // NOTE(casey): These are the offsets from the chunk center
     v2 Offset_;
 };
 
@@ -46,21 +43,22 @@ struct world_chunk
     int32 ChunkY;
     int32 ChunkZ;
 
+    // TODO(casey): Profile this and determine if a pointer would be better here!
     world_entity_block FirstBlock;
     
     world_chunk *NextInHash;
 };
 
 struct world
-{    
+{
     real32 TileSideInMeters;
+    real32 ChunkSideInMeters;
+
+    world_entity_block *FirstFree;
 
     // TODO(casey): WorldChunkHash should probably switch to pointers IF
     // tile entity blocks continue to be stored en masse directly in the tile chunk!
     // NOTE(casey): A the moment, this must be a power of two!
-    int32 ChunkShift;
-    int32 ChunkMask;
-    int32 ChunkDim;
     world_chunk ChunkHash[4096];
 };
 
