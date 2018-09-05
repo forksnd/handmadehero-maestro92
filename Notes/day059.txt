@@ -1,0 +1,22 @@
+summary:
+
+adding a monster entity
+
+Familiar means 
+"a demon supposedly attending and obeying a witch, often said to assume the form of an animal."
+
+
+refactored some of the rendering code
+
+implemented a simple AI logic to the monstar where it chases the main character.
+The monsters search target code is just a brute force for loop searching through all the entities
+
+
+
+39:16 
+I notice he really likes to put Assert everywhere
+
+
+
+1:06:55
+switches are good
