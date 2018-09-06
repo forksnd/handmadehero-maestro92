@@ -1,0 +1,137 @@
+summary: adding hit points for entities
+
+
+he is doing the grid cell style hit point box. So he wrote the system for rendering a cell style hitbox
+
+Keywords: Rendering, Entity
+
+
+
+
+17:15
+defined a hit point struct. imagine entities with hit_point box like in command and conquer
+
+				struct hit_point
+				{
+				    // TODO(casey): Bake this down into one variable
+				    uint8 Flags;
+				    uint8 FilledAmount;
+				};
+
+				struct low_entity
+				{
+				    entity_type Type;
+				    
+				    world_position P;
+				    real32 Width, Height;
+
+				    // NOTE(casey): This is for "stairs"
+				    bool32 Collides;
+				    int32 dAbsTileZ;
+
+				    uint32 HighEntityIndex;
+
+				    // TODO(casey): Should hitpoints themselves be entities?
+				    uint32 HitPointMax;
+				    hit_point HitPoint[16];
+				};
+
+
+
+47:16
+defined the struct for vectors
+				
+				union v2
+				{
+				    struct
+				    {
+				        real32 X, Y;
+				    };
+				    real32 E[2];
+				};
+
+				union v3
+				{
+				    struct
+				    {
+				        real32 X, Y, Z;
+				    };
+				    struct
+				    {
+				        real32 R, G, B;
+				    };
+				    real32 E[3];
+				};
+
+				union v4
+				{
+				    struct
+				    {
+				        real32 X, Y, Z, W;
+				    };
+				    struct
+				    {
+				        real32 R, G, B, A;
+				    };
+				    real32 E[4];
+				};
+
+
+
+52:26
+some people would do templates for the vector
+for example
+vector<2> for vec2
+vector<3> for vec3
+vector<4> for vec4
+
+Casey disapproves of this approach becuz it introduces templates in the codebase which are almost always bad
+bad for debugging
+
+slows down compile time
+
+I recommend not templatize in your math classes
+
+
+
+
+
+58:37
+will be doing back to front rendering vs front to back rendering
+
+1. 	fill rate on graphics card
+
+if we turn on z buffer, we are asking the graphics card to sort the objects for us
+
+z buffer is also used for "early out". if you can early out, it cuts down on your memory bandwidth
+
+
+2.	alpha compositing and better visual quality
+
+Front to back requires a destination alpha
+back to front does not need a destination alpha
+
+
+so if we do front to back, u can do perfect alpha compositing, and you can do perfect early out
+
+
+1:13:23
+stacks and freeList is all you need for memory management
+
+everything in a game can be written with stacks and freeList
+
+they are trivial to implement and they are very robust
+
+
+
+
+1:19:30
+talks about the current memory model
+1:20:23
+he mentioned: we only allocate, nothing ever gets freed at the moment except for tile chunks occupancy
+
+
+
+
+1:21:23
+memory managment is a non-issue

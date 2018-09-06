@@ -3,9 +3,11 @@ finished up spatial partition from last episode
 
 writes functions for adding, removing entity to different blocks
 
+it allocates and frees the memory used for these block
+
 lots of debugging
 
-
+Keywords: Memory
 
 
 26:50
@@ -16,8 +18,64 @@ when adding entities to world_entity_block, we make the filled ones to the back 
 again, we always want to keep the empty ones in front
 
 
-36:27
+36:30
 mentions the function call FreeBlock
+
+
+
+The memory scheme it uses is that it stores all "deallocated" memory in a freelist. This freelist is essentially a linked list
+currently we store it in world, which has the FirstFree variable
+
+				handmade_world.h
+
+				struct world
+				{
+				    real32 TileSideInMeters;
+				    real32 ChunkSideInMeters;
+
+				    world_entity_block *FirstFree;
+
+				    // TODO(casey): WorldChunkHash should probably switch to pointers IF
+				    // tile entity blocks continue to be stored en masse directly in the tile chunk!
+				    // NOTE(casey): A the moment, this must be a power of two!
+				    world_chunk ChunkHash[4096];
+				};
+
+
+
+
+
+so in the ChangeEntityLocation() function. whenever we remove an entity from a block and that block becomes empty
+we would like to deallocate that block. What we do is that we just add it to the World->FirstFree linked list.
+
+				handmade_world.cpp
+
+				inline void
+				ChangeEntityLocation(memory_arena *Arena, world *World, uint32 LowEntityIndex,
+				                     world_position *OldP, world_position *NewP)
+				{
+				            
+					...
+					...
+
+					...
+
+
+		            if(FirstBlock->EntityCount == 0)
+                    {
+                        if(FirstBlock->Next)
+                        {
+                            world_entity_block *NextBlock = FirstBlock->Next;
+                            *FirstBlock = *NextBlock;
+                            
+                            NextBlock->Next = World->FirstFree;
+                            World->FirstFree = NextBlock;
+                        }
+                    }
+
+
+                }
+
 
 
 38:26
