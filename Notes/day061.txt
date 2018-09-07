@@ -1,0 +1,67 @@
+Summary: 
+added hitpoints to monstars
+discusses the different ways to implement the Simple Attack
+1.	have a state on the hero. check collision with the hero entity
+2.	have a sword strike entity that lasts a few frames. Check collision with the sword strike entity
+
+adds a sword entity
+intends implements a "Hit Table" to prevent an entity taking multiple damage from the sword
+(will finish the "moving" sword next episode)
+
+Keyword: entity, game logic
+
+
+
+
+15:35
+discusses the 2nd approach (sword strike entity). 
+swee graph at 15:35
+
+The key thing is to have the concept of an initiation of an attack
+assume the sword strike lasts for 10 frames. We do not want the monstar to take damage for 10 frames, but only the 1st frame
+
+
+16:56 
+pretty much we need to know "if this collision new"
+
+
+
+
+
+19:56
+introduces how to implement a flying sword
+
+20:35
+Casey says he does not know any solution other than tracking the information of who has the sword collided with
+
+
+21:17
+people ask why not just track when the sword enters and leaves an entity?
+
+you can imagine a scenario where the monstar and the sword are moving in the same direction and that could lead to
+oscillation (from numerical imprecision) where the monstar will take multiple damage
+
+
+
+
+
+25:00
+will be implementing a "hit table" where everytime any thing hit something
+
+size of hit table is Boundable
+
+
+
+the player gets the sword on initialization.
+we "fire" the sword by bringing the sword to the high_entity set. Otherwise the swords stays in the low_entity set
+
+
+
+
+
+
+1:33:14
+there are really only one of two reasons why you would use a language more higher level than C++ such as C#
+1.	you do not have serious performance requirements
+2.	most of the games are still in C++, and they are just writing the part that sits on top of it.
+	such as UNITY, unity engine is written in C++, and you are just writing the game
