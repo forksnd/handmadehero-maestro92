@@ -1,0 +1,116 @@
+Summary:
+implements the moving projectile system for the character throwing the sword
+
+
+Keyword: Entity
+
+
+5:37
+casey also uses the counter to zero style. It initializes the distance, then goes to zero.
+
+                Sword.Low->DistanceRemaining = 5.0f;
+
+
+
+18:40
+defines a DefaultMOveSpec()
+
+				struct move_spec
+				{
+				    bool32 UnitMaxAccelVector;
+				    real32 Speed;
+				    real32 Drag;
+				};
+
+
+				inline move_spec
+				DefaultMoveSpec(void)
+				{
+				    move_spec Result;
+
+				    Result.UnitMaxAccelVector = false;
+				    Result.Speed = 1.0f;
+				    Result.Drag = 0.0f;
+
+				    return(Result);
+				}
+
+
+usually, you want to set every parameter to 0. but This struct is for physics parameters some. Often times, some wants to default to 0
+others want to default to 1. So we are creating a default MoveSpec
+
+
+
+32:38
+talking about ways to remove the sword from the high entity set
+
+method 1: 	in the main for loop, have a remove flag 
+				
+				bool32x remove = false;
+
+			    for(uint32 HighEntityIndex = 1; HighEntityIndex < GameState->HighEntityCount; ++HighEntityIndex)
+			    {
+			    	...
+			    	...
+			        switch(LowEntity->Type)
+			        {
+			            case EntityType_Hero:
+			            {
+			            	...
+			            	...
+			            } break;
+
+			            case EntityType_Wall:
+			            {
+			            	...
+			            } break;
+
+			            case EntityType_Sword:
+			            {
+			                Remove = UpdateSword(GameState, Entity, dt);
+			                ...
+			                ...
+			            } break;
+
+
+			            default:
+			            {
+			                InvalidCodePath;
+			            } break;
+			        }
+			    }
+
+			    // deal with 
+			    if(remove)
+			    {
+			    	// deal with removing it here
+			    }
+
+
+method 2:	
+
+do the check in the OffsetAndCheckFrequencyByArea function
+
+
+				inline void
+				OffsetAndCheckFrequencyByArea(game_state *GameState, v2 Offset, rectangle2 HighFrequencyBounds)
+				{
+				    for(uint32 HighEntityIndex = 1; HighEntityIndex < GameState->HighEntityCount;)
+				    {
+				        high_entity *High = GameState->HighEntities_ + HighEntityIndex;
+				        low_entity *Low = GameState->LowEntities + High->LowEntityIndex;
+				        
+				        High->P += Offset;
+				        if(IsValid(Low->P) && IsInRectangle(HighFrequencyBounds, High->P))
+				        {
+				            ++HighEntityIndex;
+				        }
+				        else
+				        {            
+				            Assert(GameState->LowEntities[High->LowEntityIndex].HighEntityIndex == HighEntityIndex);
+				            MakeEntityLowFrequency(GameState, High->LowEntityIndex);
+				        }
+
+				        int DummyLine = 5;
+				    }
+				}
