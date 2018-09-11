@@ -1,6 +1,6 @@
 Summary:
 implements the moving projectile system for the character throwing the sword
-
+implements how to remove swords from high entity to low entity.
 
 Keyword: Entity
 

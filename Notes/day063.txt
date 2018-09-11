@@ -1,0 +1,146 @@
+Summary:
+Refactored the code with the concept of simulation region. Removed the need to write simulation code for both 
+low entity and high entity set.
+
+added the handmade_sim_region.h, handmade_sim_region.cpp files
+moved the high entity set code to the sim_region struct
+
+Keyword: Entity, Architecture, Transient memory
+
+
+
+
+3:37
+mentiones the two scalability things the game will address
+1.	Extremely large world
+2.	Extremely large entity count
+
+
+>>>>>>>>>>>>>>>>> Extremely Large World:
+Float precision
+
+>>>>>>>>>>>>>>>>> Large Entity count
+Processing Power 
+
+
+
+4:50
+we do not want to use doubles
+-	half as fast (the big one)
+-	there are platforms that do not support them natively
+-	we do not need that much precision
+
+
+
+7:34
+Low entity: "Tile position" + float offset
+high entity: vector2d. 
+
+we keep the two in sync
+
+
+
+10:24
+one concern: you have to write every entity simulation code twice
+
+once for the low entity, once for the high entity
+
+and casey does not like this idea
+
+
+
+
+10:57 
+thinking about low frequency apparently is just plain dumb
+
+instead, just have two cameras. Have the 2nd Camera move around the world and update it there. that way
+you do not have to write special code for the low entities.
+
+you map entities from low_entity to the camera space and simulate it under the camera.
+
+the low entity set is simply a storage format
+
+
+
+14:26
+introducing the concept "Simulation Region"
+A rectangle in space, kind of like a camera.
+it stores a high entity list for itself 
+
+
+
+17:28
+mentiones an edge case where collisions might be missed for entities near the edge
+so we will do a High Boundary and a Simulation Boundary
+the Simulation Boundary should be a the maximum movement in one tick less than the High Boundary
+
+so things exclusively in the high Boundary get pulled in, but not simulated
+
+
+
+
+25:22
+added BeginSim() and EndSim() function
+BeginSim(), units map from low to high
+EndSim(), units map from high to low
+
+no one else should worry about mappping entities from different space, it shoudl just exist in these two functions
+
+
+
+
+
+
+40:12 
+mentions the first usage of transient stack. But does not implement it
+
+								
+				internal sim_region *
+				BeginSim(memory_arena *SimArena, game_state *GameState, world *World, world_position Origin, rectangle2 Bounds)
+				{
+				    // TODO(casey): If entities were stored in the world, we wouldn't need the game state here!
+				    
+				    sim_region *SimRegion = PushStruct(SimArena, sim_region);
+
+				    ...
+				    ...
+
+			        // TODO(casey): Need to be more specific about entity counts
+				    SimRegion->MaxEntityCount = 4096;
+				    SimRegion->EntityCount = 0;
+				    SimRegion->Entities = PushArray(SimArena, SimRegion->MaxEntityCount, sim_entity);
+			
+					...
+					...	    
+				}
+
+
+
+1:07:32
+added a "TODO" for low_entity
+
+				struct low_entity
+				{
+				    entity_type Type;
+				    
+					...
+					...
+					...
+				   
+				    // TODO(casey): Generation index so we know how "up to date" this entity is.
+				};
+
+Casey calls it a "generation index", lets us know how recently he was updated
+
+
+
+
+
+1:14:15
+"for" and "while" are exactly the same in terms of code that gets generated. they are pretty much notational.
+
+
+
+
+
+
