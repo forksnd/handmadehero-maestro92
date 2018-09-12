@@ -1,0 +1,305 @@
+Summary:
+Continuing day 063
+
+implements a hash table for units in simulation Region
+the hash table is used to store mapping between storageIndex and simulation entity
+
+Keyword: Entity, Architecture, Transient memory, hashtable
+
+
+
+2:19
+with sim_entity and low_entity
+
+low_entity is meant to be the most minimal, compressed set of information that stores the entity
+sim_entity is meant to be just has all that stuff blown out.
+
+now we are still at the early stage of development, instead of going back and forth, we are just going to 
+block copy it for simplicity
+
+again, this will not be the way we will be doing it at the very end 
+
+
+				struct sim_entity
+				{
+				    uint32 StorageIndex;
+
+				    entity_type Type;
+
+				    v2 P;
+				    uint32 ChunkZ;
+				    
+				    real32 Z;
+				    real32 dZ;
+				    
+				    v2 dP;
+				    real32 Width, Height;
+
+				    ...
+				    ...
+				    // TODO(casey): Generation index so we know how "up to date" this entity is.
+				};
+				
+
+				struct low_entity
+				{
+				    world_position P;
+				    sim_entity Sim;
+				};
+
+
+
+
+15:29
+needed a concept of sim_entity referencing each other 
+for example, previously the main character has a reference of the sword it uses. So we need to recreate support 
+with this refactor
+
+
+				struct sim_entity
+				{
+				    uint32 StorageIndex;
+
+				    entity_type Type;
+
+				    ...
+				    ...
+
+				    entity_reference Sword;
+
+				    ...
+				    ...
+				    // TODO(casey): Generation index so we know how "up to date" this entity is.
+				};
+
+
+
+Casey defines a entity_reference union
+
+				union entity_reference
+				{
+				    sim_entity *Ptr;
+				    uint32 Index;
+				};
+
+
+the idea is that when the entity_reference gets loaded, we interpret it as a Ptr.
+when the entities go away, they get converted back to indexes
+
+
+16:17
+so in the EndSim() function, we see the usage of the entity reference: 
+-	when we are mapping entities in the Sim Region back down to the low_entity set 
+	we are first doing block copy of simEntity to the low_entity->sim
+				
+		        low_entity *Stored = GameState->LowEntities + Entity->StorageIndex;
+		        
+		        Stored->Sim = *Entity;
+
+
+
+-	but then we also need to convert the property entity_reference as well 
+				
+		        low_entity *Stored = GameState->LowEntities + Entity->StorageIndex;
+
+		        Stored->Sim = *Entity;
+		        StoreEntityReference(&Stored->Sim.Sword);
+
+
+
+-	the StoreEntityReference essentially converts itself from the pointer to index.
+	notice if Ref->Ptr == 0, then Ref->Index = 0 as well
+			
+				inline void
+				StoreEntityReference(entity_reference *Ref)
+				{
+				    if(Ref->Ptr != 0)
+				    {
+				        Ref->Index = Ref->Ptr->StorageIndex;
+				    }
+				}
+
+
+-	in the example below, Stored->Sim was initially a pointer to the sword sim_entity. 
+	we then call StoreEntityReference(); that assigns the Stored->Sim to the Sword entitys StorageIndex
+
+
+here we are have the full function
+
+				internal void 
+				EndSim(sim_region* Region, game_state* GameState)
+				{
+
+					...
+					...
+    
+				    sim_entity *Entity = Region->Entities;
+				    for(uint32 EntityIndex = 0; EntityIndex < Region->EntityCount; ++EntityIndex, ++Entity)
+				    {
+				        low_entity *Stored = GameState->LowEntities + Entity->StorageIndex;
+
+				        Stored->Sim = *Entity;
+				        StoreEntityReference(&Stored->Sim.Sword);
+					
+				        ...
+				        ...
+					}
+
+
+
+				}
+
+18:05
+we do the opposite: when we the bring the entity in, we have to assign the proper reference.  
+we have to store the mapping of storage index to simulation entity
+
+we do it with a hashtable
+
+				struct sim_entity_hash
+				{
+				    sim_entity *Ptr;
+				    uint32 Index;
+				};
+
+
+
+				struct sim_region
+				{
+				    world *World;
+	
+					...
+					...
+
+				    // TODO(casey): Do I really want a hash for this??
+				    // NOTE(casey): Must be a power of two!
+				    sim_entity_hash Hash[4096];
+				};
+
+
+Recall that for a hashTable Entry, you need both the key and the value
+we need the key cuz multiple values might get hashed to the same slot. So we need to compare the "Key"
+hence the sim_entity_hash has both "Index" and "*Ptr"
+
+
+
+27:41 
+Decides to do internal chaining for this hashtable
+
+
+
+
+30:19
+here the GetHashFromStorageIndex is essentially finding the hash table entry
+
+-	Entry->Index == 0 means we hit a empty hash slot, and we return that
+
+				internal sim_entity_hash *
+				GetHashFromStorageIndex(sim_region *SimRegion, uint32 StorageIndex)
+				{
+				    Assert(StorageIndex);
+				    
+				    sim_entity_hash *Result = 0;
+				    
+				    uint32 HashValue = StorageIndex;
+				    for(uint32 Offset = 0;
+				        Offset < ArrayCount(SimRegion->Hash);
+				        ++Offset)
+				    {
+				        sim_entity_hash *Entry = SimRegion->Hash +
+				            ((HashValue + Offset) & (ArrayCount(SimRegion->Hash) - 1));
+				        if((Entry->Index == 0) || (Entry->Index == StorageIndex))
+				        {
+				            Result = Entry;
+				            break;
+				        }
+				    }
+				    
+				    return(Result);
+				}
+
+
+and this function returns you the sim_entity_hash
+
+
+
+38:51
+following the function above, this function is pretty straight forward
+
+				internal void
+				MapStorageIndexToEntity(sim_region *SimRegion, uint32 StorageIndex, sim_entity *Entity)
+				{
+				    sim_entity_hash *Entry = GetHashFromStorageIndex(SimRegion, StorageIndex);
+				    Assert((Entry->Index == 0) || (Entry->Index == StorageIndex));
+				    Entry->Index = StorageIndex;
+				    Entry->Ptr = Entity;
+				}
+
+
+
+
+40:05
+so in the AddEntity function
+we first call MapStorageIndexToEntity(). That will put Source into our hash table.
+
+once that is done, it wants to populate the entity in Entity->Sword.
+that is done by calling LoadEntityReference(GameState, SimRegion, &Entity->Sword);       
+
+
+-	Notice the AddEntity function, we have recursion going on
+the AddEntity calls LoadEntityReference, which calls AddEntity
+
+if you add the character, and the sword has not been loaded to the simulation set, we need to add sword to the 
+simulation set as well. Hence the recursion
+
+
+				internal sim_entity *
+				AddEntity(game_state *GameState, sim_region *SimRegion, uint32 StorageIndex, low_entity *Source)
+				{
+				    Assert(StorageIndex);
+				    sim_entity *Entity = 0;
+
+				    if(SimRegion->EntityCount < SimRegion->MaxEntityCount)
+				    {
+				        Entity = SimRegion->Entities + SimRegion->EntityCount++;
+				        MapStorageIndexToEntity(SimRegion, StorageIndex, Entity);
+
+				        if(Source)
+				        {
+				            // TODO(casey): This should really be a decompression step, not
+				            // a copy!
+				            *Entity = Source->Sim;
+				            LoadEntityReference(GameState, SimRegion, &Entity->Sword);            
+				        }
+
+				        Entity->StorageIndex = StorageIndex;
+				    }
+				    else
+				    {
+				        InvalidCodePath;
+				    }
+
+				    return(Entity);
+				}
+
+
+				inline void
+				LoadEntityReference(game_state *GameState, sim_region *SimRegion, entity_reference *Ref)
+				{
+				    if(Ref->Index)
+				    {
+				        sim_entity_hash *Entry = GetHashFromStorageIndex(SimRegion, Ref->Index);
+				        if(Entry->Ptr == 0)
+				        {
+				            Entry->Index = Ref->Index;
+				            Entry->Ptr = AddEntity(GameState, SimRegion, Ref->Index, GetLowEntity(GameState, Ref->Index));
+				        }
+				        
+				        Ref->Ptr = Entry->Ptr;
+				    }
+				}
+
+
+
+
+				
+
