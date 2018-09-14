@@ -18,8 +18,9 @@ GetHashFromStorageIndex(sim_region *SimRegion, uint32 StorageIndex)
         Offset < ArrayCount(SimRegion->Hash);
         ++Offset)
     {
-        sim_entity_hash *Entry = SimRegion->Hash +
-            ((HashValue + Offset) & (ArrayCount(SimRegion->Hash) - 1));
+        uint32 HashMask = (ArrayCount(SimRegion->Hash) - 1);
+        uint32 HashIndex = ((HashValue + Offset) & HashMask);
+        sim_entity_hash *Entry = SimRegion->Hash + HashIndex;
         if((Entry->Index == 0) || (Entry->Index == StorageIndex))
         {
             Result = Entry;
@@ -49,8 +50,6 @@ GetEntityByStorageIndex(sim_region *SimRegion, uint32 StorageIndex)
 
 internal sim_entity *
 AddEntity(game_state *GameState, sim_region *SimRegion, uint32 StorageIndex, low_entity *Source);
-
-
 inline void
 LoadEntityReference(game_state *GameState, sim_region *SimRegion, entity_reference *Ref)
 {
@@ -130,6 +129,8 @@ AddEntity(game_state *GameState, sim_region *SimRegion, uint32 StorageIndex, low
             Dest->P = GetSimSpaceP(SimRegion, Source);
         }
     }
+
+    return(Dest);
 }
 
 internal sim_region *
@@ -137,10 +138,10 @@ BeginSim(memory_arena *SimArena, game_state *GameState, world *World, world_posi
 {
     // TODO(casey): If entities were stored in the world, we wouldn't need the game state here!
 
-    // TODO(casey): IMPORTANT(casey): CLEAR THE HASH TABLE!!!!
     // TODO(casey): IMPORTANT(casey): NOTION OF ACTIVE vs. INACTIVE ENTITIES FOR THE APRON!
     
     sim_region *SimRegion = PushStruct(SimArena, sim_region);
+    ZeroStruct(SimRegion->Hash);
 
     SimRegion->World = World;
     SimRegion->Origin = Origin;
@@ -187,6 +188,8 @@ BeginSim(memory_arena *SimArena, game_state *GameState, world *World, world_posi
             }
         }
     }
+
+    return(SimRegion);
 }
 
 internal void

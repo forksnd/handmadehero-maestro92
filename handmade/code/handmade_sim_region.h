@@ -33,6 +33,7 @@ struct hit_point
     uint8 FilledAmount;
 };
 
+// TODO(casey): Rename sim_entity to entity!
 struct sim_entity;
 union entity_reference
 {

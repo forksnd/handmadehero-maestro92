@@ -1,3 +1,12 @@
+Summary:
+Allocates permenant and transient memory
+
+uses permenant memory to allocate the world
+
+Keyword: memory
+
+
+
 0:44
 the game industry runs on C and C++
 

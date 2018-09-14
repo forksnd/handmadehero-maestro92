@@ -1,3 +1,10 @@
+
+
+Keyword: rendering
+
+
+
+
 20:30
 
 in the bmp file, we can only get Red, Green, Blue Mask. And the alpha is whatever the three masks is not
