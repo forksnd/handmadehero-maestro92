@@ -1,0 +1,67 @@
+Summary:
+
+added support for non-spatial entities.
+non-spatial means entities does not exist, but we keep it in the game logic
+
+For example 
+we always keep the thrown sword entity around. When sword is done traveling, we make the sword disappear
+but we still keep the entity around.
+
+
+introduces the concept of having flags on entities
+
+
+
+Keyword: Entity flags
+
+
+
+
+
+6:02
+no particular reason that I am doing enums
+you can also do #defines, or you are a fan of const, u can do it that way
+
+there are different ways to write flag fields
+casey writes it the following way
+
+				
+				enum sim_entity_flags
+				{
+				    // TODO(casey): Does it make more sense to have the flag be for _non_ colliding entities?
+				    EntityFlag_Collides = (1 << 1),
+				    EntityFlag_Nonspatial = (1 << 2),
+				    
+				    EntityFlag_Simming = (1 << 30),
+				};
+
+
+
+10:12
+defines the "ISet" function to check if the a flag is set 
+
+notice that the function takes a "uint32" instead of a sim_entity_flags.
+that is becuz if you take a EntityFlag_Collides as an argument, you will not be able to or two of those together
+
+as soon as you do something like "EntityFlag_Collides | EntityFlag_Nonspatial", it becomes an integer
+
+				inline bool32
+				IsSet(sim_entity *Entity, uint32 Flag)
+				{
+				    bool32 Result = Entity->Flags & Flag;
+
+				    return(Result);
+				}
+
+
+
+he also added AddFlag and ClearFlag. Bit Operation
+
+				inline void
+				ClearFlag(sim_entity *Entity, uint32 Flag)
+				{
+				    Entity->Flags &= ~Flag;
+				}
+
+
+
