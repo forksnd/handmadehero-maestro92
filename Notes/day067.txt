@@ -1,0 +1,234 @@
+Summary:
+set up the safety region and the actual update region for entities in sim updates
+
+talked about plans to refactor physics, and explain why he finds callbacks abit annoying 
+plans change the physics into a centralized system (kind of like our ECS physics system)
+
+
+Keyword: 
+entity simulation update, physics
+
+
+
+
+
+4:43 
+explaining the simulation region and the collision region
+the collision region is growing the simulation region by however much the maximum movement speed is per frame
+
+
+we also need to consider size of entities, since we are putting entities to loacation by center
+so we actually want to grow by  max (radius of the biggest entity, the speed of the fasest entity)
+
+
+
+
+
+13:13
+specfied the updatable Bounds
+added the "updatable Bounds" in sim_region
+
+
+				struct sim_region
+				{
+				    // TODO(casey): Need a hash table here to map stored entity indices
+				    // to sim entities!
+				    
+				    world *World;
+				    
+				    world_position Origin;
+				    rectangle2 Bounds;
+				    rectangle2 UpdatableBounds;
+				    
+				    ...
+				    ...
+
+				    // TODO(casey): Do I really want a hash for this??
+				    // NOTE(casey): Must be a power of two!
+				    sim_entity_hash Hash[4096];
+				};
+
+
+so we all entities to the simulation region by checking if they are in "Bounds", but we only update them
+if they are also in the UpdatableBounds.
+
+Bounds is essentially the larger region
+UpdatableBounds is the inner region
+
+
+
+
+
+
+20:04
+so at the beginning of BeginSim function, we initalize the update region and the safety region
+
+
+				internal sim_region *
+				BeginSim(memory_arena *SimArena, game_state *GameState, world *World, world_position Origin, rectangle2 Bounds)
+				{
+				    // TODO(casey): If entities were stored in the world, we wouldn't need the game state here!
+				    
+				    sim_region *SimRegion = PushStruct(SimArena, sim_region);
+				    ...
+				    ...
+
+
+				    // TODO(casey): IMPORTANT(casey): Calculate this eventually from the maximum value of
+				    // all entities radius plus their speed!
+				    real32 UpdateSafetyMargin = 1.0f;
+				    
+				    SimRegion->World = World;
+				    SimRegion->Origin = Origin;
+				    SimRegion->UpdatableBounds = Bounds;
+				    SimRegion->Bounds = AddRadiusTo(SimRegion->UpdatableBounds, UpdateSafetyMargin, UpdateSafetyMargin);
+
+
+
+
+32:25
+talks about within the physics iteration code, we might collide with different entities
+which asks for different collision responses. the way to handle this is callbacks
+
+
+
+
+36:33
+it might be annoying to make this work with the callback fashion becuz you often lose a certain degree of flow control
+that you might want
+
+
+C++ 11 have slightly version of thisL closures, lambdas
+the bottom line is callbacks have always been what you not prefer
+
+
+
+39:35
+explaining the reason why callbacks are abit annoying. Pretty much, if you are planning to do the callback way
+you are trying to bundle as much shared stuff as possible. 
+
+if you can reverse the flow
+
+
+
+
+43:12
+ways to clean up the physics code
+
+1.	if we want to keep the main structure of our MoveEntity function, 
+	we would put the iteration code into an iteration call that will return the "hitEntity"
+	then inside the if (HitEntity) if condition, we do what we do
+
+				internal void 
+				MoveEntity(sim_region* SimRegion, sim_entity* Entity, real32 dt ...)
+				{
+				    for(uint32 Iteration = 0; Iteration < 4; ++Iteration)
+				    {
+				    	...
+				    	...
+
+				    	HitEntity = IterationCall;
+
+
+				        // actually updating the positions
+				        Entity->P += tMin*PlayerDelta;        
+				        if(HitEntity)
+				        {
+				            Entity->dP = Entity->dP - 1*Inner(Entity->dP, WallNormal)*WallNormal;
+				            PlayerDelta = DesiredPosition - Entity->P;
+				            PlayerDelta = PlayerDelta - 1*Inner(PlayerDelta, WallNormal)*WallNormal;
+
+				        }
+				    }    
+
+				    ...
+				    ...
+				}
+
+
+
+2.	making MovingEntites in a central logical fasion.
+	just like how we handled the controller inputs affecting player acceleration, we accumulate acceleration in the physics code 
+	and we only update the entity position somewhere down the line 
+
+
+Casey prefers method2: cuz in the future, we do not know how do we actually want to do our updating, we might want to do some 
+simultatenous collision solving, where multiple people are moving the same time.... who knows
+
+
+
+
+
+
+47:59
+
+previously the MoveEntity code looks like
+
+
+				for(uint32 EntityIndex = 0; EntityIndex < SimRegion->EntityCount; ++EntityIndex, ++Entity)
+			    {
+			        switch(Entity->Type)
+			        {
+			            case EntityType_Hero:
+			            {
+			            	...
+			            	...
+  	                        controlled_hero *ConHero = GameState->ControlledHeroes + ControlIndex;
+	                        MoveEntity(SimRegion, Entity, Input->dtForFrame, &MoveSpec, ConHero->ddP);
+	                    }
+
+		                case EntityType_Familiar:
+		                {
+		                	...
+		                	MoveEntity(SimRegion, Entity, Input->dtForFrame, &MoveSpec, ConHero->ddP);
+		                }
+
+	                }
+	            }
+
+now we change it to. This way we have separate collision code for different types of entity
+
+
+				for(uint32 EntityIndex = 0; EntityIndex < SimRegion->EntityCount; ++EntityIndex, ++Entity)
+			    {
+			        switch(Entity->Type)
+			        {
+			            case EntityType_Hero:
+			            {
+			            	...
+			            	...			            	
+			            	// process collision code here
+			            	ddP = ConHero->ddP;	                    	
+	                    }
+
+		                case EntityType_Familiar:
+		                {
+			            	// process collision code here
+		                	ddP = ...
+		                }
+	                }
+
+			        MoveEntity(SimRegion, Entity, Input->dtForFrame, &MoveSpec, ConHero->ddP);
+	            }
+
+
+
+57:24
+becuz of floating point jankiness, when we do our collision detection, we do not try to ensure you 
+that you are put outside of things. if you do not do that, you can always get into janky collision behaviour
+
+
+
+
+1:03:37
+switch case blocks are almost always far superior than callbacks
+
+ease of use, flexiblity, ease of compression. Switch case are almost always better in every way
+
+
+the times you would prefer callbacks:
+maybe if you want to keep codes isolated, such as platform specfics
+for example, u do not want ios code and windows code to be together
+
+almost every place people use a virtual function, you should use a switch statement
+

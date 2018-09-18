@@ -39,6 +39,23 @@ GetEntityByStorageIndex(sim_region *SimRegion, uint32 StorageIndex)
     return(Result);
 }
 
+inline v2
+GetSimSpaceP(sim_region *SimRegion, low_entity *Stored)
+{
+    // NOTE(casey): Map the entity into camera space
+    // TODO(casey): Do we want to set this to signaling NAN in
+    // debug mode to make sure nobody ever uses the position
+    // of a nonspatial entity?
+    v2 Result = InvalidP;
+    if(!IsSet(&Stored->Sim, EntityFlag_Nonspatial))
+    {
+        world_difference Diff = Subtract(SimRegion->World, &Stored->P, &SimRegion->Origin);
+        Result = Diff.dXY;
+    }
+
+    return(Result);
+}
+
 internal sim_entity *
 AddEntity(game_state *GameState, sim_region *SimRegion, uint32 StorageIndex, low_entity *Source, v2 *SimP);
 inline void
@@ -50,7 +67,9 @@ LoadEntityReference(game_state *GameState, sim_region *SimRegion, entity_referen
         if(Entry->Ptr == 0)
         {
             Entry->Index = Ref->Index;
-            Entry->Ptr = AddEntity(GameState, SimRegion, Ref->Index, GetLowEntity(GameState, Ref->Index), 0);
+            low_entity *LowEntity = GetLowEntity(GameState, Ref->Index);
+            v2 P = GetSimSpaceP(SimRegion, LowEntity);
+            Entry->Ptr = AddEntity(GameState, SimRegion, Ref->Index, LowEntity, &P);
         }
         
         Ref->Ptr = Entry->Ptr;
@@ -94,6 +113,7 @@ AddEntityRaw(game_state *GameState, sim_region *SimRegion, uint32 StorageIndex, 
             }
 
             Entity->StorageIndex = StorageIndex;
+            Entity->Updatable = false;
         }
         else
         {
@@ -102,23 +122,6 @@ AddEntityRaw(game_state *GameState, sim_region *SimRegion, uint32 StorageIndex, 
     }
     
     return(Entity);
-}
-
-inline v2
-GetSimSpaceP(sim_region *SimRegion, low_entity *Stored)
-{
-    // NOTE(casey): Map the entity into camera space
-    // TODO(casey): Do we want to set this to signaling NAN in
-    // debug mode to make sure nobody ever uses the position
-    // of a nonspatial entity?
-    v2 Result = InvalidP;
-    if(!IsSet(&Stored->Sim, EntityFlag_Nonspatial))
-    {
-        world_difference Diff = Subtract(SimRegion->World, &Stored->P, &SimRegion->Origin);
-        Result = Diff.dXY;
-    }
-
-    return(Result);
 }
 
 internal sim_entity *
@@ -130,6 +133,7 @@ AddEntity(game_state *GameState, sim_region *SimRegion, uint32 StorageIndex, low
         if(SimP)
         {
             Dest->P = *SimP;
+            Dest->Updatable = IsInRectangle(SimRegion->UpdatableBounds, Dest->P);
         }
         else
         {
@@ -144,15 +148,18 @@ internal sim_region *
 BeginSim(memory_arena *SimArena, game_state *GameState, world *World, world_position Origin, rectangle2 Bounds)
 {
     // TODO(casey): If entities were stored in the world, we wouldn't need the game state here!
-
-    // TODO(casey): IMPORTANT(casey): NOTION OF ACTIVE vs. INACTIVE ENTITIES FOR THE APRON!
     
     sim_region *SimRegion = PushStruct(SimArena, sim_region);
     ZeroStruct(SimRegion->Hash);
 
+    // TODO(casey): IMPORTANT(casey): Calculate this eventually from the maximum value of
+    // all entities radius plus their speed!
+    real32 UpdateSafetyMargin = 1.0f;
+    
     SimRegion->World = World;
     SimRegion->Origin = Origin;
-    SimRegion->Bounds = Bounds;
+    SimRegion->UpdatableBounds = Bounds;
+    SimRegion->Bounds = AddRadiusTo(SimRegion->UpdatableBounds, UpdateSafetyMargin, UpdateSafetyMargin);
 
     // TODO(casey): Need to be more specific about entity counts
     SimRegion->MaxEntityCount = 4096;
@@ -188,8 +195,6 @@ BeginSim(memory_arena *SimArena, game_state *GameState, world *World, world_posi
                             v2 SimSpaceP = GetSimSpaceP(SimRegion, Low);
                             if(IsInRectangle(SimRegion->Bounds, SimSpaceP))
                             {
-                                // TODO(casey): Check a second rectangle to set the entity
-                                // to be "movable" or not!
                                 AddEntity(GameState, SimRegion, LowEntityIndex, Low, &SimSpaceP);
                             }
                         }
@@ -313,6 +318,14 @@ MoveEntity(sim_region *SimRegion, sim_entity *Entity, real32 dt, move_spec *Move
                       Entity->dP*dt);
     Entity->dP = ddP*dt + Entity->dP;
     v2 NewPlayerP = OldPlayerP + PlayerDelta;
+        
+    real32 ddZ = -9.8f;
+    Entity->Z = 0.5f*ddZ*Square(dt) + Entity->dZ*dt + Entity->Z;
+    Entity->dZ = ddZ*dt + Entity->dZ;
+    if(Entity->Z < 0)
+    {
+        Entity->Z = 0;
+    }
 
     for(uint32 Iteration = 0;
         Iteration < 4;
