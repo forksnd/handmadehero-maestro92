@@ -1,0 +1,218 @@
+Summary:
+
+enforces maximum allowable movement distance in the physics code
+example: if a throwing axe as a range, and on the end of a frame, it does not 
+travel exactly the allowable movement distance, we want to cap it
+
+introduces the concept of collision response. 
+explains how collisions response is a problme of "double dispatch"
+
+
+Keyword: Physics, Collision response
+
+
+
+14:15
+starting to implement code to enforce distance limit
+
+recall that we do our physics iteratively. So inside every Iteration,
+we check if we have travelled up to the max distance. We do this by limitting "tMin"
+
+
+			    for(uint32 Iteration = 0; Iteration < 4; ++Iteration)
+			    {
+			        real32 tMin = 1.0f;
+
+			        real32 PlayerDeltaLength = Length(PlayerDelta);
+
+			        if(PlayerDeltaLength > 0.0f)
+			        {
+			            if(PlayerDeltaLength > DistanceRemaining)
+			            {
+			                tMin = (DistanceRemaining / PlayerDeltaLength);
+			            }
+			        
+			            ...
+			            ...
+
+
+			            Entity->P += tMin*PlayerDelta;
+			            DistanceRemaining -= tMin*PlayerDeltaLength;          
+					}
+			    }    
+
+
+
+
+
+22:53
+for the if condition "if(PlayerDeltaLength > 0.0f)", we want to consider making 0.0f an epsilon
+
+
+			    for(uint32 Iteration = 0; Iteration < 4; ++Iteration)
+			    {
+			    	...
+
+			        real32 PlayerDeltaLength = Length(PlayerDelta);
+
+			        if(PlayerDeltaLength > 0.0f)
+			        {
+						
+						...
+						...
+					}
+			    }    
+
+
+
+
+
+
+24:39
+added the DistanceLimit in the sim_entity 
+
+				struct sim_entity
+				{
+				    // NOTE(casey): These are only for the sim region
+					
+					...
+					...				    
+				    v2 P;
+				    v2 dP;
+				    
+				    real32 Z;
+				    real32 dZ;
+				    
+				    real32 DistanceLimit;
+
+				    ...
+				    ...
+
+				};
+
+
+
+
+31:26
+collision response is a nasty subject becuz it is a problem called "double dispatch"
+essentially it is a problem that depends on two independent parameters
+
+depending how many entity types you have, you will have different responses
+assuming you have five entity types 
+
+					A 	B 	C 	D 	E
+				A
+
+				B
+
+				C
+
+				D
+
+				E
+
+when A and A collide, you would want a response. when A and B collide, you would want another type..
+so the total number of responses is rougly t^2 / 2  (O(N^2)). Not very scallable 
+
+
+40:00
+So how do games deal with this O(N^2) problem?
+
+games usually deal with collisions response with 2 ways
+
+
+they way we will do is that, we just wont have many entity types 
+or you can say we just wont have that many collision response types 
+
+
+
+
+
+48:45
+writing the HandleCollision code
+the if condition "if(A->Type > B->Type)" is the same in game2 collision code
+
+
+				handmadehero_sim_region.cpp
+
+	            if(HitEntity)
+	            {
+	                PlayerDelta = DesiredPosition - Entity->P;
+	                if(StopsOnCollision)
+	                {
+	                    PlayerDelta = PlayerDelta - 1*Inner(PlayerDelta, WallNormal)*WallNormal;
+	                    Entity->dP = Entity->dP - 1*Inner(Entity->dP, WallNormal)*WallNormal;
+	                }
+	                // TODO(casey) IMPORTANT(casey): Need our collision table here!!!
+
+	                sim_entity *A = Entity;
+	                sim_entity *B = HitEntity;
+	                if(A->Type > B->Type)
+	                {
+	                    sim_entity *Temp = A;
+	                    A = B;
+	                    B = Temp;
+	                }
+	                HandleCollision(A, B);
+	                
+	            }
+
+
+53:19
+the actual HandleCollision(); function is written below. He did mention that this is just some place holder code
+one thing to note about the HandleCollision function 
+is that it is crucial for this function to not know about the order of EntityType
+
+
+				handmadehero_sim_region.cpp
+
+				internal void
+				HandleCollision(sim_entity *A, sim_entity *B)
+				{
+				    if((A->Type == EntityType_Monstar) &&
+				       (B->Type == EntityType_Sword))
+				    {
+				        --A->HitPointMax;
+				        MakeEntityNonSpatial(B);
+				    }
+				}
+
+
+in the entity_type enum definitions, if we somehow swap the order of entity_types, 
+your HandleCollision code will not work anymore 
+
+				enum entity_type
+				{
+				    EntityType_Null,
+				    
+				    EntityType_Hero,
+				    EntityType_Wall,
+				    EntityType_Familiar,
+				    EntityType_Monstar,
+				    EntityType_Sword,
+				};
+
+
+
+
+
+1:25:15
+
+so for distance that can travel indefinitly, we set a large number
+
+			    real32 DistanceRemaining = Entity->DistanceLimit;
+			    if(DistanceRemaining == 0.0f)
+			    {
+			        // TODO(casey): Do we want to formalize this number?
+			        DistanceRemaining = 10000.0f;
+			    }
+
+
+however, we did not set to INFINITY or float Max on purpose
+since we want to avoid getting into floating point situations. 
+
+it is possible that we might do math operations on the variable "DistanceRemianing"
+
+or we do not know what platform we are on, etc, etc
+
+So most of time it is better to pick a very high number than actually using infinity
