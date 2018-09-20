@@ -357,7 +357,7 @@ AddPlayer(game_state *GameState)
 
     add_low_entity_result Sword = AddSword(GameState);
     Entity.Low->Sim.Sword.Index = Sword.LowIndex;
-    
+
     if(GameState->CameraFollowingEntityIndex == 0)
     {
         GameState->CameraFollowingEntityIndex = Entity.LowIndex;
@@ -448,6 +448,86 @@ DrawHitpoints(sim_entity *Entity, entity_visible_piece_group *PieceGroup)
             PushRect(PieceGroup, HitP, 0, HealthDim, Color, 0.0f);
             HitP += dHitP;
         }
+    }
+}
+
+internal void
+ClearCollisionRulesFor(game_state *GameState, uint32 StorageIndex)
+{
+    // TODO(casey): Need to make a better data structure that allows
+    // removal of collision rules without searching the entire table
+    for(uint32 HashBucket = 0;
+        HashBucket < ArrayCount(GameState->CollisionRuleHash);
+        ++HashBucket)
+    {
+        for(pairwise_collision_rule **Rule = &GameState->CollisionRuleHash[HashBucket];
+            *Rule;
+            )
+        {
+            if(((*Rule)->StorageIndexA == StorageIndex) ||
+               ((*Rule)->StorageIndexB == StorageIndex))
+            {
+                pairwise_collision_rule *RemovedRule = *Rule;
+                *Rule = (*Rule)->NextInHash;
+
+                RemovedRule->NextInHash = GameState->FirstFreeCollisionRule;
+                GameState->FirstFreeCollisionRule = RemovedRule;
+            }
+            else
+            {
+                Rule = &(*Rule)->NextInHash;
+            }
+        }
+    }
+}
+
+internal void
+AddCollisionRule(game_state *GameState, uint32 StorageIndexA, uint32 StorageIndexB, bool32 ShouldCollide)
+{
+    // TODO(casey): Collapse this with ShouldCollide
+    if(StorageIndexA > StorageIndexB)
+    {
+        uint32 Temp = StorageIndexA;
+        StorageIndexA = StorageIndexB;
+        StorageIndexB = Temp;
+    }
+
+    // TODO(casey): BETTER HASH FUNCTION
+    pairwise_collision_rule *Found = 0;
+    uint32 HashBucket = StorageIndexA & (ArrayCount(GameState->CollisionRuleHash) - 1);
+    for(pairwise_collision_rule *Rule = GameState->CollisionRuleHash[HashBucket];
+        Rule;
+        Rule = Rule->NextInHash)
+    {
+        if((Rule->StorageIndexA == StorageIndexA) &&
+           (Rule->StorageIndexB == StorageIndexB))
+        {
+            Found = Rule;
+            break;
+        }
+    }
+    
+    if(!Found)
+    {
+        Found = GameState->FirstFreeCollisionRule;
+        if(Found)
+        {
+            GameState->FirstFreeCollisionRule = Found->NextInHash;
+        }
+        else
+        {
+            Found = PushStruct(&GameState->WorldArena, pairwise_collision_rule);
+        }
+        
+        Found->NextInHash = GameState->CollisionRuleHash[HashBucket];
+        GameState->CollisionRuleHash[HashBucket] = Found;        
+    }
+
+    if(Found)
+    {
+        Found->StorageIndexA = StorageIndexA;
+        Found->StorageIndexB = StorageIndexB;
+        Found->ShouldCollide = ShouldCollide;
     }
 }
 
@@ -852,6 +932,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                                     Sword->DistanceLimit = 5.0f;
                                     MakeEntitySpatial(Sword, Entity->P,
                                                       Entity->dP + 5.0f*ConHero->dSword);
+                                    AddCollisionRule(GameState, Sword->StorageIndex, Entity->StorageIndex, false);
                                 }
                             }
                         }
@@ -877,16 +958,10 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                     MoveSpec.Speed = 0.0f;
                     MoveSpec.Drag = 0.0f;
 
-                    // TODO(casey) IMPORTANT(casey): Add the ability in the collision
-                    // routines to understand a movement limit for an entity, and
-                    // then update this routine to use that to know when to kill the
-                    // sword.
-                    // TODO(casey): Need to handle the fact that DistanceTraveled
-                    // might not have enough distance for the total entity move
-                    // for the frame!
                     v2 OldP = Entity->P;
                     if(Entity->DistanceLimit == 0.0f)
                     {
+                        ClearCollisionRulesFor(GameState, Entity->StorageIndex);
                         MakeEntityNonSpatial(Entity);
                     }
 
@@ -958,7 +1033,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
             if(!IsSet(Entity, EntityFlag_Nonspatial))
             {
-                MoveEntity(SimRegion, Entity, Input->dtForFrame, &MoveSpec, ddP);
+                MoveEntity(GameState, SimRegion, Entity, Input->dtForFrame, &MoveSpec, ddP);
             }
 
             real32 EntityGroundPointX = ScreenCenterX + MetersToPixels*Entity->P.X;

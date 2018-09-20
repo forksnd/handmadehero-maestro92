@@ -1,0 +1,289 @@
+Summary:
+
+enforcing pairwise collision rules.
+Example: when A and B collide, we may want A to pass through B
+When B and C collide, we may want B to stop
+
+so we want to be able to enforce rules "dynamically"
+
+addresses two big problems in collision: shouldCollide and handleCollision
+
+implements bruteforce rules hash table for these two for now
+
+Keyword: Physics, HashTable
+
+
+
+
+
+16:56
+splits the collision problem with two steps
+1. 	we go through the rules to check if two entities should collide
+2.	we go through the rules to see how we handle the collision, whether the two would stop on collide ... etc 
+
+so as you can see the main structure of the code is as follow now
+
+			    for(uint32 Iteration = 0; Iteration < 4; ++Iteration)
+			    {
+					...
+					...
+
+	                // TODO(casey): Spatial partition here!
+	                for(uint32 TestHighEntityIndex = 0; TestHighEntityIndex < SimRegion->EntityCount; ++TestHighEntityIndex)
+	                {
+	                    sim_entity *TestEntity = SimRegion->Entities + TestHighEntityIndex;
+	                    if(ShouldCollide(GameState, Entity, TestEntity))
+	                    {
+	                    	...
+	                    }
+
+	                    ...
+	                }
+
+               		
+	                ...
+	                ...
+
+		            if(HitEntity)
+		            {
+		            	...
+		            	...
+
+		                bool32 StopsOnCollision = HandleCollision(Entity, HitEntity);
+		                if(StopsOnCollision)
+		                {
+		                	...
+		                	...
+		                }
+		                else
+		                {
+		                    AddCollisionRule(GameState, Entity->StorageIndex, HitEntity->StorageIndex, false);
+		                }
+		            }
+
+	                ...
+	                ...
+	            }
+
+
+
+24:05
+the main idea of the shouldCollide is looking up collision rules inside the shouldCollide function
+as you can see below, we just look up in a hash table
+
+				internal bool32
+				ShouldCollide(game_state *GameState, sim_entity *A, sim_entity *B)
+				{
+				    bool32 Result = false;
+
+				    if(A->StorageIndex > B->StorageIndex)
+				    {
+				        sim_entity *Temp = A;
+				        A = B;
+				        B = Temp;
+				    }
+
+				    ...
+				    ...
+
+				    // TODO(casey): BETTER HASH FUNCTION
+				    uint32 HashBucket = A->StorageIndex & (ArrayCount(GameState->CollisionRuleHash) - 1);
+				   
+				    for(pairwise_collision_rule *Rule = GameState->CollisionRuleHash[HashBucket];
+				        Rule;
+				        Rule = Rule->NextInHash)
+				    {
+				        if((Rule->StorageIndexA == A->StorageIndex) &&
+				           (Rule->StorageIndexB == B->StorageIndex))
+				        {
+				            Result = Rule->ShouldCollide;
+				            break;
+				        }
+				    }
+				    
+				    return(Result);
+				}
+
+
+
+
+26:19
+we store the collision rules in the game_state struct
+
+				struct game_state
+				{
+
+					...
+					...
+
+				    // TODO(casey): Must be power of two
+				    pairwise_collision_rule *CollisionRuleHash[256];
+				    pairwise_collision_rule *FirstFreeCollisionRule;
+				};
+
+
+
+
+
+
+
+35:46
+we write the collision rule below. it is pretty much standard hash table operations that Casey has mentioned before
+
+notice in the "if(!Found)" case, we first check if there is anything on the free list (GameState->FirstFreeCollisionRule)
+if there isnt anything, we create new from our memory by calling the PushStruct function
+
+				internal void
+				AddCollisionRule(game_state *GameState, uint32 StorageIndexA, uint32 StorageIndexB, bool32 ShouldCollide)
+				{
+					...
+					...
+					...
+
+				    // TODO(casey): BETTER HASH FUNCTION
+				    pairwise_collision_rule *Found = 0;
+				    uint32 HashBucket = StorageIndexA & (ArrayCount(GameState->CollisionRuleHash) - 1);
+				    for(pairwise_collision_rule *Rule = GameState->CollisionRuleHash[HashBucket];
+				        Rule;
+				        Rule = Rule->NextInHash)
+				    {
+				        if((Rule->StorageIndexA == StorageIndexA) &&
+				           (Rule->StorageIndexB == StorageIndexB))
+				        {
+				            Found = Rule;
+				            break;
+				        }
+				    }
+				    
+				    if(!Found)
+				    {
+				        Found = GameState->FirstFreeCollisionRule;
+				        if(Found)
+				        {
+				            GameState->FirstFreeCollisionRule = Found->NextInHash;
+				        }
+				        else
+				        {
+				            Found = PushStruct(&GameState->WorldArena, pairwise_collision_rule);
+				        }
+				        
+				        Found->NextInHash = GameState->CollisionRuleHash[HashBucket];
+				        GameState->CollisionRuleHash[HashBucket] = Found;        
+				    }
+
+				    if(Found)
+				    {
+				        Found->StorageIndexA = StorageIndexA;
+				        Found->StorageIndexB = StorageIndexB;
+				        Found->ShouldCollide = ShouldCollide;
+				    }
+				}
+
+
+
+
+
+47:24
+for this system, we want the collision rules to be per entity, not per entity type
+for example, we want every odd number of thrown sword to collide, and evey even number of thrown sword to not collide
+
+so we actually will call this AddCollsionRule when we create the entity
+and this also means we want to clear the collision rules 
+
+	            hero_bitmaps *HeroBitmaps = &GameState->HeroBitmaps[Entity->FacingDirection];
+	            switch(Entity->Type)
+	            {
+	                case EntityType_Hero:
+	                {
+	                	...
+	                	...
+
+	                    sim_entity *Sword = Entity->Sword.Ptr;
+	                    if(Sword && IsSet(Sword, EntityFlag_Nonspatial))
+	                    {
+	                        Sword->DistanceLimit = 5.0f;
+	                        MakeEntitySpatial(Sword, Entity->P, Entity->dP + 5.0f*ConHero->dSword);
+	                        AddCollisionRule(GameState, Sword->StorageIndex, Entity->StorageIndex, false);
+	                    }
+	                }
+	                break;
+
+	                ...
+	                ...
+
+	                case EntityType_Sword:
+	                {
+	                	...
+	                	...
+
+	                    if(Entity->DistanceLimit == 0.0f)
+	                    {
+	                        ClearCollisionRulesFor(GameState, Entity->StorageIndex);
+	                        MakeEntityNonSpatial(Entity);
+	                    }
+
+	                } break;
+	            }
+
+
+
+48:52
+here we look at how we write the ClearCollisionRulesFor function
+we want to be able to remove any entries that StorageIndex was involved in
+
+lets say in the previous case, my sword collided with A, B and C
+and i had hash entries as "sword_A", "B_sword" and "sword_C"
+I want to remove all of these three entries
+here we are just doing a brute force way of searching every bucket and every linkedlist stored in that bucket
+
+
+				internal void
+				ClearCollisionRulesFor(game_state *GameState, uint32 StorageIndex)
+				{
+				    // TODO(casey): Need to make a better data structure that allows
+				    // removal of collision rules without searching the entire table
+				    for(uint32 HashBucket = 0;
+				        HashBucket < ArrayCount(GameState->CollisionRuleHash);
+				        ++HashBucket)
+				    {
+				        for(pairwise_collision_rule **Rule = &GameState->CollisionRuleHash[HashBucket];
+				            *Rule;
+				            )
+				        {
+				            if(((*Rule)->StorageIndexA == StorageIndex) ||
+				               ((*Rule)->StorageIndexB == StorageIndex))
+				            {
+				                pairwise_collision_rule *RemovedRule = *Rule;
+				                *Rule = (*Rule)->NextInHash;
+
+				                RemovedRule->NextInHash = GameState->FirstFreeCollisionRule;
+				                GameState->FirstFreeCollisionRule = RemovedRule;
+				            }
+				            else
+				            {
+				                Rule = &(*Rule)->NextInHash;
+				            }
+				        }
+				    }
+				}
+
+
+
+1:07:14
+do you ever use function pointers?
+
+occasionally. there are times where function pointers are useful. In this case (where we want to do pairwise collision rules)
+we prefer switch statements. 
+
+the problem with function pointers is that they can not persist. They are not stable. Function pointers change everytime they 
+recompile your problem. So I tend to use switch statements, cuz the thing that you are switching persist. so you can write it to disc.
+
+
+stability across builds, network are very important. so function pointers do not get used in this context very often becuz of that.
+
+
+
+
+1:16:54
+a monster that spans multiple rooms is trivial, becuz we do not think about rooms in the gameplay code
+rooms is strickly a camera thing 
