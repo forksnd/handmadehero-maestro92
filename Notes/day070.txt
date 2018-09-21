@@ -1,0 +1,132 @@
+Summary:
+
+discusses hashtable optimizations for the function ClearCollisionRulesFor from day 069
+discusses a todo list for next topic
+
+Keyword: 
+HashTable, next topics
+
+
+
+10:37 
+discussing the problem with our hashtable in our previous implementation in ClearCollisionRulesFor from day069
+
+
+
+15:30
+Caseys new solution
+
+when adding an entry, creating entries for both
+
+
+				A,B
+
+				     _______
+				    |       |      
+				    |       |     
+				    |_______|
+				    |       |      
+				    |   A   |----> A,B     
+				    |_______|
+				    |       |     
+				    |       |     
+				    |_______|
+				    |       |     
+				    |   B   |----> B,A ----> B,D ----> B,E
+				    |_______|
+				    |       |     
+				    |       |     
+				    |_______|
+				    |       |     
+				    |       |     
+				    |_______|
+
+
+				FreeList
+				previous Head ----> Free1 ----> Free2
+
+
+
+
+
+so when we remove something
+let us say we are calling ClearCollisionRulesFor B, we will want to clear B,A and A,B
+
+that is pretty simple cuz removing B,A and A,B is constant time, and A,B is just the reverse of B,A 
+
+So the algorithm is just 
+first you go the Bucket B, remove all entries by putting them onto the FreeList 
+(recall that we are putting in the head when we add to the Freelist)
+
+
+				after removal
+				     _______
+				    |       |      
+				    |       |     
+				    |_______|
+				    |       |      
+				    |   A   |----> A,B     
+				    |_______|
+				    |       |     
+				    |       |     
+				    |_______|
+				    |       |     
+				    |       |
+				    |_______|
+				    |       |     
+				    |       |     
+				    |_______|
+				    |       |     
+				    |       |     
+				    |_______|
+
+
+				FreeList
+				B,A ----> B,D ----> B,E ----> previous Head ----> Free1 ----> Free2
+
+
+then loop through the from the new head (B,A in this case) to previous Head, and remove the reverse of them
+so this case, we will be removing A,B   D,B   E,B from the hashtable
+
+cost: double the storage
+
+
+
+
+
+
+
+
+59:42
+why do we not use mod in the has calculation for the hash table, but rather AND?
+
+
+currently we are doing something like 
+
+		        uint32 HashMask = (ArrayCount(SimRegion->Hash) - 1);
+		        uint32 HashIndex = ((HashValue + Offset) & HashMask);
+
+mod is very expensive, cuz it requires integer division
+
+AND is one of the fastest operations that the CPU can do
+
+that being said, really we do not know, for any given situation
+
+it may be that using a non-power of 2 is better (for the AND to work, we need it to be power of 2)
+becuz if if you do the look up, if the hash entries is not in the cache, it may be true that the mod cost 
+is not expensive enough to matter. 
+the memory fetching to get the hash table into memory is going to dominate the runtime
+
+
+so the answer, it is trade off
+we are trading off of coplete flexibility of sizing vs the cost for the CPU to compute the hash bucket
+and trade offs like that are not something we can make up front. We need to know how they run on our target platforms and then decide
+
+It is even possible that the parts you use your hashtable may not be the most costly part of your game, so you can use both
+
+
+
+
+
+
+
