@@ -19,3 +19,18 @@ the compiler is still free to inline it if it wants to
 
 explaining canonicalization
 
+
+I was told they are called "canonical" because of their prevalence and comparative simplicity. I believe the etymology is from the Greek "kanon", meaning "standard" or "model", or "usual".
+
+I was told by the professor in a graduate physics course that the equations were called "canonical" because they were so perfect that they could be laws of the church, that is canon laws. At the time of their creation, the church was the most powerful entity extant. Thus, they were perfect enough to be church laws or "canonical" laws.
+
+https://hsm.stackexchange.com/questions/5666/why-are-canonical-coordinates-canonical
+
+
+
+
+
+
+
+
+

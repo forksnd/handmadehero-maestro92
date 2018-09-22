@@ -1,0 +1,101 @@
+Summary:
+converting to Full3D position
+mostly changing places where we use v2 to v3, rectange2D to rectangle3D
+
+
+Keyword: 
+v2 to v3, assertions
+
+6:35 
+got rid of world_difference struct. replaced it with vector3 (v3 in our game)
+
+
+
+
+9:51
+implements Hadamard Product, which is literally compnent wise multiplication
+
+
+
+
+
+
+
+
+
+
+
+30:39
+added the GLSL like operations on vector3
+				
+				handmade_math.h
+
+				union v3
+				{
+				    struct
+				    {
+				        real32 X, Y, Z;
+				    };
+				    struct
+				    {
+				        real32 R, G, B;
+				    };
+				    struct
+				    {
+				        v2 XY;
+				        real32 Ignored0_;
+				    };
+				    struct
+				    {
+				        real32 Ignored1_;
+				        v2 YZ;
+				    };
+				    real32 E[3];
+				};
+
+
+
+
+
+49:31
+want to set the ground to be the center of a rectangle3D, instead of on the Boundary
+
+						 __________________________
+						|						   |
+				________|__________________________|_________ 	<--- ground line
+						|						   |
+						|__________________________|
+
+
+						 __________________________
+						|						   |
+						|__________________________|	
+						|						   |
+				________|__________________________|_________ 	<--- ground line
+
+
+this way we will not always be very close to moving into the chunk below us
+
+
+
+
+
+1:21:29
+RK4 (Runge-Kutta methods) is not something I would ever use in a game under any circumstances
+RK4 is a numerical integeration techinique. It is not a good integrator for games
+
+i would strongly suggest backwards euler or something more conservative
+
+for game physics, u want to use techniques that remove energies from the system
+RK4 has all kinds of energy explosion criteria. We want things in games to calm down instead of exciting
+
+
+
+1:24:44
+what assertions are for are specifically for non-test code. The whole design of assertion is to put them in your 
+non-test code
+
+the idea with assertions is that, when your code or debug you leave them in. if you want to ship your game 
+and compile in release mode, they disappear (you can just compile them out)
+
+they are zero cost to you when you need performance
