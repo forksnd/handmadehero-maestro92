@@ -1,3 +1,5 @@
+Handmade Hero Day 051 - Separating Entities By Update Frequency
+
 
 talks about the addressing scheme and how to manage/store entities of different update frequency:
 entities that you want to update in high frequency, low frequency, dormant. With such organization, he also implements

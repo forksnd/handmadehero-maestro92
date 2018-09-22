@@ -1,0 +1,166 @@
+Handmade Hero Day 072 - Proper 3D Inclusion Tests
+
+Summary:
+discusses the two approach to solve the problem for grabbing entities for our updatable bounds
+
+went with the increase updatable bounds approach.
+increased the updatable bounds by max radius + max distance in one tick
+
+wrote the EntityOverlapsRectangle function so entityes that overlap with the updatable region
+are updatable. This way entities are not only tested by their center position
+
+Keyword: 
+Physics Collision Detection, Minkowski inclusion test
+
+
+
+
+
+34:57
+graphical explanation of where we plan to do this 3D inclustion test
+
+
+
+
+38:29
+addresses the problems we have in finding entities within the updatable bounds
+right now we are just testing entities by center position, not by overlap. We may have entities
+that overlap to my updatable bound region, but its center position is outside of the updatable bound region
+
+1.	we can double store entities. any chunk that an entity touches, we store it in there	
+	-	if we have mostly similarly sized entities, we are wasting lots of cpu power
+	-	but if we do have that giant entity, maybe this is a win
+	-	so if all entities are small, this is a total lose
+
+
+2.	increase the updtable bounds by the radius of the largest entity
+	-	it has to handle maximum entity radius
+	-	if all of our entity is similarly sized, this is totaly fine
+	-	but if we have a giant entity, it is a huge waste of resource, becuz we have to query so many more entities 
+	for so many more chunks
+
+
+when you do not have enough information to make a decision, go for the simpler solution
+so Casey went with the increase raidus solution
+
+he also expanded the region by the max distance that an entity can travel in one tick
+
+
+				internal sim_region *
+				BeginSim(memory_arena *SimArena, game_state *GameState, world *World, world_position Origin, rectangle3 Bounds, real32 dt)
+				{
+				    ...
+				    ...
+
+				    sim_region *SimRegion = PushStruct(SimArena, sim_region);
+				    ZeroStruct(SimRegion->Hash);
+
+				    // TODO(casey): Try to make these get enforced more rigorously
+				    SimRegion->MaxEntityRadius = 5.0f;
+				    SimRegion->MaxEntityVelocity = 30.0f;
+				    real32 UpdateSafetyMargin = SimRegion->MaxEntityRadius + dt*SimRegion->MaxEntityVelocity;
+				    real32 UpdateSafetyMarginZ = 1.0f;
+				    
+				    SimRegion->World = World;
+				    SimRegion->Origin = Origin;
+				    SimRegion->UpdatableBounds = AddRadiusTo(Bounds, V3(SimRegion->MaxEntityRadius,
+				                                                        SimRegion->MaxEntityRadius,
+				                                                        SimRegion->MaxEntityRadius));
+				    SimRegion->Bounds = AddRadiusTo(SimRegion->UpdatableBounds,
+				                                    V3(UpdateSafetyMargin, UpdateSafetyMargin, UpdateSafetyMarginZ));
+
+
+
+46:39
+of couse ideally, we would want to put in a more rigorous way of obtaining the MaxEntityVelocity
+
+but for now, Casey put in an assert in the MoveEntity
+
+				
+					internal void
+					MoveEntity(game_state *GameState, sim_region *SimRegion, sim_entity *Entity, real32 dt, move_spec *MoveSpec, v3 ddP)
+					{
+					    
+						...
+						...
+
+					    Entity->dP = ddP*dt + Entity->dP;
+
+					    Assert(LengthSq(Entity->dP) <= Square(SimRegion->MaxEntityVelocity));
+
+					}
+
+
+51:22
+now as we go on to implement the 3D inclusion test
+we changed the bounding box dimensions to v3. prevously, we had two variables named width and height 
+
+				struct sim_entity
+				{
+				    // NOTE(casey): These are only for the sim region
+					...
+					...
+				    
+				    v3 Dim;
+
+				    ...
+				    ...
+				    // TODO(casey): Generation index so we know how "up to date" this entity is.
+				};
+
+
+
+
+55:13
+wrote the EntityOverlapsRectangle function. This uses the Minkowski approach
+
+				handmade_sim_region.cpp
+
+				inline bool32
+				EntityOverlapsRectangle(v3 P, v3 Dim, rectangle3 Rect)
+				{
+				    rectangle3 Grown = AddRadiusTo(Rect, 0.5f*Dim);
+				    bool32 Result = IsInRectangle(Grown, P);
+				    return(Result);
+				}
+
+
+
+1:08:43
+uses for 4D vectors
+
+1.	quaternions
+x, y, z, w
+
+you can think of them stored as a 3-1 partition
+first three numbers store axis of rotations
+
+if you think about axis-angle format, and we say we have an object rotating around axis v, for theta degree
+
+				w = cos(theta/2)
+
+				x,y,z = sin(theta/2) * v
+
+
+2.	colors
+r, g, b, a
+
+
+
+
+1:12:09
+would you extend your Minkowski algorithm to support rotations or arbituary polygons?
+
+it is worth noting that collision detection does not work with animated rotation.
+there is not any algorithm that works with continuous rotation
+
+
+
+1:25:42
+about learning assembly language
+
+I think assembly language is pretty important to know. U do not necessarily need to know how to write assembly code
+you just need to know how to read it. Cuz understanding what the compiler is doing and looking at it why is slow and what the CPU is doing
+is crucial. Being able to write it is not necessary
+
+

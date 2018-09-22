@@ -1,3 +1,5 @@
+Handmade Hero Day 057 - Spatially Partitioning Entities
+
 Summary: 
 finished up spatial partition from last episode
 

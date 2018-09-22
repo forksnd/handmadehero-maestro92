@@ -1,3 +1,5 @@
+Handmade Hero Day 055 - Hash-based World Storage
+
 Summary: Talks about hash table for the first 30 minutes
 
 uses a hash table for Sparse World Storage
@@ -26,6 +28,28 @@ whereas in the linked list version, you will have to split the two up:
 maybe 256 for hash table elements, then 256 for linked list nodes.
 
 so hash table collisions will be more frequent in the lineked list version if we are using constant amount of memory
+
+
+
+
+
+
+32:21
+refactored the tile_chunk class
+notice that the tile_chunk has a pointer to another tile_chunk,
+that is becuz we are doing the linked_list version of hashtable here. hence the pointer
+
+                struct tile_chunk
+                {
+                    int32 TileChunkX;
+                    int32 TileChunkY;
+                    int32 TileChunkZ;
+
+                    // TODO(casey): Real structure for a tile!
+                    uint32 *Tiles;
+
+                    tile_chunk *NextInHash;
+                };
 
 
 

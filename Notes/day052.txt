@@ -1,3 +1,7 @@
+Handmade Hero Day 052 - Entity Movement in Camera Space
+
+
+
 This episodes implements the ChangeEntityResidence function
 
 

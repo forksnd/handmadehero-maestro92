@@ -1,3 +1,5 @@
+Handmade Hero Day 058 - Using the Spatial Partition
+
 Summary: 
 using and debug the spatial partition code.
 uses the spatial partitioning code to loop through entities in tile chunks that overlap with camera bounds

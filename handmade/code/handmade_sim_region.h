@@ -53,6 +53,7 @@ enum sim_entity_flags
 struct sim_entity
 {
     // NOTE(casey): These are only for the sim region
+    world_chunk *OldChunk;
     uint32 StorageIndex;
     bool32 Updatable;
 
@@ -61,17 +62,12 @@ struct sim_entity
     entity_type Type;
     uint32 Flags;
     
-    v2 P;
-    v2 dP;
-    
-    real32 Z;
-    real32 dZ;
+    v3 P;
+    v3 dP;
     
     real32 DistanceLimit;
-
-    uint32 ChunkZ;
     
-    real32 Width, Height;
+    v3 Dim;
 
     uint32 FacingDirection;
     real32 tBob;
@@ -99,10 +95,12 @@ struct sim_region
     // to sim entities!
     
     world *World;
+    real32 MaxEntityRadius;
+    real32 MaxEntityVelocity;
     
     world_position Origin;
-    rectangle2 Bounds;
-    rectangle2 UpdatableBounds;
+    rectangle3 Bounds;
+    rectangle3 UpdatableBounds;
     
     uint32 MaxEntityCount;
     uint32 EntityCount;

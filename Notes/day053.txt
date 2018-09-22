@@ -1,3 +1,5 @@
+Handmade Hero Day 053 - Environment Elements as Entities
+
 Summary:
 This episode goes to write the SetCamera function. Whenever you set the camera to a different screen
 for example, going from screen A to screen B, we have to move all the entities that was initially in the high frequency

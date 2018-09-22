@@ -1,3 +1,5 @@
+Handmade Hero Day 056 - Switching from Tiles to Entities
+
 Summary:
 added entity indices in tile_chunk storages, 
 this way we have spatial information of entities (which tile chunks contains which entities)

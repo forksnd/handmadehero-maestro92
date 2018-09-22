@@ -1,3 +1,5 @@
+Handmade Hero Day 054 - Removing the Dormant Entity Concept
+
 Summary
 
 Got rid of dormant entities. eseentially replacing dormant entities with low_frequency entities
