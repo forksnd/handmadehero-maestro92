@@ -39,6 +39,7 @@ that overlap to my updatable bound region, but its center position is outside of
 	-	but if we have a giant entity, it is a huge waste of resource, becuz we have to query so many more entities 
 	for so many more chunks
 
+as a matter of fact, u might be able to do both. So it is even worth trying a dual system
 
 when you do not have enough information to make a decision, go for the simpler solution
 so Casey went with the increase raidus solution
