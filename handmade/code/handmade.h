@@ -12,15 +12,20 @@
 
   ARCHITECTURE EXPLORATION
   - Z!
+    - 3D collision detection working properly!
     - Figure out how you go "up" and "down", and how is this rendered?
       "Frinstances"!
   - Collision detection?
-    - Entry/exit?
+    - Transient collision rules!  Clear based on flag.
+      - Allow non-transient rules to override transient ones.
+      - Entry/exit?
     - What's the plan for robustness / shape definition?
     - (Implement reprojection to handle interpenetration)
+    - "Things pushing other things"
   - Implement multiple sim regions per frame
     - Per-entity clocking
     - Sim region merging?  For multiple players?
+    - Simple zoomed-out view for testing?
 
   - Debug code
     - Logging
@@ -161,12 +166,15 @@ struct controlled_hero
 
 struct pairwise_collision_rule
 {
-    bool32 ShouldCollide;
+    bool32 CanCollide;
     uint32 StorageIndexA;
     uint32 StorageIndexB;
     
     pairwise_collision_rule *NextInHash;
 };
+struct game_state;
+internal void AddCollisionRule(game_state *GameState, uint32 StorageIndexA, uint32 StorageIndexB, bool32 ShouldCollide);
+internal void ClearCollisionRulesFor(game_state *GameState, uint32 StorageIndex);
 
 struct game_state
 {
@@ -189,6 +197,7 @@ struct game_state
 
     loaded_bitmap Tree;
     loaded_bitmap Sword;
+    loaded_bitmap Stairwell;
     real32 MetersToPixels;
 
     // TODO(casey): Must be power of two
@@ -218,9 +227,6 @@ GetLowEntity(game_state *GameState, uint32 Index)
 
     return(Result);
 }
-
-internal void AddCollisionRule(game_state *GameState, uint32 StorageIndexA, uint32 StorageIndexB, bool32 ShouldCollide);
-internal void ClearCollisionRulesFor(game_state *GameState, uint32 StorageIndex);
 
 #define HANDMADE_H
 #endif

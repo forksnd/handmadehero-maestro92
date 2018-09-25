@@ -1,0 +1,307 @@
+Handmade Hero Day 074 - Moving Entities Up and Down Stairwells
+
+Summary:
+changes the approach mentioned in day 073. 
+wrote the "overlap" logic to handle character moving up and down Stairwells
+
+introduces the concept of barycentric coordinates for rectangles to handle height of the Character 
+when it is overlapping with the Stairwell entity
+
+wrote lots of simple math function, such as lerp, clamp,
+
+
+Keyword: 
+
+math, barycentric coordinates, physics logic
+
+
+
+18:53
+wrote a CanOverlap() function, currently it is just between StairWell and Character
+
+				internal bool32
+				CanOverlap(game_state *GameState, sim_entity *Mover, sim_entity *Region)
+				{
+				    bool32 Result = false;
+
+				    if(Mover != Region)
+				    {
+				        if(Region->Type == EntityType_Stairwell)
+				        {
+				            Result = true;
+				        }
+				    }
+
+				    return(Result);
+				}
+
+
+
+
+21:58
+changing the handle overlap approach again for a cheesing out method
+maybe as we go, we will go back to the collision rules table method
+
+notice how the handle Overlap logic is after the iterative steps
+
+notice that he is change the position of ground. He did mention that this is a hacky way of solving this.
+so he is just doing this for now
+
+				internal void
+				MoveEntity(game_state *GameState, sim_region *SimRegion, sim_entity *Entity, real32 dt,
+				           move_spec *MoveSpec, v3 ddP)
+				{
+					...
+					...
+
+				    for(uint32 Iteration = 0; Iteration < 4; ++Iteration)
+				    {
+
+
+				    }
+
+				    ...
+				    ...
+
+				    real32 Ground = 0.0f;
+				
+				    // NOTE(casey): Handle events based on area overlapping
+				    // TODO(casey): Handle overlapping precisely by moving it into the collision loop?
+				    {
+				        rectangle3 EntityRect = RectCenterDim(Entity->P, Entity->Dim); 
+
+				        // TODO(casey): Spatial partition here!
+				        for(uint32 TestHighEntityIndex = 0;
+				            TestHighEntityIndex < SimRegion->EntityCount;
+				            ++TestHighEntityIndex)
+				        {
+				            sim_entity *TestEntity = SimRegion->Entities + TestHighEntityIndex;
+				            if(CanOverlap(GameState, Entity, TestEntity))
+				            {
+				                rectangle3 TestEntityRect = RectCenterDim(TestEntity->P, TestEntity->Dim);
+				                if(RectanglesIntersect(EntityRect, TestEntityRect))
+				                {
+				                    HandleOverlap(GameState, Entity, TestEntity, dt, &Ground);
+				                }
+				            }
+				        }    
+				    }
+
+				    ...
+				    ...
+				}
+
+
+				
+
+29:04
+wrote the HandleOverlap() function, 
+notice that we pass in the time dt as an argument here, in case there is an timebased effect happening
+that way it applies it for a period of time.
+
+
+
+				handmade_sim_region.cpp
+
+				internal void
+				HandleOverlap(game_state *GameState, sim_entity *Mover, sim_entity *Region, real32 dt, real32 *Ground)
+				{
+				    if(Region->Type == EntityType_Stairwell)
+				    {
+				    	...
+				    	...
+				    }    
+				}
+
+
+
+
+
+
+
+
+30:30
+introduces the concept of barycentric coordinates of rectangles
+
+pretty much it expresses any point inside a rectangle (2D or 3D) in ranges of [0,1]
+
+Graphical exlanation at 30:34
+
+starting from the min corner, along x axis, if you are 0.4, you are 40% of the x value
+same on the other axis
+
+if you are the min corner, we say that you are at barycentric coordinate {0,0,0} 
+if you are the max corner, we say that you are at barycentric coordinate {1,1,1} 
+
+so it is essentially "relative normal coordinates"
+
+
+
+				handmade_sim_region.cpp
+
+				internal void
+				HandleOverlap(game_state *GameState, sim_entity *Mover, sim_entity *Region, real32 dt, real32 *Ground)
+				{
+				    if(Region->Type == EntityType_Stairwell)
+				    {
+				        rectangle3 RegionRect = RectCenterDim(Region->P, Region->Dim);
+				        v3 Bary = Clamp01(GetBarycentric(RegionRect, Mover->P));
+
+				        *Ground = Lerp(RegionRect.Min.Z, Bary.Y, RegionRect.Max.Z);
+				    }    
+				}
+
+
+
+
+
+
+35:38
+writes the GetBarycentric function in the math file
+
+the first draft he wrote is 
+
+
+				handmade_math.h
+
+				inline v3
+				GetBarycentric(rectangle3 A, v3 P)
+				{
+				    v3 Result;
+
+				    Result.X = (P.X - A.Min.X) / (A.Max.X - A.Min.X);
+				    Result.Y = (P.Y - A.Min.Y) / (A.Max.Y - A.Min.Y);
+				    Result.Z = (P.Z - A.Min.Z) / (A.Max.Z - A.Min.Z);
+
+				    return(Result);
+				}
+
+
+then mentions that there is a problem, (A.Max.X - A.Min.X) = 0. This can happen if one of the dimensions collapses
+or the entity did not have any sizes, then our division will be illegal
+
+
+since we do not have a performance concern here, Casey will write this more robustly
+in which in introduces the following few functions
+
+the difference between SafeRatio0 and SafeRatio1 is that one returns default value of 0, the other 1
+
+				
+				inline real32
+				SafeRatio0(real32 Numerator, real32 Divisor)
+				{
+				    real32 Result = SafeRatioN(Numerator, Divisor, 0.0f);
+
+				    return(Result);
+				}
+
+				inline real32
+				SafeRatio1(real32 Numerator, real32 Divisor)
+				{
+				    real32 Result = SafeRatioN(Numerator, Divisor, 1.0f);
+
+				    return(Result);
+				}
+
+				inline real32
+				SafeRatioN(real32 Numerator, real32 Divisor, real32 N)
+				{
+				    real32 Result = N;
+
+				    if(Divisor != 0.0f)
+				    {
+				        Result = Numerator / Divisor;
+				    }
+
+				    return(Result);
+				}
+
+
+so back to our revised version of GetBarycentric(); function
+we do this when we care more about robustness over performance
+
+				handmade_math.h
+
+				inline v3
+				GetBarycentric(rectangle3 A, v3 P)
+				{
+				    v3 Result;
+
+				    Result.X = SafeRatio0(P.X - A.Min.X, A.Max.X - A.Min.X);
+				    Result.Y = SafeRatio0(P.Y - A.Min.Y, A.Max.Y - A.Min.Y);
+				    Result.Z = SafeRatio0(P.Z - A.Min.Z, A.Max.Z - A.Min.Z);
+
+				    return(Result);
+				}
+
+
+
+
+
+
+50:09
+
+run into a situation where You need to have the Clamp01(); the results from the GetBarycentric(); function
+
+
+				handmade_sim_region.cpp
+
+				internal void
+				HandleOverlap(game_state *GameState, sim_entity *Mover, sim_entity *Region, real32 dt, real32 *Ground)
+				{
+				    if(Region->Type == EntityType_Stairwell)
+				    {
+				        rectangle3 RegionRect = RectCenterDim(Region->P, Region->Dim);
+				        v3 Bary = Clamp01(GetBarycentric(RegionRect, Mover->P));
+
+				        *Ground = Lerp(RegionRect.Min.Z, Bary.Y, RegionRect.Max.Z);
+				    }    
+				}
+
+
+
+
+
+
+
+51:39
+goes to write all the clamp functions
+
+as you can see below, Clamp01 just clamps the value between 0 and 1
+
+				inline real32
+				Clamp(real32 Min, real32 Value, real32 Max)
+				{
+				    real32 Result = Value;
+
+				    if(Result < Min)
+				    {
+				        Result = Min;
+				    }
+				    else if(Result > Max)
+				    {
+				        Result = Max;
+				    }
+
+				    return(Result);
+				}
+
+				inline real32
+				Clamp01(real32 Value)
+				{
+				    real32 Result = Clamp(0.0f, Value, 1.0f);
+
+				    return(Result);
+				}
+				    
+
+
+1:01:10
+debugging why the character is not interacting with the StairWell
+we found out that the RectanglesIntersect(EntityRect, TestEntityRect) is not returning true
+
+turns out that our EntityRect has a Z value of Z = -0.0054444518;
+while our ground is Z = 0;
+
+starts to re-examine how do we properly handle z position of our character	
+
