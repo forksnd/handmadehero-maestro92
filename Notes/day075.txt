@@ -1,0 +1,323 @@
+Handmade Hero Day 075 - Conditional Movement Based on Step Heights
+
+Summary:
+re-examine the physics on the z axis of the character 
+
+finished up the motion of the character going up and down
+
+blocked entrance of stairwell for the character if he enters from the wrong side of the stairwell
+
+
+Keyword: 
+physics, character motion,
+
+
+
+11:16
+when the character is standing on the ground, it does not accelerate in to the ground anymore
+only when the character is off the ground then he experiences things like gravity
+
+
+
+
+				internal void
+				MoveEntity(game_state *GameState, sim_region *SimRegion, sim_entity *Entity, real32 dt,
+				           move_spec *MoveSpec, v3 ddP)
+				{
+
+				    ...
+				    ...
+
+				    ddP *= MoveSpec->Speed;
+
+				    // TODO(casey): ODE here!
+				    ddP += -MoveSpec->Drag*Entity->dP;
+				    if(!IsSet(Entity, EntityFlag_ZSupported))
+				    {
+				        ddP += V3(0, 0, -9.8f); // NOTE(casey): Gravity!
+				    }
+
+				    ...
+				    ...
+				    ...
+
+				    ...
+
+				}
+
+
+then we check if the unit is still on the ground with the if condition 
+
+				if((Entity->P.Z <= Ground)
+
+moreover, we add another criteria for situations when we are climbing up the ladder
+in which you have the EntityFlag_ZSupported flag And you do not have Z velocity 
+Recall that when we go and up and down, the characters z position is set by the barycentric function thing,
+so you do not actually have z velocity
+
+else if he is in free fall
+
+		        ClearFlags(Entity, EntityFlag_ZSupported);
+
+
+
+
+				internal void
+				MoveEntity(game_state *GameState, sim_region *SimRegion, sim_entity *Entity, real32 dt,
+				           move_spec *MoveSpec, v3 ddP)
+				{
+
+					    ...
+					    ...
+
+					    ddP *= MoveSpec->Speed;
+
+					    // TODO(casey): ODE here!
+					    ddP += -MoveSpec->Drag*Entity->dP;
+					    if(!IsSet(Entity, EntityFlag_ZSupported))
+					    {
+					        ddP += V3(0, 0, -9.8f); // NOTE(casey): Gravity!
+					    }
+
+					    ...
+					    ...
+
+
+					    ...
+					    ...
+
+
+				        if((Entity->P.Z <= Ground) ||
+					       (IsSet(Entity, EntityFlag_ZSupported) &&
+					        (Entity->dP.Z == 0.0f)))
+					    {
+					        Entity->P.Z = Ground;
+					        Entity->dP.Z = 0;
+					        AddFlags(Entity, EntityFlag_ZSupported);
+					    }
+					    else
+					    {
+					        ClearFlags(Entity, EntityFlag_ZSupported);
+					    }
+
+				}
+
+
+
+
+
+
+
+
+
+28:26
+addresses the problem of teleporting from bottom of the stairwell to the top of the stairwell 
+if you enter from the wrong side. 
+
+this is happening becuz as soon as you are overlapping with the stairwell, it adjusts your height instantly
+
+Casey proposes two solutions
+
+method1:	is to add blockers around the correct side of the stairwell depending if you are going up or going down
+
+method2:	whenever you move, we check if it is a valid move depending on how much z you have changed. In this case of us 
+			moving up and down the stairs, we want to make sure z is small enough.		
+
+
+				void MoveEntity()
+				{
+					...
+					...
+
+				    for(uint32 Iteration = 0; Iteration < 4; ++Iteration)
+				    {				        
+		                // TODO(casey): Spatial partition here!
+		                for(uint32 TestHighEntityIndex = 0; TestHighEntityIndex < SimRegion->EntityCount; ++TestHighEntityIndex)
+		                {
+		                	...
+
+		                    if(CanCollide(GameState, Entity, TestEntity))
+		                    {
+		                        bool32 HitThis = false;
+		                        if(TestWall( ... ))		                       
+		                        	...
+		                        		                
+		                        if(TestWall( ... ))
+									...
+
+		                        if(TestWall( ... ))
+									...
+
+		                        if(TestWall( ... ))
+									...								
+
+		                        // TODO(casey): We need a concept of stepping onto vs. stepping
+		                        // off of here so that we can prevent you from _leaving_
+		                        // stairs instead of just preventing you from getting onto them.
+		                        if(HitThis)
+		                        {
+		                            v3 TestP = Entity->P + tMinTest*PlayerDelta;
+		                            if(SpeculativeCollide(Entity, TestEntity))
+		                            {
+		                                tMin = tMinTest;
+		                                WallNormal = TestWallNormal;
+		                                HitEntity = TestEntity;
+		                            }
+		                        }
+		                    }
+		                }
+		            }
+		               
+		            Entity->P += tMin*PlayerDelta;
+		            DistanceRemaining -= tMin*PlayerDeltaLength;            
+
+		            ...
+		            ...
+
+				}
+
+
+
+
+
+35:04
+now we see the SpeculativeCollide(); function
+
+notice in the value of, we have the condition
+
+				((AbsoluteValue(Mover->P.Z - Ground) > StepHeight) 
+
+this condition says that you can only enter the stairwell from if you have a small enough z change 
+which means you can only enter this stairwell from the proper side. If you are trying to go downstairs
+but you are entering from the "going upstairs" side, this results in a large change in z value. So it will deny
+your movement.
+
+
+1:19:55
+added the second condition
+
+				((Bary.Y > 0.1f) && (Bary.Y < 0.9f)));
+
+This condition says that you are only allowed to step on or off the stair well at the ends.
+
+
+
+				Result = ((AbsoluteValue(Mover->P.Z - Ground) > StepHeight) ||
+				                  ((Bary.Y > 0.1f) && (Bary.Y < 0.9f)));
+
+				internal bool32
+				SpeculativeCollide(sim_entity *Mover, sim_entity *Region)
+				{
+				    bool32 Result = true;
+				    
+				    if(Region->Type == EntityType_Stairwell)
+				    {
+				        rectangle3 RegionRect = RectCenterDim(Region->P, Region->Dim);
+				        v3 Bary = Clamp01(GetBarycentric(RegionRect, Mover->P));
+
+				        // TODO(casey): Needs work :)
+				        real32 Ground = Lerp(RegionRect.Min.Z, Bary.Y, RegionRect.Max.Z);
+				        real32 StepHeight = 0.1f;
+				        Result = ((AbsoluteValue(Mover->P.Z - Ground) > StepHeight) ||
+				                  ((Bary.Y > 0.1f) && (Bary.Y < 0.9f)));
+				    }
+
+				    return(Result);
+				}
+
+
+
+
+43:25
+
+got rid of the EntityType_Stairwell if check. Initially had this on, but the character wont be able 
+to glide around the stair when it his the wrong side of the stairwell
+
+	 _______
+	|_______|
+	|_______|	^
+	|_______|	|
+	|_______|	|
+	|_______|	|
+
+for exaple, if you have an StairWell that you can go upstairs from the bottom side.
+you want to be able to glide when the character collides it with from the top, left or right side.
+
+Recall the StopsOnCollision flags just takes away the portion of your vector that aligns with the contact normal
+You still retain the portions of your vector that is tangential to it
+
+
+				handmade_sim_region.cpp
+
+				internal bool32
+				HandleCollision(game_state *GameState, sim_entity *A, sim_entity *B)
+				{
+				    bool32 StopsOnCollision = false;
+
+				    ...
+				    ...
+
+				    if((A->Type == EntityType_Monstar) &&
+				       (B->Type == EntityType_Sword))
+				    {
+				        if(A->HitPointMax > 0)
+				        {
+				            --A->HitPointMax;
+				        }
+				    }
+				    
+				    if((A->Type == EntityType_Stairwell) ||
+						(B->Type == EntityType_Stairwell)) 
+				    {
+				    	StopsOnCollision = false;
+				    }
+
+				    return(StopsOnCollision);
+				}
+
+
+so the new version is without the explicit check with the EntityType_Stairwells
+
+
+				handmade_sim_region.cpp
+
+				internal bool32
+				HandleCollision(game_state *GameState, sim_entity *A, sim_entity *B)
+				{
+				    bool32 StopsOnCollision = false;
+
+				    ...
+				    ...
+
+				    if((A->Type == EntityType_Monstar) &&
+				       (B->Type == EntityType_Sword))
+				    {
+				        if(A->HitPointMax > 0)
+				        {
+				            --A->HitPointMax;
+				        }
+				    }
+				    
+				    return(StopsOnCollision);
+				}
+
+
+
+43:47
+Casey does say the following:
+
+these collision routines have too many weird predicaments. It was hard for me to keep track of all the weird corner cases
+It will be nice to have them in a unified set of collision rules
+
+
+
+
+
+
+
+
+
+
+
+
+
