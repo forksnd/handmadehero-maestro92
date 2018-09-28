@@ -1,0 +1,278 @@
+Handmade Hero Day 077 - Entity Ground Points
+
+Summary:
+
+more on entity heights and ground point. 
+cleaned up entity collision after establishign entity ground points
+
+handle the tricky case stairwells, where it connects the z level of both floors
+
+Keyword: 
+physics collision, entity z dimension
+
+
+
+
+4:44
+explains how what is the proper z value for units standing on the ground
+
+
+				
+				 _______
+				|		|
+				|		|
+				|		|
+				|	c	|	z dim
+				|		|
+				|		|
+				|_______|
+
+
+since our entities are centered in the center, if entities are standing on the ground
+we really want their z position to be = 1/2 z dim
+
+				
+
+
+
+
+7:02
+
+changes the code MoveEntity to be like below.
+- 	the idea is that we start with Ground = 0.0f. then we do the Overlap test (with stariwell or other entities), to determine the "True" ground level
+for our character. if you are on the stairs, your "True" ground level needs to be adjusted.
+	
+-	once the ground level is properly calculated, we offset it to our entity height
+
+				internal void
+				MoveEntity(game_state *GameState, sim_region *SimRegion, sim_entity *Entity, real32 dt,
+				           move_spec *MoveSpec, v3 ddP)
+				{
+				
+
+					...
+					...
+
+
+				    real32 Ground = 0.0f;
+				    
+				    {
+				        rectangle3 EntityRect = RectCenterDim(Entity->P, Entity->Dim); 
+
+				        // TODO(casey): Spatial partition here!
+				        for(uint32 TestHighEntityIndex = 0; TestHighEntityIndex < SimRegion->EntityCount; ++TestHighEntityIndex)
+				        {
+				        	.... all the overlap test 
+				        }    
+				    }
+
+				    Ground += Entity->P.Z - GetEntityGroundPoint(Entity).Z;
+
+
+				    if((Entity->P.Z <= Ground) ||
+				       (IsSet(Entity, EntityFlag_ZSupported) &&
+				        (Entity->dP.Z == 0.0f)))
+				    {
+				    	...
+				    	...
+
+				}
+
+
+
+
+below is the GetEntityGroundPoint() code.
+
+				handmade_entity.h
+
+
+				inline v3
+				GetEntityGroundPoint(sim_entity *Entity)
+				{
+				    v3 Result = Entity->P + V3(0, 0, -0.5f*Entity->Dim.Z);
+
+				    return(Result);
+				}
+
+
+
+
+
+
+32:54
+entity can now only go upstairs, but not downstairs. This is becuz after fixing the entity collision for the z axis,
+
+when we are downstairs, our stairwell is on the same sim-region level. Therefore our character can collide with the stairwell
+
+when we are upstairs, our stairwell is on the sim-region level below us. 
+
+
+			level2		_________________________________________
+										__|
+									 __|
+								  __|
+							   __|
+			level1		______|__________________________________
+
+
+this is becuz for our current setup, for our stairwell physbody, its stariwell max.z == leve2 min.z
+and in our collision logic, if the two values are the same, we do not register as a collision
+
+
+33:20
+Casey proposes the solution for Stairwell to extend a bit above the second ground level
+
+34:29
+then he finds out that making a bit above the second ground level messes up with the StepHeight threshold 
+when we do the SpeculativeCollide
+
+
+35:00
+graphical explanation
+
+
+36:50
+proposes another solution
+
+changes so that when we calculate the z height for the stairwell, where we call GetBarycentric()
+we decouple it from the RectZMin and RectZMax. Instead we just defined a separate WalkableHeight value for stariwell
+
+-	Notice that we previously had 
+
+				real32 Result = Lerp(RegionRect.Min.Z, Bary.Y, RegionRect.MaxZ)
+
+	So first Casey changed it to 
+
+				real32 Result = Lerp(RegionRect.Min.Z, Bary.Y, RegionRect.Min.Z + Entity->WalkableHeight)
+
+	then we finally realize that we can just utilize the nature BaryCentric coordinates
+
+				RegionRect.Min.Z + Bary.Y*Entity->WalkableHeight;
+
+	this way we do not even have to lerp.
+
+
+
+
+
+below is the full code 
+
+				inline real32
+				GetStairGround(sim_entity *Entity, v3 AtGroundPoint)
+				{
+				    Assert(Entity->Type == EntityType_Stairwell);
+				    
+				    rectangle3 RegionRect = RectCenterDim(Entity->P, Entity->Dim);
+				    v3 Bary = Clamp01(GetBarycentric(RegionRect, AtGroundPoint));
+				    real32 Result = RegionRect.Min.Z + Bary.Y*Entity->WalkableHeight;
+
+				    return(Result);
+				}
+
+
+here, we defined the WalkableHeight in sim_entity. In which Casey added the one line of comment:
+"Only for stairwells"
+
+				struct sim_entity
+				{
+
+					...
+					...
+
+				    // TODO(casey): Only for stairwells!
+				    real32 WalkableHeight;
+				    
+				    // TODO(casey): Generation index so we know how "up to date" this entity is.
+				};
+
+
+
+Essentially, the gist of it is that
+we are having a RegionRect min/max used only for Collision Detection, and then a separate WalkableHeight for game logic 
+
+
+
+48:24
+realizes that we would like to refactor this line 
+
+				(Bary.Y > 0.1f) && (Bary.Y < 0.9f))
+
+The original intention is to handle going onto or off of the stairwell properly 
+essentially, we would want 
+
+				((AbsoluteValue(GetEntityGroundPoint(Mover).Z - Ground) > StepHeight
+
+to know whether Ground is the ground below or the Ground we are going onto
+
+
+
+
+				internal bool32
+				SpeculativeCollide(sim_entity *Mover, sim_entity *Region)
+				{
+
+				    if(Region->Type == EntityType_Stairwell)
+				    {
+				        Result = ((AbsoluteValue(GetEntityGroundPoint(Mover).Z - Ground) > StepHeight) ||
+				                  ((Bary.Y > 0.1f) && (Bary.Y < 0.9f)));
+				    }
+
+				    return result;
+				}
+
+
+the new SpeculativeCollide function looks like: 
+(NOTE that the problem mentioned above is not solved. Casey will solve it in the next episode)
+
+				internal bool32
+				SpeculativeCollide(sim_entity *Mover, sim_entity *Region)
+				{
+				    if(Region->Type == EntityType_Stairwell)
+				    {
+				        v3 MoverGroundPoint = GetEntityGroundPoint(Mover);
+				        real32 Ground = GetStairGround(Region, MoverGroundPoint);
+				        Result = (AbsoluteValue(MoverGroundPoint.Z - Ground) > StepHeight);
+				    }
+
+				    return result;
+				}
+
+
+
+
+
+
+1:01:25
+when confronted about magic numbers
+Casey says. Are you referring to something like
+
+		        real32 StepHeight = 0.1f;
+
+that is becuz that is not used anywhere else. If you put it as a global variable, you are just polluting the global namespace
+
+
+				internal bool32
+				SpeculativeCollide(sim_entity *Mover, sim_entity *Region)
+				{
+				    bool32 Result = true;
+				    
+				    if(Region->Type == EntityType_Stairwell)
+				    {
+				        // TODO(casey): Needs work :)
+				        real32 StepHeight = 0.1f;
+
+				        ...
+				        ...
+
+				        v3 MoverGroundPoint = GetEntityGroundPoint(Mover);
+				        real32 Ground = GetStairGround(Region, MoverGroundPoint);
+				        Result = (AbsoluteValue(MoverGroundPoint.Z - Ground) > StepHeight);
+				    }
+
+				    return(Result);
+				}
+
+
+I would argue that If you are in a team environment, or working with designers, you would probably want to expose that as a global variable
+
+
