@@ -124,10 +124,10 @@ AddEntityRaw(game_state *GameState, sim_region *SimRegion, uint32 StorageIndex, 
 }
 
 inline bool32
-EntityOverlapsRectangle(v3 P, v3 Dim, rectangle3 Rect)
+EntityOverlapsRectangle(v3 P, sim_entity_collision_volume Volume, rectangle3 Rect)
 {
-    rectangle3 Grown = AddRadiusTo(Rect, 0.5f*Dim);
-    bool32 Result = IsInRectangle(Grown, P);
+    rectangle3 Grown = AddRadiusTo(Rect, 0.5f*Volume.Dim);
+    bool32 Result = IsInRectangle(Grown, P + Volume.OffsetP);
     return(Result);
 }
 
@@ -140,7 +140,7 @@ AddEntity(game_state *GameState, sim_region *SimRegion, uint32 StorageIndex, low
         if(SimP)
         {
             Dest->P = *SimP;
-            Dest->Updatable = EntityOverlapsRectangle(Dest->P, Dest->Dim, SimRegion->UpdatableBounds);
+            Dest->Updatable = EntityOverlapsRectangle(Dest->P, Dest->Collision->TotalVolume, SimRegion->UpdatableBounds);
         }
         else
         {
@@ -212,7 +212,7 @@ BeginSim(memory_arena *SimArena, game_state *GameState, world *World, world_posi
                             if(!IsSet(&Low->Sim, EntityFlag_Nonspatial))
                             {
                                 v3 SimSpaceP = GetSimSpaceP(SimRegion, Low);
-                                if(EntityOverlapsRectangle(SimSpaceP, Low->Sim.Dim, SimRegion->Bounds))
+                                if(EntityOverlapsRectangle(SimSpaceP, Low->Sim.Collision->TotalVolume, SimRegion->Bounds))
                                 {
                                     AddEntity(GameState, SimRegion, LowEntityIndex, Low, &SimSpaceP);
                                 }
@@ -462,7 +462,9 @@ MoveEntity(game_state *GameState, sim_region *SimRegion, sim_entity *Entity, rea
     ddP *= MoveSpec->Speed;
 
     // TODO(casey): ODE here!
-    ddP += -MoveSpec->Drag*Entity->dP;
+    v3 Drag = -MoveSpec->Drag*Entity->dP;
+    Drag.Z = 0.0f;
+    ddP += Drag;
     if(!IsSet(Entity, EntityFlag_ZSupported))
     {
         ddP += V3(0, 0, -9.8f); // NOTE(casey): Gravity!
@@ -516,61 +518,78 @@ MoveEntity(game_state *GameState, sim_region *SimRegion, sim_entity *Entity, rea
                     sim_entity *TestEntity = SimRegion->Entities + TestHighEntityIndex;
                     if(CanCollide(GameState, Entity, TestEntity))
                     {
-                        v3 MinkowskiDiameter = {TestEntity->Dim.X + Entity->Dim.X,
-                                                TestEntity->Dim.Y + Entity->Dim.Y,
-                                                TestEntity->Dim.Z + Entity->Dim.Z};
-
-                        v3 MinCorner = -0.5f*MinkowskiDiameter;
-                        v3 MaxCorner = 0.5f*MinkowskiDiameter;
-
-                        v3 Rel = Entity->P - TestEntity->P;
-
-                        // TODO(casey): Do we want an open inclusion at the MaxCorner?
-                        if((Rel.Z >= MinCorner.Z) && (Rel.Z < MaxCorner.Z))
+                        for(uint32 VolumeIndex = 0;
+                            VolumeIndex < Entity->Collision->VolumeCount;
+                            ++VolumeIndex)
                         {
-                            real32 tMinTest = tMin;
-                            v3 TestWallNormal = {};
+                            sim_entity_collision_volume *Volume =
+                                Entity->Collision->Volumes + VolumeIndex;
+                            
+                            for(uint32 TestVolumeIndex = 0;
+                                TestVolumeIndex < TestEntity->Collision->VolumeCount;
+                                ++TestVolumeIndex)
+                            {
+                                sim_entity_collision_volume *TestVolume =
+                                    TestEntity->Collision->Volumes + TestVolumeIndex;
 
-                            bool32 HitThis = false;
-                            if(TestWall(MinCorner.X, Rel.X, Rel.Y, PlayerDelta.X, PlayerDelta.Y,
-                                        &tMinTest, MinCorner.Y, MaxCorner.Y))
-                            {
-                                TestWallNormal = V3(-1, 0, 0);
-                                HitThis = true;
-                            }
-                
-                            if(TestWall(MaxCorner.X, Rel.X, Rel.Y, PlayerDelta.X, PlayerDelta.Y,
-                                        &tMinTest, MinCorner.Y, MaxCorner.Y))
-                            {
-                                TestWallNormal = V3(1, 0, 0);
-                                HitThis = true;
-                            }
-                
-                            if(TestWall(MinCorner.Y, Rel.Y, Rel.X, PlayerDelta.Y, PlayerDelta.X,
-                                        &tMinTest, MinCorner.X, MaxCorner.X))
-                            {
-                                TestWallNormal = V3(0, -1, 0);
-                                HitThis = true;
-                            }
-                
-                            if(TestWall(MaxCorner.Y, Rel.Y, Rel.X, PlayerDelta.Y, PlayerDelta.X,
-                                        &tMinTest, MinCorner.X, MaxCorner.X))
-                            {
-                                TestWallNormal = V3(0, 1, 0);
-                                HitThis = true;
-                            }
+                                v3 MinkowskiDiameter = {TestVolume->Dim.X + Volume->Dim.X,
+                                                        TestVolume->Dim.Y + Volume->Dim.Y,
+                                                        TestVolume->Dim.Z + Volume->Dim.Z};
 
-                            // TODO(casey): We need a concept of stepping onto vs. stepping
-                            // off of here so that we can prevent you from _leaving_
-                            // stairs instead of just preventing you from getting onto them.
-                            if(HitThis)
-                            {
-                                v3 TestP = Entity->P + tMinTest*PlayerDelta;
-                                if(SpeculativeCollide(Entity, TestEntity))
+                                v3 MinCorner = -0.5f*MinkowskiDiameter;
+                                v3 MaxCorner = 0.5f*MinkowskiDiameter;
+
+                                v3 Rel = ((Entity->P + Volume->OffsetP) -
+                                          (TestEntity->P + TestVolume->OffsetP));
+
+                                // TODO(casey): Do we want an open inclusion at the MaxCorner?
+                                if((Rel.Z >= MinCorner.Z) && (Rel.Z < MaxCorner.Z))
                                 {
-                                    tMin = tMinTest;
-                                    WallNormal = TestWallNormal;
-                                    HitEntity = TestEntity;
+                                    real32 tMinTest = tMin;
+                                    v3 TestWallNormal = {};
+
+                                    bool32 HitThis = false;
+                                    if(TestWall(MinCorner.X, Rel.X, Rel.Y, PlayerDelta.X, PlayerDelta.Y,
+                                                &tMinTest, MinCorner.Y, MaxCorner.Y))
+                                    {
+                                        TestWallNormal = V3(-1, 0, 0);
+                                        HitThis = true;
+                                    }
+                
+                                    if(TestWall(MaxCorner.X, Rel.X, Rel.Y, PlayerDelta.X, PlayerDelta.Y,
+                                                &tMinTest, MinCorner.Y, MaxCorner.Y))
+                                    {
+                                        TestWallNormal = V3(1, 0, 0);
+                                        HitThis = true;
+                                    }
+                
+                                    if(TestWall(MinCorner.Y, Rel.Y, Rel.X, PlayerDelta.Y, PlayerDelta.X,
+                                                &tMinTest, MinCorner.X, MaxCorner.X))
+                                    {
+                                        TestWallNormal = V3(0, -1, 0);
+                                        HitThis = true;
+                                    }
+                
+                                    if(TestWall(MaxCorner.Y, Rel.Y, Rel.X, PlayerDelta.Y, PlayerDelta.X,
+                                                &tMinTest, MinCorner.X, MaxCorner.X))
+                                    {
+                                        TestWallNormal = V3(0, 1, 0);
+                                        HitThis = true;
+                                    }
+
+                                    // TODO(casey): We need a concept of stepping onto vs. stepping
+                                    // off of here so that we can prevent you from _leaving_
+                                    // stairs instead of just preventing you from getting onto them.
+                                    if(HitThis)
+                                    {
+                                        v3 TestP = Entity->P + tMinTest*PlayerDelta;
+                                        if(SpeculativeCollide(Entity, TestEntity))
+                                        {
+                                            tMin = tMinTest;
+                                            WallNormal = TestWallNormal;
+                                            HitEntity = TestEntity;
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -603,11 +622,13 @@ MoveEntity(game_state *GameState, sim_region *SimRegion, sim_entity *Entity, rea
     }    
 
     real32 Ground = 0.0f;
-    
+
+    // TODO(casey): Handle multi-volumes here?
     // NOTE(casey): Handle events based on area overlapping
     // TODO(casey): Handle overlapping precisely by moving it into the collision loop?
     {
-        rectangle3 EntityRect = RectCenterDim(Entity->P, Entity->Dim); 
+        rectangle3 EntityRect = RectCenterDim(Entity->P + Entity->Collision->TotalVolume.OffsetP,
+                                              Entity->Collision->TotalVolume.Dim); 
 
         // TODO(casey): Spatial partition here!
         for(uint32 TestHighEntityIndex = 0;
@@ -617,7 +638,8 @@ MoveEntity(game_state *GameState, sim_region *SimRegion, sim_entity *Entity, rea
             sim_entity *TestEntity = SimRegion->Entities + TestHighEntityIndex;
             if(CanOverlap(GameState, Entity, TestEntity))
             {
-                rectangle3 TestEntityRect = RectCenterDim(TestEntity->P, TestEntity->Dim);
+                rectangle3 TestEntityRect = RectCenterDim(TestEntity->P + TestEntity->Collision->TotalVolume.OffsetP,
+                                                          TestEntity->Collision->TotalVolume.Dim);
                 if(RectanglesIntersect(EntityRect, TestEntityRect))
                 {
                     HandleOverlap(GameState, Entity, TestEntity, dt, &Ground);
@@ -625,7 +647,7 @@ MoveEntity(game_state *GameState, sim_region *SimRegion, sim_entity *Entity, rea
             }
         }    
     }
-
+    
     Ground += Entity->P.Z - GetEntityGroundPoint(Entity).Z;
     if((Entity->P.Z <= Ground) ||
        (IsSet(Entity, EntityFlag_ZSupported) &&
