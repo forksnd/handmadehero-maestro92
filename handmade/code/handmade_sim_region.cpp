@@ -567,29 +567,119 @@ MoveEntity(game_state *GameState, sim_region *SimRegion, sim_entity *Entity, rea
                         EntitiesOverlap(Entity, TestEntity, OverlapEpsilon*V3(1, 1, 1))) ||
                        CanCollide(GameState, Entity, TestEntity))
                     {
-                        for(uint32 VolumeIndex = 0; VolumeIndex < Entity->Collision->VolumeCount; ++VolumeIndex)
+                        for(uint32 VolumeIndex = 0;
+                            VolumeIndex < Entity->Collision->VolumeCount;
+                            ++VolumeIndex)
                         {
-                            sim_entity_collision_volume *Volume = Entity->Collision->Volumes + VolumeIndex;
+                            sim_entity_collision_volume *Volume =
+                                Entity->Collision->Volumes + VolumeIndex;
                             
-                            for(uint32 TestVolumeIndex = 0; TestVolumeIndex < TestEntity->Collision->VolumeCount; ++TestVolumeIndex)
+                            for(uint32 TestVolumeIndex = 0;
+                                TestVolumeIndex < TestEntity->Collision->VolumeCount;
+                                ++TestVolumeIndex)
                             {
                                 sim_entity_collision_volume *TestVolume =
                                     TestEntity->Collision->Volumes + TestVolumeIndex;
 
-                                Minkowski shit 
-                                
+                                v3 MinkowskiDiameter = {TestVolume->Dim.X + Volume->Dim.X,
+                                                        TestVolume->Dim.Y + Volume->Dim.Y,
+                                                        TestVolume->Dim.Z + Volume->Dim.Z};
+
+                                v3 MinCorner = -0.5f*MinkowskiDiameter;
+                                v3 MaxCorner = 0.5f*MinkowskiDiameter;
+
+                                v3 Rel = ((Entity->P + Volume->OffsetP) -
+                                          (TestEntity->P + TestVolume->OffsetP));
+
                                 // TODO(casey): Do we want an open inclusion at the MaxCorner?
                                 if((Rel.Z >= MinCorner.Z) && (Rel.Z < MaxCorner.Z))
                                 {
-                                    test_wall Walls[] = getting the four walls
+                                    test_wall Walls[] =
+                                    {
+                                        {MinCorner.X, Rel.X, Rel.Y, PlayerDelta.X, PlayerDelta.Y, MinCorner.Y, MaxCorner.Y, V3(-1, 0, 0)},
+                                        {MaxCorner.X, Rel.X, Rel.Y, PlayerDelta.X, PlayerDelta.Y, MinCorner.Y, MaxCorner.Y, V3(1, 0, 0)},
+                                        {MinCorner.Y, Rel.Y, Rel.X, PlayerDelta.Y, PlayerDelta.X, MinCorner.X, MaxCorner.X, V3(0, -1, 0)},
+                                        {MaxCorner.Y, Rel.Y, Rel.X, PlayerDelta.Y, PlayerDelta.X, MinCorner.X, MaxCorner.X, V3(0, 1, 0)},
+                                    };
 
                                     if(IsSet(TestEntity, EntityFlag_Traversable))
                                     {
-                                        find tMax
+                                        real32 tMaxTest = tMax;
+                                        bool32 HitThis = false;
+                                            
+                                        v3 TestWallNormal = {};
+                                        for(uint32 WallIndex = 0;
+                                            WallIndex < ArrayCount(Walls);
+                                            ++WallIndex)
+                                        {
+                                            test_wall *Wall = Walls + WallIndex;
+
+                                            real32 tEpsilon = 0.001f;
+                                            if(Wall->DeltaX != 0.0f)
+                                            {
+                                                real32 tResult = (Wall->X - Wall->RelX) / Wall->DeltaX;
+                                                real32 Y = Wall->RelY + tResult*Wall->DeltaY;
+                                                if((tResult >= 0.0f) && (tMaxTest < tResult))
+                                                {
+                                                    if((Y >= Wall->MinY) && (Y <= Wall->MaxY))
+                                                    {
+                                                        tMaxTest = Maximum(0.0f, tResult - tEpsilon);
+                                                        TestWallNormal = Wall->Normal;
+                                                        HitThis = true;
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        if(HitThis)
+                                        {
+                                            tMax = tMaxTest;
+                                            WallNormalMax = TestWallNormal;
+                                            HitEntityMax = TestEntity;
+                                        }
                                     }
                                     else
                                     {
-                                        find tMin
+                                        real32 tMinTest = tMin;
+                                        bool32 HitThis = false;
+
+                                        v3 TestWallNormal = {};
+                                        for(uint32 WallIndex = 0;
+                                            WallIndex < ArrayCount(Walls);
+                                            ++WallIndex)
+                                        {
+                                            test_wall *Wall = Walls + WallIndex;
+
+                                            real32 tEpsilon = 0.001f;
+                                            if(Wall->DeltaX != 0.0f)
+                                            {
+                                                real32 tResult = (Wall->X - Wall->RelX) / Wall->DeltaX;
+                                                real32 Y = Wall->RelY + tResult*Wall->DeltaY;
+                                                if((tResult >= 0.0f) && (tMinTest > tResult))
+                                                {
+                                                    if((Y >= Wall->MinY) && (Y <= Wall->MaxY))
+                                                    {
+                                                        tMinTest = Maximum(0.0f, tResult - tEpsilon);
+                                                        TestWallNormal = Wall->Normal;
+                                                        HitThis = true;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        
+                                        // TODO(casey): We need a concept of stepping onto vs. stepping
+                                        // off of here so that we can prevent you from _leaving_
+                                        // stairs instead of just preventing you from getting onto them.
+                                        if(HitThis)
+                                        {
+                                            v3 TestP = Entity->P + tMinTest*PlayerDelta;
+                                            if(SpeculativeCollide(Entity, TestEntity))
+                                            {
+                                                tMin = tMinTest;
+                                                WallNormalMin = TestWallNormal;
+                                                HitEntityMin = TestEntity;
+                                            }
+                                        }
                                     }
                                 }
                             }
