@@ -1,0 +1,414 @@
+Handmade Hero Day 079 - Defining the Ground
+
+Summary:
+
+talked about the concept of "Constructive Solid Geometry" and "Polygon Soup"
+Discussed how Quake and Unreal constructed the world using the concept of "Constructive Solid Geometry"
+mentioned how their philosophy differ.
+
+discussed new plan for collision detection.
+
+added space/empty entities in game
+
+Keyword: 
+
+physics collision detection
+
+
+
+
+6:10
+mentioned how we want to handle "The Ground"
+
+brought up the comparison of how quake construct their world vs how Unreal construct their world 
+
+the way how these games work is that they use something called "Constructive Solid Geometry"
+It is a notion we build the world out of "Brushes". 
+
+these "Brushes" can be any arbituaray 3D objects, and it has a notion of inside or outside.
+
+
+
+
+8:07
+nowdays in modern games, we mostly use "Polygon Soup". "Polygon Soup" is where you just have some bunch of triangles that an
+artist made that doesnt necessarily have any notion of inside or outside. There could be holes in it or cracks in it.
+Pretty much things that do not represent a bounded solid.
+
+
+"Constructive Solid Geometry" is probably a more robust way of defining the world compare to the "Polygon Soup" way.
+This is becuz the "Constructive Solid Geometry" always have a notion of what is inside and what is outside, 
+or what is empty space or what is filled space
+
+Obviously, this is pioneered by John Carmack, and people in the game industry followed suit 
+
+
+people in unreal did this as well, but apparently they picked different paradigms when they actually made their level editors 
+
+Quakes way of making the world was to start filled and carve. The entire world is a giant filled block and then you start carving out.
+
+For example, let say you start out with this filled block
+
+				 _______________
+				|###############|
+				|###############|
+				|###############|
+				|###############|
+				|###############|
+				|###############|
+				|###############|
+
+
+then you start carving out a room
+then maybe another room, then a hall wall. etc
+				 _______________
+				|###############|
+				|###############|
+				|###|		|###|
+				|###|_______|###|
+				|###############|
+				|###############|
+				|###############|
+
+of course, inside the room, you can fill again. So you can always fill or carve out. but you started with everything filled
+
+
+
+
+10:37
+unreal was the opposite.
+your world started empty, then filled.
+
+so the world is a giant empty space. Then when you want to make a room, you want to place filled walls
+
+
+of course, what unreal engine does today probably is different from what Casey mentioned here.
+Probably around 2005, the game industry stopped using "Constructive Solid Geometry".
+
+from 1995 to 2000 something, this was very commonly used.
+
+
+
+
+
+12:50
+Casey recalls there is an important reason why He preferred Quakes paradigm
+becuz you can never accidentally fall out of the world. You are always inside of something.
+
+whereas the unreal method, there is always a possibility that you can fall out of the world.
+
+
+
+
+15:07
+Casey says he ranks Robustness over Efficiency
+
+
+
+
+
+17:30 
+changed the concept of "Ground" or "Floors" to "Rooms"
+
+we will place regions in 3D space, that we consider to be walkable, space you can move around in.
+if the character fall onto "non-empty" space, that is where the ground is
+
+
+
+
+
+20:54
+our definition of ground is going to just be a basic game style probe, where we look downwards from where that point is
+and see where the first part place is where we do not consider empty 
+
+
+
+					 o
+					 |
+					 |
+			_________|____________
+			#########|############
+			#########|############
+					 |
+					 V
+
+
+the region that we go into, has to be filled, not empty
+If I recall, this is exactly what quake does 
+
+
+22:45
+when you move from room to room, it will be moving from one "empty" box to another "empty" box 
+when you try to go from box A to box B, and we hit the point O, we do a query to check if that point is in another box 
+
+if it is in another box (in this case box B), we continue going. otherwise, it is a collsion point
+
+				 _______________
+				|				|
+				|	box A		|
+				|	 _______ 	|	
+				|	|		|	|
+				|	|		|	|
+				|___|___O___|___|
+					|		|
+					| box B	|
+					|_______|
+
+
+this might not be immediately clear for example, if you have two boxes aligned perfectly,
+and you are trying to exit out of from point O, you may never get out it.
+
+
+if you are in box A then you query and find out it is in box B
+then when you get out of it, you find out it is in box A again
+
+
+					 _______
+					|		|	 
+				 ___|_______|_______
+				|	|		|		|
+				|	|		| box A	|
+				|	| box B	| 		|	
+				|	|		|		|
+				|	|		|		|
+				|___|___O___|_______|
+
+
+for each box we are inside, pick Furtherst intersection
+
+
+26:50 (I do not quite understand this... but lets us wait till he implmeents it)
+talks about the new collision algorithm.
+For each box we are inside, pick Furtherst intersection
+
+
+we have a bunch of "empty/in" boxes and "filled/out" boxes
+
+	t "empty/in" boxes 			starts at 0, moving towards 1
+	t "filled/out" boxes		starts at 1, moving towards 0
+
+
+we take the smaller of the two
+
+
+this is pretty traditional approach
+
+
+
+
+
+34:27
+when we walk into the ledge, we first only care about the laternal movement, then we fall 
+
+imagine in the case below, when the character walks of the ledge, it is supposed to fall off the ledge 
+immediately
+
+
+				 	<-------O
+					 	  |	 _______________
+					 	  |	|				
+					 	  | |				
+					 	  |	|				
+					 	  |	|				
+					 	  V	|				
+							|				
+				____________|
+
+
+but casey has made the decision that for now, we do not care, we are just going to let you complete the 
+laternal movement, then fall.
+
+
+					 <-------O
+					 |	  	 _______________
+					 |	  	|				
+					 |	   	|				
+					 |	  	|				
+					 |	  	|				
+					 V	  	|				
+							|				
+				____________|
+
+
+
+
+
+
+35:39
+added the EntityType_Space as an enum in entity_type
+
+				enum entity_type
+				{
+				    EntityType_Null,
+				    
+				    EntityType_Space,
+				    
+				    EntityType_Hero,
+				    EntityType_Wall,
+				    EntityType_Familiar,
+				    EntityType_Monstar,
+				    EntityType_Sword,
+				    EntityType_Stairwell,
+				};
+
+
+
+
+
+43:20
+we start to addStandard rooms as entities, also we defined the Collision Volume for Rooms.
+Note that for the z axis, we set the value to be 0.9f*GameState->World->TileDepthInMeters. That is becuz we want 
+a portion between levels to be not traversable
+
+				handmade.cpp
+
+				extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
+				{    
+					...
+					...
+
+				    if(!Memory->IsInitialized)
+				    {
+				
+				    	...
+				    	...
+
+				        GameState->StandardRoomCollision = MakeSimpleGroundedCollision(GameState,
+				                                                                       TilesPerWidth*GameState->World->TileSideInMeters,
+				                                                                       TilesPerHeight*GameState->World->TileSideInMeters,
+				                                                                       0.9f*GameState->World->TileDepthInMeters);
+
+
+				        ...
+				        ...
+
+				        for(uint32 ScreenIndex = 0; ScreenIndex < 2000; ++ScreenIndex)
+				        {
+
+				        	...
+				        	...
+
+				            AddStandardRoom(GameState, 
+				            				ScreenX*TilesPerWidth + TilesPerWidth/2,
+				                            ScreenY*TilesPerHeight + TilesPerHeight/2,
+				                            AbsTileZ);
+				            
+				            ...
+				            ...
+
+				        }
+
+				        ...				        
+					}
+					...
+				}
+
+
+
+
+
+47:03
+added the AddStandardRoom(); function. and it is almost exaclty the same as AddWall();
+
+note that we add EntityFlag_Traversable for all rooms. EntityFlag_Traversable is something new that we defined
+
+				handmade.cpp
+
+				internal add_low_entity_result
+				AddStandardRoom(game_state *GameState, uint32 AbsTileX, uint32 AbsTileY, uint32 AbsTileZ)
+				{
+				    world_position P = ChunkPositionFromTilePosition(GameState->World, AbsTileX, AbsTileY, AbsTileZ);
+				    add_low_entity_result Entity = AddGroundedEntity(GameState, EntityType_Space, P,
+				                                                     GameState->StandardRoomCollision);
+				    AddFlags(&Entity.Low->Sim, EntityFlag_Traversable);
+
+				    return(Entity);
+				}
+
+
+
+
+47:31
+added the EntityFlag_Traversable as an sim_entity_flags enum 
+
+				enum sim_entity_flags
+				{
+				    // TODO(casey): Does it make more sense to have the flag be for _non_ colliding entities?
+				    // TODO(casey): Collides and ZSupported probably can be removed now/soon
+				    EntityFlag_Collides = (1 << 0),
+				    EntityFlag_Nonspatial = (1 << 1),
+				    EntityFlag_Moveable = (1 << 2),
+				    EntityFlag_ZSupported = (1 << 3),
+				    EntityFlag_Traversable = (1 << 4),
+
+				    EntityFlag_Simming = (1 << 30),
+				};
+
+
+
+
+
+
+
+
+
+54:30
+added that one line in the CanCollide function.
+notice for out Space entities, we do not have the EntityFlag_Collides flags on
+
+				internal bool32
+				CanCollide(game_state *GameState, sim_entity *A, sim_entity *B)
+				{
+				    bool32 Result = false;
+
+				    if(A != B)
+				    {
+				        if(A->StorageIndex > B->StorageIndex)
+				        {
+				            sim_entity *Temp = A;
+				            A = B;
+				            B = Temp;
+				        }
+
+				        if(IsSet(A, EntityFlag_Collides) && IsSet(B, EntityFlag_Collides))
+				        {
+				        	...
+				        	...
+				        	...
+				        	// our old stuff
+				        }
+				    }
+				    
+				    return(Result);
+				}
+
+
+
+
+1:17:31
+how are level designs done in modern engines?
+
+the very lastest one, Casey has no experience with. Such as FrostBite or SnowDrop.
+
+Unreal and Unity are pretty old right now so they have a lot of legacy design
+
+In the witness, it is essentially a geometry instancing kind of a thing, 
+where people make meshes in Miya or Blender (or any 3D modeling software)
+
+and then we bascially have a world editing tool, where you bring those meshes in,
+and you place them to construct the world.
+
+So there is no notion of solid space, there is no notion of construct world. There is just 
+polygons put together everywhere. And the way you determine where you can walk is by having essentially
+meshes marked as walkable and those are entities that you are allowed to move along.
+
+
+
+
+
+
+
+
+
+
+
