@@ -6,7 +6,8 @@ talked about the concept of "Constructive Solid Geometry" and "Polygon Soup"
 Discussed how Quake and Unreal constructed the world using the concept of "Constructive Solid Geometry"
 mentioned how their philosophy differ.
 
-discussed new plan for collision detection.
+discusses how he plans to make ours into the "Constructive Solid Geometry" approach. 
+mentioned the changes we need to make for it to accomodate the idea of our entity traveling in "empty" boxes
 
 added space/empty entities in game
 
@@ -174,15 +175,22 @@ then when you get out of it, you find out it is in box A again
 				|___|___O___|_______|
 
 
-for each box we are inside, pick Furtherst intersection
+for each box we are inside, pick furtherst intersection
 
 
-26:50 (I do not quite understand this... but lets us wait till he implmeents it)
-talks about the new collision algorithm.
+
+26:50 (I do not quite understand this... but lets us wait till he implments it)
+talks about changes he wants to make in the collision algorithm.
 For each box we are inside, pick Furtherst intersection
 
 
-we have a bunch of "empty/in" boxes and "filled/out" boxes
+as we have a bunch of "empty/in" boxes and "filled/out" boxes
+
+
+
+find the minimum t when we hit filled boxes (which is something we are already doing)
+find the maximum t to see where we can travel to in empty boxes
+
 
 	t "empty/in" boxes 			starts at 0, moving towards 1
 	t "filled/out" boxes		starts at 1, moving towards 0
@@ -192,8 +200,6 @@ we take the smaller of the two
 
 
 this is pretty traditional approach
-
-
 
 
 
