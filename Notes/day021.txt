@@ -1,3 +1,7 @@
+Handmade Hero Day 021 - Loading Game Code Dynamically
+
+
+
 6:10
 
 one benefit of doing scripting language is that you can edit things on the fly.

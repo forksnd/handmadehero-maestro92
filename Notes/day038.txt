@@ -1,4 +1,4 @@
-
+Handmade Hero Day 038 - Basic Linear Bitmap Blending
 
 Keyword: rendering
 
