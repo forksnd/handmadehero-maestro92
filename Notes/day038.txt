@@ -8,7 +8,7 @@ Keyword: rendering
 20:30
 
 in the bmp file, we can only get Red, Green, Blue Mask. And the alpha is whatever the three masks is not
-so the wawy to obtain the alpha mask is as follow:
+so the way to obtain the alpha mask is as follow:
 
 		        uint32 RedMask = Header->RedMask;
 		        uint32 GreenMask = Header->GreenMask;
@@ -209,7 +209,7 @@ No. We never really write the destination alpha channel. Which is why in ths exp
 
 destination alpha channel is always zero. alpha channel is just something used to help our calculation of 
 RGB. It is the RGB that is more important. when we care about Alpha channel. that is just something that helps us calculate desired RGB
-when blending
+when blending. In the end it is the RGB value that gets displayed onto the screen.
 
 
 

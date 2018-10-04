@@ -1,3 +1,7 @@
+Handmade Hero Day 039 - Basic Bitmap Rendering Cleanup
+
+
+
 nothing interesting in the main section
 
 1:17:28

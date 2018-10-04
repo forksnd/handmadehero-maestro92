@@ -40,6 +40,7 @@
     - Simple zoomed-out view for testing?
 
   - Debug code
+    - Fonts
     - Logging
     - Diagramming
     - (A LITTLE GUI, but only a little!) Switches / sliders / etc.
@@ -57,6 +58,7 @@
     - Persistent unlocks/etc.
     - Do we allow saved games?  Probably yes, just only for "pausing",
     * Continuous save for crash recovery?
+
   - Rudimentary world gen (no quality, just "what sorts of things" we do)
     - Placement of background things
     - Connectivity?
