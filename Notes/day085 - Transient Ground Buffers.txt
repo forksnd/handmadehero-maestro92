@@ -442,7 +442,7 @@ we separate the initialization of PermanentStorage and transient storage
 				    }
 
 				    Assert(sizeof(transient_state) <= Memory->TransientStorageSize);    
-				    transient_state *TranState = (transient_state *)Memory->TransientStorageSize;
+				    transient_state *TranState = (transient_state *)Memory->TransientStorage;
 				    if(!TranState->IsInitialized)
 				    {
 
