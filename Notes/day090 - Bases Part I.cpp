@@ -3,12 +3,11 @@ Handmade Hero Day 090 - Bases Part I
 Summary:
 
 porting more stuff to the renderer
-
 talked about linear algebra "bases" (or axis) in math and how is it useful in our renderer system 
 
+
 Keyword:
-
-
+renderer
 
 
 
