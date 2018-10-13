@@ -162,11 +162,17 @@ now we have
 as mentioned earlier, we will be pushing all kinds of different draw calls to our Render Group.
 So depending on the type, we need to process them differently 
 
-we now have a switch statement here
+we now have a switch statement here. Do note that we do not implement clear here yet.
+that is done in episode day090
+
+
 
 
 notice we added another maco 
 #define InvalidDefaultCase default: {InvalidCodePath;} break
+
+full code below 
+
 
 				internal void
 				RenderGroupToOutput(render_group *RenderGroup, loaded_bitmap *OutputTarget)
