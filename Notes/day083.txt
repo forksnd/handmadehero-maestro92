@@ -556,7 +556,14 @@ so why not just store the bitmap premultiplied, so I can save some multiplicatio
 
 56:23
 starting to get Premultiplied alpha working. So when we load our BMP files, we changed it to below:
+Notice the key step is these three lines
 
+                R = R*AN;
+                G = G*AN;
+                B = B*AN;
+
+AN is alpha normalized. So when we load an image and convert it to the bitmap, 
+we directly just multiply it with the alpha values
 
 				internal loaded_bitmap
 				DEBUGLoadBMP(thread_context *Thread, debug_platform_read_entire_file *ReadEntireFile, char *FileName)
