@@ -347,7 +347,7 @@ then we blend
 				                                Lerp(TexelC, fX, TexelD));
 		
 
-				                real32 RSA = Texel.a * ; 
+				                real32 RSA = Texel.a; 
 				                
 				                v4 Dest = {(real32)((*Pixel >> 16) & 0xFF),
 				                           (real32)((*Pixel >> 8) & 0xFF),
