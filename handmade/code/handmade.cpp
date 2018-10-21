@@ -1006,7 +1006,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     DrawBuffer->Pitch = Buffer->Pitch;
     DrawBuffer->Memory = Buffer->Memory;
 
-    Clear(RenderGroup, V4(1.0f, 0.0f, 1.0f, 0.0f));
+    Clear(RenderGroup, V4(0.5f, 0.5f, 0.5f, 0.0f));
 
     v2 ScreenCenter = {0.5f*(real32)DrawBuffer->Width,
                        0.5f*(real32)DrawBuffer->Height};
@@ -1281,6 +1281,8 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->Time += Input->dtForFrame;
     real32 Angle = 0.1f*GameState->Time;
     real32 Disp = 100.0f*Cos(5.0f*Angle);
+
+    Angle = 0.0f;
 
     // TODO(casey): Let's add a perp operator!!!
     v2 Origin = ScreenCenter;
