@@ -7,6 +7,14 @@
    $Notice: (C) Copyright 2015 by Molly Rocket, Inc. All Rights Reserved. $
    ======================================================================== */
 
+struct environment_map
+{
+    // NOTE(casey): LOD[0] is 2^WidthPow2 x 2^HeightPow2
+    uint32 WidthPow2;
+    uint32 HeightPow2;
+    loaded_bitmap *LOD[4];
+};
+
 struct render_basis
 {
     v3 P;
@@ -44,8 +52,11 @@ struct render_entry_coordinate_system
     v2 YAxis;
     v4 Color;
     loaded_bitmap *Texture;
+    loaded_bitmap *NormalMap;
 
-    v2 Points[16];
+    environment_map *Top;
+    environment_map *Middle;
+    environment_map *Bottom;
 };
 
 struct render_entry_bitmap
