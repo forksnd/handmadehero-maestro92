@@ -9,9 +9,6 @@
 
 struct environment_map
 {
-    // NOTE(casey): LOD[0] is 2^WidthPow2 x 2^HeightPow2
-    uint32 WidthPow2;
-    uint32 HeightPow2;
     loaded_bitmap *LOD[4];
 };
 

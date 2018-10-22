@@ -7,7 +7,8 @@ Discussed his environment_map scheme for this 2D game.
 added environment_map and normal_map into the DrawRectangleSlowly(); function.
 nothing is actually working. He will finish everything up in the next episode.
 
-
+note that a lot of the code in this episode will be corrected in day098. Sof 
+if you spot an error, proceed to day098s notes
 
 Keyword:
 rendering, environment_map, normal_map
