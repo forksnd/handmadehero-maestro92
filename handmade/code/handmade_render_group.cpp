@@ -671,15 +671,15 @@ DrawMatte(loaded_bitmap *Buffer, loaded_bitmap *Bitmap,
 inline v2 GetRenderEntityBasisP(render_group *RenderGroup, render_entity_basis *EntityBasis,
                                 v2 ScreenCenter)
 {
+    // TODO(casey): ZHANDLING
+
     v3 EntityBaseP = EntityBasis->Basis->P;
     real32 ZFudge = (1.0f + 0.1f*(EntityBaseP.z + EntityBasis->OffsetZ));
-            
-    real32 EntityGroundPointX = ScreenCenter.x + RenderGroup->MetersToPixels*ZFudge*EntityBaseP.x;
-    real32 EntityGroundPointY = ScreenCenter.y - RenderGroup->MetersToPixels*ZFudge*EntityBaseP.y;            
-    real32 EntityZ = -RenderGroup->MetersToPixels*EntityBaseP.z;
 
-    v2 Center = {EntityGroundPointX + EntityBasis->Offset.x,
-                 EntityGroundPointY + EntityBasis->Offset.y + EntityBasis->EntityZC*EntityZ};
+    v2 EntityGroundPoint = ScreenCenter + RenderGroup->MetersToPixels*ZFudge*EntityBaseP.xy;
+    real32 EntityZ = RenderGroup->MetersToPixels*EntityBaseP.z;
+
+    v2 Center = EntityGroundPoint + EntityBasis->Offset + V2(0, EntityBasis->EntityZC*EntityZ);
 
     return(Center);
 }
@@ -705,7 +705,9 @@ RenderGroupToOutput(render_group *RenderGroup, loaded_bitmap *OutputTarget)
             {
                 render_entry_clear *Entry = (render_entry_clear *)Data;
 
-                DrawRectangle(OutputTarget, V2(0.0f, 0.0f), V2((real32)OutputTarget->Width, (real32)OutputTarget->Height), Entry->Color);
+                DrawRectangle(OutputTarget, V2(0.0f, 0.0f),
+                              V2((real32)OutputTarget->Width, (real32)OutputTarget->Height),
+                              Entry->Color);
 
                 BaseAddress += sizeof(*Entry);
             } break;
@@ -722,11 +724,11 @@ RenderGroupToOutput(render_group *RenderGroup, loaded_bitmap *OutputTarget)
             case RenderGroupEntryType_render_entry_bitmap:
             {
                 render_entry_bitmap *Entry = (render_entry_bitmap *)Data;
-#if 0
+
                 v2 P = GetRenderEntityBasisP(RenderGroup, &Entry->EntityBasis, ScreenCenter);
                 Assert(Entry->Bitmap);
-                DrawBitmap(OutputTarget, Entry->Bitmap, P.x, P.y, Entry->A);
-#endif
+                DrawBitmap(OutputTarget, Entry->Bitmap, P.x, P.y, Entry->Color.a);
+
                 BaseAddress += sizeof(*Entry);
             } break;
 
@@ -833,7 +835,7 @@ PushPiece(render_group *Group, loaded_bitmap *Bitmap,
     {
         Piece->EntityBasis.Basis = Group->DefaultBasis;
         Piece->Bitmap = Bitmap;
-        Piece->EntityBasis.Offset = Group->MetersToPixels*V2(Offset.x, -Offset.y) - Align;
+        Piece->EntityBasis.Offset = Group->MetersToPixels*V2(Offset.x, Offset.y) - Align;
         Piece->EntityBasis.OffsetZ = OffsetZ;
         Piece->EntityBasis.EntityZC = EntityZC;
         Piece->Color = Color;
@@ -857,7 +859,7 @@ PushRect(render_group *Group, v2 Offset, real32 OffsetZ,
         v2 HalfDim = 0.5f*Group->MetersToPixels*Dim;
 
         Piece->EntityBasis.Basis = Group->DefaultBasis;
-        Piece->EntityBasis.Offset = Group->MetersToPixels*V2(Offset.x, -Offset.y) - HalfDim;
+        Piece->EntityBasis.Offset = Group->MetersToPixels*V2(Offset.x, Offset.y) - HalfDim;
         Piece->EntityBasis.OffsetZ = OffsetZ;
         Piece->EntityBasis.EntityZC = EntityZC;
         Piece->Color = Color;
