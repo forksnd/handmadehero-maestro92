@@ -150,3 +150,59 @@ in day 108, we are going from P to P_. Here we are just going from P_ to P
 
 
 
+
+1:13:09
+
+added the u,v in the vector2, vector3 class
+
+				union v2
+				{
+				    struct
+				    {
+				        real32 x, y;
+				    };
+				    struct
+				    {
+				        real32 u, v;
+				    };
+				    real32 E[2];
+				};
+
+				union v3
+				{
+				    struct
+				    {
+				        real32 x, y, z;
+				    };
+				    struct
+				    {
+				        real32 u, v, w;
+				    };
+				    struct
+				    {
+				        real32 r, g, b;
+				    };
+				    struct
+				    {
+				        v2 xy;
+				        real32 Ignored0_;
+				    };
+				    struct
+				    {
+				        real32 Ignored1_;
+				        v2 yz;
+				    };
+				    struct
+				    {
+				        v2 uv;
+				        real32 Ignored2_;
+				    };
+				    struct
+				    {
+				        real32 Ignored3_;
+				        v2 vw;
+				    };
+				    real32 E[3];
+				};
+
+				
