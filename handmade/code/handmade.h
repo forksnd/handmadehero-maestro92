@@ -278,7 +278,7 @@ struct game_state
 struct transient_state
 {
     bool32 IsInitialized;
-    memory_arena TranArena;
+    memory_arena TranArena;    
     uint32 GroundBufferCount;
     ground_buffer *GroundBuffers;
 
