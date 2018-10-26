@@ -479,7 +479,9 @@ FillGroundChunk(transient_state *TranState, game_state *GameState, ground_buffer
 {
     // TODO(casey): Decide what our pushbuffer size is!
     temporary_memory GroundMemory = BeginTemporaryMemory(&TranState->TranArena);
-    render_group *RenderGroup = AllocateRenderGroup(&TranState->TranArena, Megabytes(4));
+
+    // TODO(casey): How do we want to control our ground chunk resolution?
+    render_group *RenderGroup = AllocateRenderGroup(&TranState->TranArena, Megabytes(4), 1920, 1080);
 
     Clear(RenderGroup, V4(1.0f, 1.0f, 0.0f, 1.0f));
 
@@ -777,9 +779,6 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     uint32 GroundBufferWidth = 256;
     uint32 GroundBufferHeight = 256;
 
-    // TODO(casey): Remove this!
-    real32 PixelsToMeters = 1.0f / 42.0f;
-
     Assert(sizeof(game_state) <= Memory->PermanentStorageSize);    
     game_state *GameState = (game_state *)Memory->PermanentStorage;
     if(!Memory->IsInitialized)
@@ -789,6 +788,8 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
         GameState->TypicalFloorHeight = 3.0f;
 
+        // TODO(casey): Remove this!
+        real32 PixelsToMeters = 1.0f / 42.0f;
         v3 WorldChunkDimInMeters = {PixelsToMeters*(real32)GroundBufferWidth,
                                     PixelsToMeters*(real32)GroundBufferHeight,
                                     GameState->TypicalFloorHeight};
@@ -910,7 +911,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
             uint32 DoorDirection = RandomChoice(&Series, 2);
 #endif
 
-            DoorDirection = 3;
+//            DoorDirection = 3;
             
             bool32 CreatedZDoor = false;
             if(DoorDirection == 3)
@@ -1200,8 +1201,6 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     // NOTE(casey): Render
     //
     temporary_memory RenderMemory = BeginTemporaryMemory(&TranState->TranArena);
-    // TODO(casey): Decide what our pushbuffer size is!
-    render_group *RenderGroup = AllocateRenderGroup(&TranState->TranArena, Megabytes(4));
     
     loaded_bitmap DrawBuffer_ = {};
     loaded_bitmap *DrawBuffer = &DrawBuffer_;
@@ -1210,18 +1209,20 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     DrawBuffer->Pitch = Buffer->Pitch;
     DrawBuffer->Memory = Buffer->Memory;
 
+    // TODO(casey): Decide what our pushbuffer size is!
+    render_group *RenderGroup = AllocateRenderGroup(&TranState->TranArena, Megabytes(4),
+                                                    DrawBuffer->Width, DrawBuffer->Height);
+
     Clear(RenderGroup, V4(0.25f, 0.25f, 0.25f, 0.0f));
 
     v2 ScreenCenter = {0.5f*(real32)DrawBuffer->Width,
                        0.5f*(real32)DrawBuffer->Height};
 
-    real32 ScreenWidthInMeters = DrawBuffer->Width*PixelsToMeters;
-    real32 ScreenHeightInMeters = DrawBuffer->Height*PixelsToMeters;
-    rectangle3 CameraBoundsInMeters = RectCenterDim(V3(0, 0, 0),
-                                                    V3(ScreenWidthInMeters, ScreenHeightInMeters, 0.0f));
+    rectangle2 ScreenBounds = GetCameraRectangleAtTarget(RenderGroup);
+    rectangle3 CameraBoundsInMeters = RectMinMax(V3(ScreenBounds.Min, 0.0f), V3(ScreenBounds.Max, 0.0f));
     CameraBoundsInMeters.Min.z = -3.0f*GameState->TypicalFloorHeight;
-    CameraBoundsInMeters.Max.z =  1.0f*GameState->TypicalFloorHeight;
-    
+    CameraBoundsInMeters.Max.z =  1.0f*GameState->TypicalFloorHeight;    
+
 #if 0
     for(uint32 GroundBufferIndex = 0;
         GroundBufferIndex < TranState->GroundBufferCount;
@@ -1318,6 +1319,11 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                                      SimCenterP, SimBounds, Input->dtForFrame);
 
     v3 CameraP = Subtract(World, &GameState->CameraP, &SimCenterP);
+    
+    PushRectOutline(RenderGroup, V3(0.0f, 0.0f, 0.0f), GetDim(ScreenBounds), V4(1.0f, 1.0f, 0.0f, 1));
+//    PushRectOutline(RenderGroup, V3(0.0f, 0.0f, 0.0f), GetDim(CameraBoundsInMeters).xy, V4(1.0f, 1.0f, 1.0f, 1));
+    PushRectOutline(RenderGroup, V3(0.0f, 0.0f, 0.0f), GetDim(SimBounds).xy, V4(0.0f, 1.0f, 1.0f, 1));
+    PushRectOutline(RenderGroup, V3(0.0f, 0.0f, 0.0f), GetDim(SimRegion->Bounds).xy, V4(1.0f, 0.0f, 1.0f, 1));
 
 
     // TODO(casey): Move this out into handmade_entity.cpp!

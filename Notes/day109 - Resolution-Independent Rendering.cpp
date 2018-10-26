@@ -10,11 +10,14 @@ projection ---> clip space ---> NDC ---> screen space
 decided for this 2D game, will go straight from
 world to screen space 
 
+made the rendering in which it is resolution-Independent
+
 I really like his approach of tackling this rendering transformation pipeline problem
 makes everything decoupled
 
+
 Keyword:
-rendering, coordiante system in the rendering pipeline
+rendering, coordiante system in the rendering pipeline, resolution-Independent
 
 
 
