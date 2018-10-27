@@ -95,5 +95,5 @@ so the goal should be, use all the memroy in the machine and do something cool.
 
 it doesnt matter if is a 2D game, as long as we are doing something cool.
 
-The goal really isnt to use the least amount the memory. There really is no benefit to that 
+The goal really isnt to use the least amount the memory. There really is no benefit to that .
 
