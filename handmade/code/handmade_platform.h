@@ -145,6 +145,7 @@ enum
     DebugCycleCounter_DrawRectangleSlowly,
     DebugCycleCounter_TestPixel,
     DebugCycleCounter_FillPixel,
+    DebugCycleCounter_DrawRectangleHopefullyQuickly,
     DebugCycleCounter_Count,
 };
 typedef struct debug_cycle_counter

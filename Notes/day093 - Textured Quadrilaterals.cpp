@@ -38,7 +38,7 @@ v is in the y direction, ranged [0, 1]
 
 for bitmaps we have 
 		x -> [0, width - 1]
-		y -> [0, height - 1]
+		y -> [0, height - 1];
 
 
 
@@ -58,6 +58,58 @@ then pixel.color = texture(uc, vc);
 
 
 
+15:54
+derives the formula for calculating u, v coordinates
+
+				dot(d, y) = |d| |y| cos(theta);
+
+y here is the entire y side of your quad 
+
+quad
+                 _____________________
+                |                     |
+                |   /|                |
+    y axis      | d/ |                |
+                | /  |                |
+                |/___|________________|
+
+                     x axis 
+
+
+and to make that 0 and 1, we divide that with the length of yaxis 
+so we got 		
+				
+				                    |d| |y| cos(theta);
+                v coordinate  =  _______________________________
+ 
+                                        |y| * |y|
+
+one |y| is to make |d|*cos(theta);  [0, 1]
+the one |y| is to make yAxis unit length
+
+
+Numerical example:
+
+
+              (0, 7)
+                 _____________________
+                |                     |
+                |   /|  (3,4)         |
+    y axis      | d/ |                |
+                | /  |                |
+                |/___|________________|
+                                       (10, 0)
+                        x axis 
+
+imagine vector d is (3,4)
+
+if x axis is normalized (1,0)
+
+then dot(d, x) gives you (3,0)
+
+so if your x axis is (5,0), you get (15, 0)
+
+therefore, you need to noramlized both y axis and |d|cos(theta);
 
 
 
@@ -136,6 +188,7 @@ The solution is to use sub-pixel rendering!!!!!!!!
 
 42:01
 starting to discuss proper solution for this 
+
 
 initially, we have something like this 
 
