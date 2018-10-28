@@ -15,7 +15,7 @@ opt to go for the 4 pixel strategy cuz it is closer to GPU
 
 
 Keyword:
-optimization
+optimization, SIMD
 
 
 
