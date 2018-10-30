@@ -374,6 +374,8 @@ so we got three for loops
                 if(ShouldFill[I])
                 {
                 	...
+                	loading the memory
+                	...
                 }
             }
             
@@ -396,6 +398,38 @@ so we got three for loops
                                     ((uint32)(Blendedb[I] + 0.5f) << 0));
                 }
             }
+
+
+
+
+-	the loading memory part is literally loading the four pixels that we will use for bilinear filtering 
+
+                if(ShouldFill[I])
+                {
+                    uint8 *TexelPtr = ((uint8 *)Texture->Memory) + Y*Texture->Pitch + X*sizeof(uint32);
+                    uint32 SampleA = *(uint32 *)(TexelPtr);
+                    uint32 SampleB = *(uint32 *)(TexelPtr + sizeof(uint32));
+                    uint32 SampleC = *(uint32 *)(TexelPtr + Texture->Pitch);
+                    uint32 SampleD = *(uint32 *)(TexelPtr + Texture->Pitch + sizeof(uint32));
+
+                    TexelAr[I] = (real32)((SampleA >> 16) & 0xFF);
+                    TexelAg[I] = (real32)((SampleA >> 8) & 0xFF);
+                    TexelAb[I] = (real32)((SampleA >> 0) & 0xFF);
+                    TexelAa[I] = (real32)((SampleA >> 24) & 0xFF);
+
+                    TexelBr[i] = ...
+                    TexelBg[i] = ...
+                    ...
+                    ...
+
+                    same thing for the other three
+
+                    // NOTE(casey): Load destination
+                    Destr[I] = (real32)((*(Pixel + I) >> 16) & 0xFF);
+                    Destg[I] = (real32)((*(Pixel + I) >> 8) & 0xFF);
+                    Destb[I] = (real32)((*(Pixel + I) >> 0) & 0xFF);
+                    Desta[I] = (real32)((*(Pixel + I) >> 24) & 0xFF);
+                }
 
 
 
