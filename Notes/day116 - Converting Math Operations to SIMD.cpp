@@ -1,10 +1,11 @@
 Handmade Hero Day 116 - Converting Math Operations to SIMD
 
 Summary:
-
+SIMDi-zed all the shading calculation
+setup to SIMD-ized the pixel packing and unpacking for next episode
 
 Keyword:
-
+SIMD
 
 
 
