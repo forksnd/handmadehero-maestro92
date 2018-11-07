@@ -1070,7 +1070,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                         (uint8 *)Memory->TransientStorage + sizeof(transient_state));
 
         // TODO(casey): Pick a real number here!
-        TranState->GroundBufferCount = 64;
+        TranState->GroundBufferCount = 256;
         TranState->GroundBuffers = PushArray(&TranState->TranArena, TranState->GroundBufferCount, ground_buffer);
         for(uint32 GroundBufferIndex = 0;
             GroundBufferIndex < TranState->GroundBufferCount;
