@@ -164,13 +164,16 @@ for example, there are times where we call windows to display the frame
 
 
 26:33
-what is a cycle?
+what is a cycle? and What happens in a cycle?
 
 
-so we got code in memory, and when instructions go from code memory to I cache 
+so we start from having code in memory, and when instructions go from code memory to I cache 
 it is actually a Load and Decode operation
 
 then you have the processor fetching the instructions out of the I cache
+
+on 1 cycle, the processor is going to fetch some(maybe 4, whatever, depending on the processor); numbers of instructions, 
+that it thinks it can do 
 
 
                  Code in memory 				I cache                             processor  
@@ -185,12 +188,33 @@ then you have the processor fetching the instructions out of the I cache
                 |_______________| 			|_______________|                    |_______________|
 
 and also processor instructions fetches instructions out of order 
+then on that cycle, the processor will issue these instructions.
+what that means is that these instructions will towards different units, 
+Essentially going off to different parts of the chip, different parts of the CPU to be operated on
+
+			     processor  
+			     _______________
+				|               |
+			    | INST 0   -----|----> multiplier unit 
+				|               |
+			    | INST 1   -----|----> ALU 
+			    |               |
+			    | INST 2   -----|----> memory unit, to fetch something
+			    |               |
+			    |_______________|
+
+
+
+30:10
+regarding the instruction order
+
 for example if you have instructions A B C D E F G
 
 if C depends on A B,
 then the processor will first run A B D E, then it will remember to run C later on once A B are done.
 
-Modern processors run instructiosn heavily out of order
+Modern processors, in order to speed things up, run instructiosn heavily out of order
+
 
 then it goes into cs384 and talks about Pipelining things, pretty much washer and dryer things 
 
