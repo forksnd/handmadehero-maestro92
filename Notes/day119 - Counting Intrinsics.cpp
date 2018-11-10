@@ -10,7 +10,10 @@ compared the measured throughput with the theoretical throughput.
 explained that some instructions are overlap, and how the processors issues them,
 which causes the difference between measured and theoretical
 
+someone in Q/A mentioned the 
+https://commons.wikimedia.org/wiki/File:Intel_Nehalem_arch.svg
 
+to examine the Nahalem processor diagram to see if how many ports and units it has
 
 Keyword:
 intrinsics, processors
@@ -220,6 +223,18 @@ Casey starts to examine how expensive is the gamma correction part
 
 we found out it is not too bad. We only went from 48 cycles to 43 cycles.
 
+
+1:03:12
+someone mentioned the wikimedia nahalem diagram
+
+https://commons.wikimedia.org/wiki/File:Intel_Nehalem_arch.svg
+
+since Caseys computer has a nahalem processor
+this is the diagram of the chip. it shows how many ports and units that it has 
+
+
+Casey says that the multiplier port (FP MUL); is single ported. that means it can issue one multiply 
+per cycle
 
 
 1:06:51
