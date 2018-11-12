@@ -311,6 +311,10 @@ on wikipedia it says
 so with hyper-threading, it saves us the trouble of having to optimizing for memory, since hyper-threading 
 can solve the problem of units not being able to do work due to memory stalling.
 
+Hyperthreading is the technology that makes it possible for every core in an i5 or i7 multicore processor to handle 
+two separate process threads simultaneously.
+
+https://techspirited.com/difference-between-cores-threads
 
 1:26:09
 Casey will begin making the rendered threaded. 
