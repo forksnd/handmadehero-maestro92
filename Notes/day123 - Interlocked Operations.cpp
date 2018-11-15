@@ -15,6 +15,8 @@ in Q/A, mentioned that Mutexes is just Operating System Primitives that are buil
 
 compared single producer, single consumer approach vs single producer, multiple consumer approach
 
+this apparently is the classic worker job approach
+
 discussed the difference between multithreading for overlap vs multithreading for performance
 
 Keyword:

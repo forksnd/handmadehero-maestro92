@@ -27,6 +27,8 @@ threads, sempahore, memory fences, intrinsics
 Casey reiterating the few things that is wrong with his small multi-threading code snippet.
 
 Recall we have the following code 
+				
+				win32_handmade.cpp
 
 				struct work_queue_entry
 				{

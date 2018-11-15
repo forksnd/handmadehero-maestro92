@@ -17,6 +17,16 @@
       - World
       - Texture
     - Optimization
+    
+  - Asset streaming
+
+  - Debug code
+    - Fonts
+    - Logging
+    - Diagramming
+    - (A LITTLE GUI, but only a little!) Switches / sliders / etc.
+    - Draw tile chunks so we can verify that things are aligned / in the chunks we want them to be in / etc.
+    - Thread visualization
 
   ARCHITECTURE EXPLORATION
   - Z!
@@ -46,15 +56,6 @@
     - Per-entity clocking
     - Sim region merging?  For multiple players?
     - Simple zoomed-out view for testing?
-
-  - Debug code
-    - Fonts
-    - Logging
-    - Diagramming
-    - (A LITTLE GUI, but only a little!) Switches / sliders / etc.
-    - Draw tile chunks so we can verify that things are aligned / in the chunks we want them to be in / etc.
-
-  - Asset streaming
     
   - Audio
     - Sound effect triggers
