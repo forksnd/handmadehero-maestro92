@@ -495,10 +495,12 @@ notice that the first argument passed in is the platform_work_queue* RenderQueue
 				            Work->RenderGroup = RenderGroup;
 				            Work->OutputTarget = OutputTarget;
 				            Work->ClipRect = ClipRect;
+
+	                        // RenderQueue->AddEntry(RenderQueue, DoTiledRenderWork, Work);
 				        }
 				    }
 
-
+					//    RenderQueue->CompleteAllWork(RenderQueue);
 
 				    for(int WorkIndex = 0; WorkIndex < WorkCount; ++WorkIndex)
 				    {

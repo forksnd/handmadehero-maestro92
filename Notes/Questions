@@ -9,12 +9,15 @@ analog input vs digial input
 
 
 
-
+            
 
 
 Things that I plan to bring to my game
-1. memory
-2. multi-threading, work queue
+1.  memory
+2.  multi-threading, work queue
+    add volatile for the variables
+
 3. adding asserts everywhere
 4. look at physics
 5. 
+    

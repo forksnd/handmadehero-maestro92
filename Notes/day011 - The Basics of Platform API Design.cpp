@@ -1,3 +1,5 @@
+Handmade Hero Day 011 - The Basics of Platform API Design
+
 7:55
 -	Saved game locations
 	if there are states u want to save, where does that go? u have to interface with windows to find out where that goes
@@ -139,7 +141,7 @@ The way he prefers,
 there are only really three things the game needs to provide to the OS
 1.	Give me the stuff u wanna draw
 2.	Give me the sound u wanna play
-3. 	Here is the user's input
+3. 	Here is the users input
 
 On the back channel 
 1.	send this out to the network for me

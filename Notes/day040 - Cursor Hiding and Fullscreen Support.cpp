@@ -1,3 +1,5 @@
+Handmade Hero Day 040 - Cursor Hiding and Fullscreen Support
+
 4:33
 the reason for 
 

@@ -63,13 +63,13 @@ we can flush the transient store and leave the permenant store. this happens if 
 
 
 1:22:00
-we will have a few different configurations where your game can run in, 1G, 2G, 4G, and that determines what art assets you'll get
+we will have a few different configurations where your game can run in, 1G, 2G, 4G, and that determines what art assets you wll get
 
 
 1:25:17
 modding support
 
-You can't tell if you have allocated enough memory for someone else's mod?
+You cant tell if you have allocated enough memory for someone elses mod?
 
 The game needs to work in a certain footprint
 If you want to support modding, you still have a footprint requirement

@@ -1,3 +1,5 @@
+Handmade Hero Day 015 - Platform-independent Debug File I/O
+
 1:40
 File I/O typically breaks down into two distinct categories:
 1.	loading read-only assets from something: music, 3D models, models, textures etc
@@ -15,7 +17,7 @@ where the game reads and writes:
 stuff like the "configuration for the game", or "player's progress in the game"
 
 
-So for Game IO, that's pretty much two classes
+So for Game IO, thats pretty much two classes
 one just reading
 the other both reading and writing
 
@@ -26,9 +28,9 @@ whereas, read only assets, you typically stream that stuff in the background, so
 
 they try to overlap that stuff with other stuff to keep the game running
 
-with assets you are reading gigabytes worth of data, and typcially, this is not instantaenous. So this is not something that can be ignored in the performance criteria, becuz it's happening all the time, and happening on a large scale
+with assets you are reading gigabytes worth of data, and typcially, this is not instantaenous. So this is not something that can be ignored in the performance criteria, becuz its happening all the time, and happening on a large scale
 
-so for the read-only asset thing, there's a lot more hard-core engineering in there
+so for the read-only asset thing, theres a lot more hard-core engineering in there
 
 
 6:49
@@ -67,7 +69,7 @@ The file handles are very stateful. They store a location of where you are readi
 so that means each thread needs a file handle
 
 
-lastly this streaming API is totally synchronous. The code after the read can't start after the read has completed
+lastly this streaming API is totally synchronous. The code after the read cant start after the read has completed
 
 Definitely, the hard drive, even if it is a SSD drive is the slowlest piece of memory on your machine. It is much slower than the speed that the CPU is executing.
 So pretty much it is stalling the program at where the read is happening. especially if you are doing two reads in a row, then we are really stalling the program
@@ -100,9 +102,9 @@ we are making internal, just to help the compiler out, so that it knows there ar
 
 
 23:59
-Operating system like handles. The way OS tend to work, there are resources that are on the Operating System's side, sockets, files, streams.... they need a way of talking about these resources to you, and they use a handle for that
+Operating system like handles. The way OS tend to work, there are resources that are on the Operating Systems side, sockets, files, streams.... they need a way of talking about these resources to you, and they use a handle for that
 
-They are typically indices to a table, or a poiner into kernel memory that says here is the thing that I'm talking about on  your side.
+They are typically indices to a table, or a poiner into kernel memory that says here is the thing that Im talking about on  your side.
 
 
 
@@ -116,16 +118,16 @@ again, this is only for debugging, you would not want to virtual alloc every fil
 
 virtual alloc is for large allocations. virtual alloc minimum allocation size is 64k (or something like that). it allocates in 4k pages, but u have to allocate atleast 64k. 
 
-long story short, u don't want to be doing lots of small VirtualAllocs
+long story short, u dont want to be doing lots of small VirtualAllocs
 
 
 
 54:37
-the file will only say it's true size when it closes its handle. You will notice the free bytes actually went down by the amount that we wrote.
+the file will only say its true size when it closes its handle. You will notice the free bytes actually went down by the amount that we wrote.
 
 
 1:00:27
-when you write to a critical file, you typically just don't want to overwrite the old file. And the reason for that is becuz your overwrite could fail, and it will only partially overwrite the file, leaving them the corrupted saved file.
+when you write to a critical file, you typically just dont want to overwrite the old file. And the reason for that is becuz your overwrite could fail, and it will only partially overwrite the file, leaving them the corrupted saved file.
 
 So what you want to do usually, is to write to a different file, and either have a rolling buffer scheme, meaning you have an A and a B file, and you would write to the A file, then to the B file, then to the A file ... on alternating runs of the game. And you load whichever one that is most recent.
 
@@ -158,7 +160,7 @@ struct fake_struct
 	uint32 y;
 };
 
-if u don't care about memroy, u should certainly care about performance, cuz
+if u dont care about memroy, u should certainly care about performance, cuz
 reading all that extra memroy and all that cache polution is gonna cost you
 
 
