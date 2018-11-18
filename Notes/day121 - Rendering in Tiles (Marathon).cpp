@@ -774,12 +774,8 @@ so its possible that the unaligness of the store and the load based on the amoun
 Casey starting to address the problem of always filling the real clipped region.
 This is to solve the weird edge motion 
 
-for example lets say XI = 3 and MaxX is 16
 
-on the last iteration, where XI is 15, we will actually be filling 
-XI = 15, 16, 17, 18. So three more pixels. But What we really want to do is to cap it at 16
-
-we can either fix the alignment in the beginning (the first iteration); or at the end (the last iteration);
+recall in our DrawRectangleQuickly(); code we have 
 
                 void DrawRectangleQuickly()
                 {
@@ -799,6 +795,13 @@ we can either fix the alignment in the beginning (the first iteration); or at th
                         ...
                     }
                 }
+
+we get an edge case on the last iteration. For example lets say XI = 3 and MaxX is 16
+
+on the last iteration, where XI is 15, we will actually be filling 
+XI = 15, 16, 17, 18. So three more pixels. But What we really want to do is to cap it at 16
+
+we can either fix the alignment in the beginning (the first iteration); or at the end (the last iteration);
 
 
 
@@ -845,9 +848,83 @@ So Casey prefers option2.
 
 
 3:10:20
-so now the code is 
+so now the code is below:
 
 notice that the StartupClipMask is set to -1. -1 in 2 compliments is 1111111111111111111111..  all ones
+
+-   so at first we have FillRect = Intersect(ClipRect, FillRect);
+    Since we are doing batches of 4 pixels in our SIMD code, if FillRect is not a multiple of 4, 
+    we have to adjust FillRect width to be multiples of 4. 
+
+    we already just mentioned above that we will make the beginning the special case, 
+    so we will make FillRect.MaxX fixed, and push FillRect.MinX forward
+
+
+    Visually, is looks like like 
+                    
+  pixel 0                              pixel N 
+                         _____________
+                        |### #### ####|
+                        |### #### ####|
+                        |### #### ####|
+                        |### #### ####|
+                                           <--------   FillWidth += Adjustment;
+                        ______________                 FillRect.MinX = FillRect.MaxX - FillWidth;
+                       |#### #### ####|
+                       |#### #### ####|
+                       |#### #### ####|
+                       |#### #### ####|
+    
+    now it is a multiple of 4                       
+
+
+
+-   So to push FillRect.MinX forward if we need, we do some math calculations
+    At first, FillWidth is the difference between Max and Min, we require that to be a multiple of 4.
+    Specically the next largest multiple of 4.
+    hence FillWidth += Adjustment; happens 
+
+
+-   FillWidthAlign = FillWidth & 3, which gives you the remainder of FillWidth / 4
+    so to be more explicit, this is FillWidth & (numPixelsInBatch - 1), where numPixelsInBatch = 4
+
+
+-   we also assign the StartupClipMask accordingly.
+                   
+                  FillRect.MinX     MaxX
+                         _____________
+                        |### #### ####|
+                        |### #### ####|
+                        |### #### ####|
+                        |### #### ####|
+                  
+                        ______________
+                       |#### #### ####|
+                       |#### #### ####|
+                       |#### #### ####|
+                       |#### #### ####|
+             
+StartupClipMask         0111 1111 1111
+
+    but our StartupClipMask is gonna be 0111
+
+
+
+-   note that our StartupClipMask operation. 
+
+    in the intel Intrinsics,
+    https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_slli_si128&expand=5288
+
+    _mm_slli_si128 takes the 2nd argument as bytes. so if our adjustment is 3 pixels, 
+
+    then our StartupClipMask has to shift left 12 bytes, which becomes (number of bits is not accurate);
+    
+    1111111111 0000000000 00000000000 000000000
+
+    also note, this is shift left, not shift right becuz the later pixels are in the high bit
+
+    pixel 3    pixel 2    pixel 1     pixel 0
+    1111111111 0000000000 00000000000 000000000
 
 
                 void DrawRectangleQuickly()
@@ -856,6 +933,10 @@ notice that the StartupClipMask is set to -1. -1 in 2 compliments is 11111111111
                     ...
                     ...
 
+                    FillRect = Intersect(ClipRect, FillRect);
+                
+                    ...
+                    ...
 
                     __m128i StartupClipMask = _mm_set1_epi8(-1);
                     int FillWidth = FillRect.MaxX - FillRect.MinX;

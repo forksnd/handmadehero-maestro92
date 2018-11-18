@@ -773,6 +773,8 @@ game_memory *DebugGlobalMemory;
 #endif
 extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 {
+    PlatformAddEntry = Memory->PlatformAddEntry;
+    PlatformCompleteAllWork = Memory->PlatformCompleteAllWork;
 #if HANDMADE_INTERNAL
     DebugGlobalMemory = Memory;
 #endif
@@ -787,11 +789,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     Assert(sizeof(game_state) <= Memory->PermanentStorageSize);    
     game_state *GameState = (game_state *)Memory->PermanentStorage;
     if(!Memory->IsInitialized)
-    {
-        PlatformAddEntry = Memory->PlatformAddEntry;
-        PlatformCompleteAllWork = Memory->PlatformCompleteAllWork;
-        
-        
+    {                
         uint32 TilesPerWidth = 17;
         uint32 TilesPerHeight = 9;
 
@@ -1215,6 +1213,12 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     DrawBuffer->Pitch = Buffer->Pitch;
     DrawBuffer->Memory = Buffer->Memory;
 
+#if 0
+    // NOTE(casey): Enable this to test weird buffer sizes in the renderer!
+    DrawBuffer->Width = 1279;
+    DrawBuffer->Height = 719;
+#endif
+    
     // TODO(casey): Decide what our pushbuffer size is!
     render_group *RenderGroup = AllocateRenderGroup(&TranState->TranArena, Megabytes(4),
                                                     DrawBuffer->Width, DrawBuffer->Height);
