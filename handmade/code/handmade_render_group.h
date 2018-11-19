@@ -106,6 +106,8 @@ struct render_entry_coordinate_system
 
 struct render_transform
 {
+    bool32 Orthographic;
+    
     // NOTE(casey): Camera parameters
     real32 MetersToPixels; // NOTE(casey): This translates meters _on the monitor_ into pixels _on the monitor_
     v2 ScreenCenter;
