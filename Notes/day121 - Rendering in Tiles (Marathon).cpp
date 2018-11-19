@@ -1093,3 +1093,37 @@ and
                     ...
                     ...
                 }
+
+
+now our multi threading renderer render stuff like below:
+assume we have Tile 0 1 2 3 4 5. Core 0 gets Tile 0, Core 1 gets Tile 1... 
+
+Every thread takes the entire RenderGroup. The RenderGroup will have A, B, C and D.
+
+since we added the ClipRect system, Core 0 will only render portions that overlap with tile 0
+
+so in this case, it will render render the left half of A in Tile 0. 
+Core 1 will render right half of A and left edge of B in Tile 1
+...
+...
+
+         ______________________________________
+        |         AAA|AAA        B|BBB         |
+        |   0     AAA|AAA     1  B|BBB     2   |
+        |            |           B|BBB         |
+        |            |            |            |
+        |            |            |            |
+        |____________|____________|____________|
+        |            |            |            |
+        |   3        |        4   |        5   |
+        |            |    CCCCC   |            |
+        |            |    CCCCC   |            |
+        |   DDDDDDDDD|DDD         |            |
+        |____________|____________|____________|
+
+
+
+
+
+
+

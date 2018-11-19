@@ -16,12 +16,26 @@ when rendering
 
 showed all the code and little details for making the code do memory aligned reads and writes. 
 
-[Personally im slightly confused. He mentioned that we cant do unaligned memory reads and write becuz 
-it might loads in extra pixels or write extra pixels. And when two cores read or write the same pixels,
-we have no control over what vales gets written
+made all the tiled clipRect width mulitiples of 4. 
 
-In the aligned memory read/write version that he showed, do we not face the same "write" race condition? 
+
+
+[Personally im slightly confused. His current implementation works becuz all the tiles and ClipRect  
+are four pixels aligned. Hence we dont see contentions between tiles. 
+
+in the case if the clipRect MinX or MaxX is not 4 pixels aligned, we push MinX forward, and MaxX backwards 
+to make them 4 pixels aligned. 
+
+in that case, even if we are doing aligned reads and store, do we not run into contention problems then?
 even though we are using a mask, are not we not just writing back the pixels with its "original values"?]
+
+in the example below, assume we push A maxX backwards and B minX forward, then we still see a contention area
+                ____________ 
+     __________|_           |
+    |          | |          |
+    |      A   | |    B     |
+    |          | |          |
+    |__________|_|__________|
 
 
 
