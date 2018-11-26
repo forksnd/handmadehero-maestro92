@@ -459,6 +459,7 @@ Win32DisplayBufferInWindow(win32_offscreen_buffer *Buffer,
     }
     else
     {
+#if 0
         int OffsetX = 10;
         int OffsetY = 10;
 
@@ -466,6 +467,10 @@ Win32DisplayBufferInWindow(win32_offscreen_buffer *Buffer,
         PatBlt(DeviceContext, 0, OffsetY + Buffer->Height, WindowWidth, WindowHeight, BLACKNESS);
         PatBlt(DeviceContext, 0, 0, OffsetX, WindowHeight, BLACKNESS);
         PatBlt(DeviceContext, OffsetX + Buffer->Width, 0, WindowWidth, WindowHeight, BLACKNESS);
+#else
+        int OffsetX = 0;
+        int OffsetY = 0;
+#endif
     
         // NOTE(casey): For prototyping purposes, we're going to always blit
         // 1-to-1 pixels to make sure we don't introduce artifacts with

@@ -1146,6 +1146,25 @@ internal PLATFORM_WORK_QUEUE_CALLBACK(DoTiledRenderWork)
 }
 
 internal void
+RenderGroupToOutput(render_group *RenderGroup, loaded_bitmap *OutputTarget)
+{
+    Assert(((uintptr)OutputTarget->Memory & 15) == 0);    
+
+    rectangle2i ClipRect;
+    ClipRect.MinX = 0;
+    ClipRect.MaxX = OutputTarget->Width;
+    ClipRect.MinY = 0;
+    ClipRect.MaxY = OutputTarget->Height;
+
+    tile_render_work Work;
+    Work.RenderGroup = RenderGroup;
+    Work.OutputTarget = OutputTarget;
+    Work.ClipRect = ClipRect;
+
+    DoTiledRenderWork(0, &Work);
+}
+
+internal void
 TiledRenderGroupToOutput(platform_work_queue *RenderQueue,
                          render_group *RenderGroup, loaded_bitmap *OutputTarget)
 {
@@ -1215,6 +1234,12 @@ internal render_group *
 AllocateRenderGroup(memory_arena *Arena, uint32 MaxPushBufferSize)
 {
     render_group *Result = PushStruct(Arena, render_group);
+
+    if(MaxPushBufferSize == 0)
+    {
+        // TODO(casey): Safe cast from memory_uint to uint32?
+        MaxPushBufferSize = (uint32)GetArenaSizeRemaining(Arena);
+    }
     Result->PushBufferBase = (uint8 *)PushSize(Arena, MaxPushBufferSize);
 
     Result->MaxPushBufferSize = MaxPushBufferSize;
@@ -1285,7 +1310,7 @@ inline entity_basis_p_result GetRenderEntityBasisP(render_transform *Transform, 
         real32 OffsetZ = 0.0f;
     
         real32 DistanceAboveTarget = Transform->DistanceAboveTarget;
-#if 1
+#if 0
         // TODO(casey): How do we want to control the debug camera?
         if(1)
         {

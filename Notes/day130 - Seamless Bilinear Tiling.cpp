@@ -5,6 +5,7 @@ Explain what causes the seams to appear.
 Explain why we would need a pixel of borders around our textures.
 (as a part of the solution to remove seams);
 
+went on to remove the seams 
 
 Keyword:
 subpixel accurate, renderering, anti-aliasing
