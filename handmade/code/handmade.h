@@ -268,6 +268,19 @@ struct ground_buffer
     loaded_bitmap Bitmap;
 };
 
+enum asset_state
+{
+    AssetState_Unloaded,
+    AssetState_Queued,
+    AssetState_Loaded,
+    AssetState_Locked,
+};
+struct asset_slot
+{
+    asset_state State;
+    loaded_bitmap *Bitmap;
+};
+
 enum game_asset_id
 {
     GAI_Backdrop,
@@ -279,16 +292,25 @@ enum game_asset_id
     GAI_Count,
 };
 
-enum asset_state
+struct asset_tag
 {
-    AssetState_Unloaded,
-    AssetState_Queued,
-    AssetState_Loaded,
+    uint32 ID;
+    real32 Value;
 };
-struct asset_handle
+struct asset_bitmap_info
 {
-    asset_state State;
-    loaded_bitmap *Bitmap;
+    v2 AlignPercentage;
+    real32 WidthOverHeight;
+    int32 Width;
+    int32 Height;
+
+    uint32 FirstTagIndex;
+    uint32 OnePastLastTagIndex;    
+};
+struct asset_group
+{
+    uint32 FirstTagIndex;
+    uint32 OnePastLastTagIndex;    
 };
 
 struct game_assets
@@ -298,7 +320,7 @@ struct game_assets
     memory_arena Arena;
     debug_platform_read_entire_file *ReadEntireFile;
     
-    loaded_bitmap *Bitmaps[GAI_Count];
+    asset_slot Bitmaps[GAI_Count];
 
     // NOTE(casey): Array'd assets
     loaded_bitmap Grass[2];
@@ -310,7 +332,7 @@ struct game_assets
 };
 inline loaded_bitmap *GetBitmap(game_assets *Assets, game_asset_id ID)
 {
-    loaded_bitmap *Result = Assets->Bitmaps[ID];
+    loaded_bitmap *Result = Assets->Bitmaps[ID].Bitmap;
 
     return(Result);
 }
