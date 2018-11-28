@@ -162,7 +162,7 @@ DEBUG_PLATFORM_READ_ENTIRE_FILE(DEBUGPlatformReadEntireFile)
                 else
                 {                    
                     // TODO(casey): Logging
-                    DEBUGPlatformFreeFileMemory(Thread, Result.Contents);
+                    DEBUGPlatformFreeFileMemory(Result.Contents);
                     Result.Contents = 0;
                 }
             }
@@ -1612,8 +1612,6 @@ WinMain(HINSTANCE Instance,
                                 NewController->IsConnected = false;
                             }
                         }
-
-                        thread_context Thread = {};
                         
                         game_offscreen_buffer Buffer = {};
                         Buffer.Memory = GlobalBackbuffer.Memory;
@@ -1632,7 +1630,7 @@ WinMain(HINSTANCE Instance,
                         }
                         if(Game.UpdateAndRender)
                         {
-                            Game.UpdateAndRender(&Thread, &GameMemory, NewInput, &Buffer);
+                            Game.UpdateAndRender(&GameMemory, NewInput, &Buffer);
                             HandleDebugCycleCounters(&GameMemory);
                         }
 
@@ -1725,7 +1723,7 @@ WinMain(HINSTANCE Instance,
                             SoundBuffer.Samples = Samples;
                             if(Game.GetSoundSamples)
                             {
-                                Game.GetSoundSamples(&Thread, &GameMemory, &SoundBuffer);
+                                Game.GetSoundSamples(&GameMemory, &SoundBuffer);
                             }
 
 #if HANDMADE_INTERNAL

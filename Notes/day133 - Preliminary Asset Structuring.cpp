@@ -8,7 +8,9 @@ mentions the problem of assets being evicted in the middle of rendering.
 
 introduced the concept of locked assets which cant be evicted to solve the above problem.
 
-introduced the concept of asset header and asset meta info
+introduced the concept of asset header and asset meta info. Also talked about the idea 
+of giving assets certain tags/properties
+
 
 Keyword:
 Asset, memory
