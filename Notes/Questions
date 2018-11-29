@@ -1,11 +1,13 @@
-1.	from day13
-analog input vs digial input
+1.	day 13, analog input vs digial input
 
 2.	understand while templates are bad, and lead to longer compile time
 
-3.	day112, cache line aliasing
+3.	day 112, cache line aliasing
 
-4.	
+4.	day 134
+someone asked about "how do you procedurally generate character movement?" in the Q/A
+Casey mentioned David Rosen_s GDC talk
+https://www.youtube.com/watch?v=LNidsMesxSE
 
 
 

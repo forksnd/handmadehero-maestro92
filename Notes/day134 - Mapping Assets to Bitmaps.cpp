@@ -1,9 +1,9 @@
 Handmade Hero Day 134 - Mapping Assets to Bitmaps
 Summary:
 
-polished the structure of the asset system, added handemade_asset.h and .cpp
+mentioned the plans for the structure of the asset system, added handemade_asset.h and .cpp
 
-wrote code for the "bitmap family based" asset structure. 
+started the "bitmap family based" asset structure. 
 
 someone asked about "how do you procedurally generate character movement?" in the Q/A
 Casey mentioned David Rosen_s GDC talk
@@ -57,7 +57,7 @@ asset (for example a type of tree), then the asset system will return a specific
                 };
 
 
-
+[Personally, I would rename Asset_Count to Asset_Type_Count]
 
 
 

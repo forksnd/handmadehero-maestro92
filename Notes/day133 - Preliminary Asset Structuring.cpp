@@ -129,6 +129,10 @@ made a sanity check in the FillGroundChunk(); function.
 we want to make sure that when we kick off the work, all the bitmaps in the RenderGroup are actually valid
 so we added the AllResourcesPresent(); function
 
+
+-   also note very importantly, on day 135, we found this bug where we forgot to call the EndTaskWithMemory(); function.
+In the case that our resources arent present, we still want to call EndTaskWithMemory();
+
                 handmade.cpp
 
                 internal void
@@ -161,6 +165,11 @@ so we added the AllResourcesPresent(); function
                             Work->Task = Task;
 
                             PlatformAddEntry(TranState->LowPriorityQueue, FillGroundChunkWork, Work);            
+                        }
+
+                        else [... this part is added in day 135 ...]
+                        {
+                            EndTaskWithMemory();
                         }
                     }
                 }
