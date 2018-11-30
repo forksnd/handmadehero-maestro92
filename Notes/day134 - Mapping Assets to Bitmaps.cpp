@@ -185,12 +185,10 @@ so graphically, if you are going from Asset_Type to actualy bitmap, there are tw
                 |___________|
 
 
+-   the tags array is a way that Casey plans to classify assets 
+    he didnt really work on it in this episode. 
 
-
-
-
-
-
+    
 
 21:33
 

@@ -7,13 +7,6 @@
    $Notice: (C) Copyright 2015 by Molly Rocket, Inc. All Rights Reserved. $
    ======================================================================== */
 
-struct hero_bitmaps
-{
-    loaded_bitmap Head;
-    loaded_bitmap Cape;
-    loaded_bitmap Torso;
-};
-
 enum asset_state
 {
     AssetState_Unloaded,
@@ -31,6 +24,7 @@ enum asset_tag_id
 {
     Tag_Smoothness,
     Tag_Flatness,
+    Tag_FacingDirection, // NOTE(casey): Angle in radians off of due right
     
     Tag_Count,
 };
@@ -48,6 +42,10 @@ enum asset_type_id
     Asset_Grass,
     Asset_Tuft,
     Asset_Stone,
+
+    Asset_Head,
+    Asset_Cape,
+    Asset_Torso,
     
     Asset_Count,
 };
@@ -62,6 +60,11 @@ struct asset
     uint32 FirstTagIndex;
     uint32 OnePastLastTagIndex;
     uint32 SlotID;
+};
+
+struct asset_vector
+{
+    real32 E[Tag_Count];
 };
 
 struct asset_type
@@ -98,12 +101,14 @@ struct game_assets
     asset_type AssetTypes[Asset_Count];
 
     // NOTE(casey): Structured assets
-    hero_bitmaps HeroBitmaps[4];
+//    hero_bitmaps HeroBitmaps[4];
 
     // TODO(casey): These should go away once we actually load a asset pack file
     uint32 DEBUGUsedBitmapCount;
     uint32 DEBUGUsedAssetCount;
+    uint32 DEBUGUsedTagCount;
     asset_type *DEBUGAssetType;
+    asset *DEBUGAsset;
 };
 
 struct bitmap_id
