@@ -7,6 +7,12 @@
    $Notice: (C) Copyright 2015 by Molly Rocket, Inc. All Rights Reserved. $
    ======================================================================== */
 
+struct loaded_sound
+{
+    int32 SampleCount;
+    void *Memory;
+};
+
 enum asset_state
 {
     AssetState_Unloaded,
@@ -17,7 +23,11 @@ enum asset_state
 struct asset_slot
 {
     asset_state State;
-    loaded_bitmap *Bitmap;
+    union
+    {
+        loaded_bitmap *Bitmap;
+        loaded_sound *Sound;
+    };
 };
 
 enum asset_tag_id
@@ -79,17 +89,25 @@ struct asset_bitmap_info
     v2 AlignPercentage;
 };
 
+struct asset_sound_info
+{
+    char *FileName;
+};
+
 struct game_assets
 {
     // TODO(casey): Not thrilled about this back-pointer
     struct transient_state *TranState;
     memory_arena Arena;
 
+    real32 TagRange[Tag_Count];
+    
     uint32 BitmapCount;
     asset_bitmap_info *BitmapInfos;
     asset_slot *Bitmaps;
 
     uint32 SoundCount;
+    asset_sound_info *SoundInfos;
     asset_slot *Sounds;
 
     uint32 TagCount;
@@ -116,7 +134,7 @@ struct bitmap_id
     uint32 Value;
 };
 
-struct audio_id
+struct sound_id
 {
     uint32 Value;
 };
@@ -129,7 +147,7 @@ inline loaded_bitmap *GetBitmap(game_assets *Assets, bitmap_id ID)
 }
 
 internal void LoadBitmap(game_assets *Assets, bitmap_id ID);
-internal void LoadSound(game_assets *Assets, audio_id ID);
+internal void LoadSound(game_assets *Assets, sound_id ID);
 
 #define HANDMADE_ASSET_H
 #endif

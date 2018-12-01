@@ -3,10 +3,12 @@ Summary:
 
 working on the Tag system in the asset system.
 
-while working on hero bitmap facing direction, mentioned the wrap around issue in comparing angles
+while working on hero bitmap facing direction, Casey mentioned the wrap around issue in comparing angles
 Casey mentioned that that is becuz some of the Tag parameters are periodic, not monotonic
+periodic meaning, certain for certain paramaters, their values dont grow infinitly. 
+For example angles goes from 0 to 360, then it wraps around.
 
-
+Casey mentions that we will have to deal with periodic parameters in our tag system
 
 Keyword:
 asset system
@@ -182,25 +184,25 @@ graphically, the tag system will look like below:
 following the graph we draw on day 134
 it will look like below:
 
-
+[Note, Obviously Tag_Height, Tag_Weight, Tag_Gender are tags that I made up ]
 
 
     asset_type AssetTypes[Asset_Count];                         
                                             asset *Assets;                  asset_tag              
                  ___________                                    
-                | Asset_    |               hero0   -------------------->   facing: up  
-                |  hero     |               hero1   -----------             height: 180
-                |___________|               hero2              \            weight: 155 lbs
-                | Asset_    |               hero3               \           gender: male
-                |  Shadow   |               shadow0              ------>    facing: left
-                |___________|               shadow1                         height: 180
-                | Asset_    |  --------->   shadow2                         weight: 155 lbs
-                |  Tree     |               shadow3                         gender: male
+                | Asset_    |               hero0   -------------------->   Tag_FacingDirection: up  
+                |  hero     |               hero1   -----------             Tag_Height: 180
+                |___________|               hero2              \            Tag_Weight: 155 lbs
+                | Asset_    |               hero3               \           Tag_Gender: male
+                |  Shadow   |               shadow0              ------>    Tag_FacingDirection: left
+                |___________|               shadow1                         Tag_Height: 180
+                | Asset_    |  --------->   shadow2                         Tag_Weight: 155 lbs
+                |  Tree     |               shadow3                         Tag_Gender: male
                 |___________|               shadow4                         ...
-                |           |               tree0   -------------------->   color: green                          
-                |  ...      |               tree1                           type: oak
-                |___________|               tree2   -------------------->   color: yellow             
-                |           |               tree3                           type: oak
+                |           |               tree0   -------------------->   Tag_Color: green                          
+                |  ...      |               tree1                           Tag_Type: oak
+                |___________|               tree2   -------------------->   Tag_Color: yellow             
+                |           |               tree3                           Tag_Type: oak
                 |  ...      |               tree4
                 |___________|               tree5
                 |           |               ...
