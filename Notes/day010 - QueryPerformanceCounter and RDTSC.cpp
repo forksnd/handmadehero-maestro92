@@ -1,9 +1,18 @@
+Handmade Hero Day 010 - QueryPerformanceCounter and RDTSC
+
+
+Summary:
+mentions the difference between __rdtsc and QueryPerformanceCounter on windows.
+
+
+Keyword:
+
 
 
 https://software.intel.com/sites/default/files/managed/a4/60/325383-sdm-vol-2abcd.pdf
 
 3:47
-RDTSC
+__rdtsc
 a way of getting "a thing" inside the CPU that increments by one every time the CPU retires a clock cycle
 
 Example:
@@ -33,9 +42,29 @@ https://msdn.microsoft.com/en-us/library/windows/desktop/ms644904(v=vs.85).aspx
 this is u asking windows, to the best of your knowledge, what the worlds real time now
 high resolution, 
 
-"Retrieves the current value of the performance counter, which is a high resolution (<1us) time stamp that can be used for time-interval measurements."
+		"Retrieves the current value of the performance counter, 
+		which is a high resolution (<1us) time stamp that can be used for time-interval measurements."
 
-resolution is actually (1<us)
+resolution is actually (1<us);
+
+
+
+[From the following link, it says 
+				
+		"QueryPerformanceCounter returns the number of "ticks" since the computer was rebooted.
+		QueryPerformanceFrequency returns the number of "ticks" in a second
+
+		to measure the duration of a frame (or anything else), you will call QueryPerformanceCounter at the beginining
+		of the frame and save the value so that you can compare it to the returned at the end of a frame());
+		"
+https://www.gamedev.net/forums/topic/339194-can-somebody-please-explain-queryperformancecounter/
+]
+	
+
+[The following link also provides very good informatin about QueryPerformanceCounter 
+http://www.songho.ca/misc/timer/timer.html
+]
+
 
 
 17:25
@@ -46,7 +75,7 @@ LONG is 32 bit
 
 
 51:55
-__rdtsc() is cheaper than QueryPerformanceCounter
+__rdtsc(); is cheaper than QueryPerformanceCounter
 
 
 
@@ -64,7 +93,7 @@ they do the printf in doubles anyway
 
 
 1:22:23
-doubles are slower than float, so don't use it unless u have to, usually half as fast
+doubles are slower than float, so dont use it unless u have to, usually half as fast
 
 
 1:23:23
@@ -81,10 +110,10 @@ tempaltes are not worth the pain
 1:41:45
 
 float vs double being twice as fast 
-MULPS (real32) - 5 cycles to complete, 1 cycle throughput
-MULPD (real64) - 5 cycles to complete, 1 cycle throughput
+MULPS (real32); - 5 cycles to complete, 1 cycle throughput
+MULPD (real64); - 5 cycles to complete, 1 cycle throughput
 
-if you execute a MULPS vs MULPD, it's pretty much the same
+if you execute a MULPS vs MULPD, its pretty much the same
 but MULPS is twice as fast becuz these instructions are the same width.
 they operate on 128-bit woth of data
 
