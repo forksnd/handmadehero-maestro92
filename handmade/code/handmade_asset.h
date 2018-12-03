@@ -43,6 +43,10 @@ enum asset_tag_id
 enum asset_type_id
 {
     Asset_None,
+
+    //
+    // NOTE(casey): Bitmaps!
+    //
     
     Asset_Shadow,
     Asset_Tree,
@@ -57,6 +61,21 @@ enum asset_type_id
     Asset_Head,
     Asset_Cape,
     Asset_Torso,
+
+    //
+    // NOTE(casey): Sounds!
+    //
+
+    Asset_Bloop,
+    Asset_Crack,
+    Asset_Drop,
+    Asset_Glide,
+    Asset_Music,
+    Asset_Puhp,
+
+    //
+    //
+    //
     
     Asset_Count,
 };
@@ -124,6 +143,7 @@ struct game_assets
 
     // TODO(casey): These should go away once we actually load a asset pack file
     uint32 DEBUGUsedBitmapCount;
+    uint32 DEBUGUsedSoundCount;
     uint32 DEBUGUsedAssetCount;
     uint32 DEBUGUsedTagCount;
     asset_type *DEBUGAssetType;
@@ -143,6 +163,13 @@ struct sound_id
 inline loaded_bitmap *GetBitmap(game_assets *Assets, bitmap_id ID)
 {
     loaded_bitmap *Result = Assets->Bitmaps[ID.Value].Bitmap;
+
+    return(Result);
+}
+
+inline loaded_sound *GetSound(game_assets *Assets, sound_id ID)
+{
+    loaded_sound *Result = Assets->Sounds[ID.Value].Sound;
 
     return(Result);
 }
