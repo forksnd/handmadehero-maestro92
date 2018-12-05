@@ -509,8 +509,18 @@ should be pretty straightforward/
 
 
 
+Casey also made the asset_slot shared among bitmap and sound.
+this is done using a union trick
 
-
+                struct asset_slot
+                {
+                    asset_state State;
+                    union
+                    {
+                        loaded_bitmap *Bitmap;
+                        loaded_sound *Sound;
+                    };
+                };
 
 
 
