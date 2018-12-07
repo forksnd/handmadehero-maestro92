@@ -198,6 +198,9 @@ the challenge is to make the playback seamless.
 
 On a first draft, Casey wrote the non-seamless version
 
+PlayingSound has member variable called SampledPlayed.
+that is really CurrentSampledBeingPlayed.
+
 -   recall that the line 
 
                 if((uint32)PlayingSound->SamplesPlayed == LoadedSound->SampleCount)

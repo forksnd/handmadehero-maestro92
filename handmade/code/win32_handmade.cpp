@@ -265,7 +265,7 @@ Win32LoadGameCode(char *SourceDLLName, char *TempDLLName, char *LockFileName)
 
 internal void
 Win32UnloadGameCode(win32_game_code *GameCode)
-{
+{    
     if(GameCode->GameCodeDLL)
     {
         FreeLibrary(GameCode->GameCodeDLL);
@@ -342,7 +342,6 @@ Win32InitDSound(HWND Window, int32 SamplesPerSecond, int32 BufferSize)
                 BufferDescription.dwFlags = DSBCAPS_PRIMARYBUFFER;
 
                 // NOTE(casey): "Create" a primary buffer
-                // TODO(casey): DSBCAPS_GLOBALFOCUS?
                 LPDIRECTSOUNDBUFFER PrimaryBuffer;
                 if(SUCCEEDED(DirectSound->CreateSoundBuffer(&BufferDescription, &PrimaryBuffer, 0)))
                 {
@@ -367,10 +366,15 @@ Win32InitDSound(HWND Window, int32 SamplesPerSecond, int32 BufferSize)
                 // TODO(casey): Diagnostic
             }
 
+            // TODO(casey): In release mode, should we not specify DSBCAPS_GLOBALFOCUS?
+
             // TODO(casey): DSBCAPS_GETCURRENTPOSITION2
             DSBUFFERDESC BufferDescription = {};
             BufferDescription.dwSize = sizeof(BufferDescription);
             BufferDescription.dwFlags = DSBCAPS_GETCURRENTPOSITION2;
+#if HANDMADE_INTERNAL
+            BufferDescription.dwFlags |= DSBCAPS_GLOBALFOCUS;
+#endif
             BufferDescription.dwBufferBytes = BufferSize;
             BufferDescription.lpwfxFormat = &WaveFormat;
             HRESULT Error = DirectSound->CreateSoundBuffer(&BufferDescription, &GlobalSecondaryBuffer, 0);
@@ -1455,6 +1459,9 @@ WinMain(HINSTANCE Instance,
                     FILETIME NewDLLWriteTime = Win32GetLastWriteTime(SourceGameCodeDLLFullPath);
                     if(CompareFileTime(&NewDLLWriteTime, &Game.DLLLastWriteTime) != 0)
                     {
+                        Win32CompleteAllWork(&HighPriorityQueue);
+                        Win32CompleteAllWork(&LowPriorityQueue);
+                        
                         Win32UnloadGameCode(&Game);
                         Game = Win32LoadGameCode(SourceGameCodeDLLFullPath,
                                                  TempGameCodeDLLFullPath,
