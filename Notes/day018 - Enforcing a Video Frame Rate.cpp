@@ -4,7 +4,7 @@ Summary:
 
 mentioned how syncing your game frame rate with Monitor frame rate is crucial to the user.
 
-talks about the flaws in variable refresh rate monitor. Which it forces your game state to always be wrong.
+talks about the flaws in variable refresh rate monitor becuz it forces your game state to always be wrong.
 
 talked about the difference between QueryPerformanceCounter and __rdtsc.
 emphasized that QueryPerformanceCounter is used for game logic 
@@ -17,12 +17,12 @@ first using the CPU melting method. Basically a while loop in a spin lock.
 then the sleep method.
 talked about the problems of sleep granularity due to OS scheduler.
 
-attempted and mentioned the timeBeginPeriod as a possible solution
+attempted and mentioned the timeBeginPeriod as a possible solution for the OS scheduler granularity
 
-explains why in this current code, we are doing the wait/sleep logic before the render/flip in the Q/A
+in the Q/A explains why in this current code, we are doing the wait/sleep logic before the render/flip logic
 
 Keyword:
-Frame rate, variable refresh rate monitor, QueryPerformanceCounter, __rdtsc
+Frame rate, variable refresh rate monitor, QueryPerformanceCounter, __rdtsc, game loop
 
 
 
