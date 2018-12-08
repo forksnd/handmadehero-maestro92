@@ -233,7 +233,8 @@ we will just advance Iter.At by the chunk size, so that we start on the next chu
             #define AlignN(Value, N) ((Value + (N-1)) & ~(N-1))
 
 
-
+    Do Note that N has to be power of 2
+    
                 inline riff_iterator
                 NextChunk(riff_iterator Iter)
                 {

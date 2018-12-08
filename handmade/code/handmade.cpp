@@ -656,11 +656,11 @@ MakePyramidNormalMap(loaded_bitmap *Bitmap, real32 Roughness)
 game_memory *DebugGlobalMemory;
 #endif
 extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
-{
+{    
     PlatformAddEntry = Memory->PlatformAddEntry;
     PlatformCompleteAllWork = Memory->PlatformCompleteAllWork;
     DEBUGPlatformReadEntireFile = Memory->DEBUGPlatformReadEntireFile;
-
+    
 #if HANDMADE_INTERNAL
     DebugGlobalMemory = Memory;
 #endif

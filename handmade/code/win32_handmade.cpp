@@ -1285,8 +1285,8 @@ WinMain(HINSTANCE Instance,
        1080 -> 2048 = 2048-1080 -> pixels 968
        1024 + 128 = 1152
     */
-    Win32ResizeDIBSection(&GlobalBackbuffer, 960, 540);
-//    Win32ResizeDIBSection(&GlobalBackbuffer, 1920, 1080);
+//    Win32ResizeDIBSection(&GlobalBackbuffer, 960, 540);
+    Win32ResizeDIBSection(&GlobalBackbuffer, 1920, 1080);
 //    Win32ResizeDIBSection(&GlobalBackbuffer, 1279, 719);
     
     WindowClass.style = CS_HREDRAW|CS_VREDRAW;
@@ -1358,7 +1358,8 @@ WinMain(HINSTANCE Instance,
 #endif
             
             // TODO(casey): Pool with bitmap VirtualAlloc
-            int16 *Samples = (int16 *)VirtualAlloc(0, SoundOutput.SecondaryBufferSize,
+            u32 MaxPossibleOverrun = 2*4*sizeof(u16);
+            int16 *Samples = (int16 *)VirtualAlloc(0, SoundOutput.SecondaryBufferSize + MaxPossibleOverrun,
                                                    MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
 
             
