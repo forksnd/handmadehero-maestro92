@@ -19,7 +19,7 @@ struct sound_id
 
 struct loaded_sound
 {
-    uint32 SampleCount;
+    uint32 SampleCount; // NOTE(casey): This is the sample count divided by 8
     uint32 ChannelCount;
     int16 *Samples[2];
 };

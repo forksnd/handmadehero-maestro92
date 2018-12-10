@@ -73,14 +73,22 @@ bilinear filtering on edge pixels, we do the following: (in both functions);
 Recall that we werent seeing these artifacts previously. 
 Casey goes on to explain why do we see seams with this approach when we are rendering in tiles.
 
-image we have two tiles, Tile0 and Tile1, when you are bilinear lerp on the edge, lets say pixels A, B, C and D,
-pixels B and D exists on the different bitmap.
+image we have two ground chunk, Tile0 and Tile1, when
+
+a few things we need to take care of 
+1.  the color values between A and B has to look smooth, since they belong to different tiles 
+    same goes for C and D 
+
+2.  also when we render, pixels on the edge, lets say a pixel value lands inside the 4 texels of A, B, C and D ,
+    and you have to bilinear lerp that pixel. The problem is Texel B and D exists on the different bitmap.
+    so Tile0 somehow needs to know about Tile1s bitmap
+
 
 [even if we were to read it for free, we also run in race condition issues. We have to wait for B to finish drawing 
  to draw A, B has to wait for A to finish to draw itself]
 
                             .
-                            .
+                Tile0       .       Tile1
                             . 
                  _______________________
                 |   |   |   |   |   |   |
@@ -244,7 +252,7 @@ now we have the code. you can see tX, tY is offset with Half.
 
 
 31:43
-In the FillGroundChunk function, we will shrink the orthographic size so that we have a level of boundaries around
+In the FillGroundChunk function, we will shrink the orthographic size so that we have a layer of boundaries around
 as you can see, for the Orthographic function call, we have Orthographic(RenderGroup, Buffer->Width, Buffer->Height, (Buffer->Width - 2) / Width);
 
                 internal void
@@ -276,7 +284,7 @@ as you can see, for the Orthographic function call, we have Orthographic(RenderG
                     }
 that seemed to fix the seam
 
-
+[what confuses me is that it doesnt seem like we fill adjacent edge boundary cell colors anywhere... so no idea what happened to that]
 
 43:17
 Casey plans to fill the ground chunk on a separate thread.

@@ -1358,7 +1358,8 @@ WinMain(HINSTANCE Instance,
 #endif
             
             // TODO(casey): Pool with bitmap VirtualAlloc
-            u32 MaxPossibleOverrun = 2*4*sizeof(u16);
+            // TODO(casey): Remove MaxPossibleOverrun?
+            u32 MaxPossibleOverrun = 2*8*sizeof(u16);
             int16 *Samples = (int16 *)VirtualAlloc(0, SoundOutput.SecondaryBufferSize + MaxPossibleOverrun,
                                                    MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
 
@@ -1727,7 +1728,8 @@ WinMain(HINSTANCE Instance,
 
                             game_sound_output_buffer SoundBuffer = {};
                             SoundBuffer.SamplesPerSecond = SoundOutput.SamplesPerSecond;
-                            SoundBuffer.SampleCount = BytesToWrite / SoundOutput.BytesPerSample;
+                            SoundBuffer.SampleCount = Align8(BytesToWrite / SoundOutput.BytesPerSample);
+                            BytesToWrite = SoundBuffer.SampleCount*SoundOutput.BytesPerSample;
                             SoundBuffer.Samples = Samples;
                             if(Game.GetSoundSamples)
                             {
