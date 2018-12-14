@@ -163,17 +163,17 @@ so graphically, if you are going from Asset_Type to actualy bitmap, there are tw
 
 
     asset_type AssetTypes[Asset_Count];                         
-                                            asset *Assets;                  asset_slot *Bitmaps;             
+                                            asset *Assets;                          asset_slot *Bitmaps;             
                  ___________                                    
-                | Asset_    |               backdrop0                       bitmap0  
-                |  Backdrop |               backdrop1                       bitmap1
-                |___________|               backdrop2                       bitmap2
-                | Asset_    |               backdrop3                       bitmap3
-                |  Shadow   |               backdrop4                       bitmap4
-                |___________|               shadow0                         bitmap5
-                | Asset_    |  --------->   shadow1         --------->      bitmap6
-                |  Tree     |               shadow2                         ...
-                |___________|               shadow3                         ...
+                | Asset_    |               backdrop0                               bitmap0  
+                |  Backdrop |               backdrop1                               bitmap1
+                |___________|               backdrop2                               bitmap2
+                | Asset_    |               backdrop3                               bitmap3
+                |  Shadow   |               backdrop4                               bitmap4
+                |___________|               shadow0         Bitmaps[slotID]         bitmap5
+                | Asset_    |  --------->   shadow1         --------->              bitmap6
+                |  Tree     |               shadow2                                 ...
+                |___________|               shadow3                                 ...
                 |           |               tree0
                 |  ...      |               tree1
                 |___________|               tree2

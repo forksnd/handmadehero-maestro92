@@ -24,23 +24,6 @@ struct loaded_sound
     int16 *Samples[2];
 };
 
-enum asset_state
-{
-    AssetState_Unloaded,
-    AssetState_Queued,
-    AssetState_Loaded,
-    AssetState_Locked,
-};
-struct asset_slot
-{
-    asset_state State;
-    union
-    {
-        loaded_bitmap *Bitmap;
-        loaded_sound *Sound;
-    };
-};
-
 enum asset_tag_id
 {
     Tag_Smoothness,
@@ -48,69 +31,6 @@ enum asset_tag_id
     Tag_FacingDirection, // NOTE(casey): Angle in radians off of due right
     
     Tag_Count,
-};
-
-enum asset_type_id
-{
-    Asset_None,
-
-    //
-    // NOTE(casey): Bitmaps!
-    //
-    
-    Asset_Shadow,
-    Asset_Tree,
-    Asset_Sword,
-//    Asset_Stairwell,
-    Asset_Rock,
-
-    Asset_Grass,
-    Asset_Tuft,
-    Asset_Stone,
-
-    Asset_Head,
-    Asset_Cape,
-    Asset_Torso,
-
-    //
-    // NOTE(casey): Sounds!
-    //
-
-    Asset_Bloop,
-    Asset_Crack,
-    Asset_Drop,
-    Asset_Glide,
-    Asset_Music,
-    Asset_Puhp,
-
-    //
-    //
-    //
-    
-    Asset_Count,
-};
-
-struct asset_tag
-{
-    uint32 ID; // NOTE(casey): Tag ID
-    real32 Value;
-};
-struct asset
-{
-    uint32 FirstTagIndex;
-    uint32 OnePastLastTagIndex;
-    uint32 SlotID;
-};
-
-struct asset_vector
-{
-    real32 E[Tag_Count];
-};
-
-struct asset_type
-{
-    uint32 FirstAssetIndex;
-    uint32 OnePastLastAssetIndex;
 };
 
 struct asset_bitmap_info
@@ -127,6 +47,52 @@ struct asset_sound_info
     sound_id NextIDToPlay;
 };
 
+struct asset_tag
+{
+    uint32 ID; // NOTE(casey): Tag ID
+    real32 Value;
+};
+
+
+enum asset_state
+{
+    AssetState_Unloaded,
+    AssetState_Queued,
+    AssetState_Loaded,
+    AssetState_Locked,
+};
+struct asset_slot
+{
+    asset_state State;
+    union
+    {
+        loaded_bitmap *Bitmap;
+        loaded_sound *Sound;
+    };
+};
+struct asset
+{
+    uint32 FirstTagIndex;
+    uint32 OnePastLastTagIndex;
+
+    union
+    {
+        asset_bitmap_info Bitmap;
+        asset_sound_info Sound;
+    };
+};
+
+struct asset_vector
+{
+    real32 E[Tag_Count];
+};
+
+struct asset_type
+{
+    uint32 FirstAssetIndex;
+    uint32 OnePastLastAssetIndex;
+};
+
 struct game_assets
 {
     // TODO(casey): Not thrilled about this back-pointer
@@ -134,20 +100,13 @@ struct game_assets
     memory_arena Arena;
 
     real32 TagRange[Tag_Count];
-    
-    uint32 BitmapCount;
-    asset_bitmap_info *BitmapInfos;
-    asset_slot *Bitmaps;
-
-    uint32 SoundCount;
-    asset_sound_info *SoundInfos;
-    asset_slot *Sounds;
 
     uint32 TagCount;
     asset_tag *Tags;
 
     uint32 AssetCount;
     asset *Assets;
+    asset_slot *Slots;
     
     asset_type AssetTypes[Asset_Count];
 
@@ -165,16 +124,16 @@ struct game_assets
 
 inline loaded_bitmap *GetBitmap(game_assets *Assets, bitmap_id ID)
 {
-    Assert(ID.Value <= Assets->BitmapCount);
-    loaded_bitmap *Result = Assets->Bitmaps[ID.Value].Bitmap;
+    Assert(ID.Value <= Assets->AssetCount);
+    loaded_bitmap *Result = Assets->Slots[ID.Value].Bitmap;
 
     return(Result);
 }
 
 inline loaded_sound *GetSound(game_assets *Assets, sound_id ID)
 {
-    Assert(ID.Value <= Assets->SoundCount);
-    loaded_sound *Result = Assets->Sounds[ID.Value].Sound;
+    Assert(ID.Value <= Assets->AssetCount);
+    loaded_sound *Result = Assets->Slots[ID.Value].Sound;
 
     return(Result);
 }
@@ -182,8 +141,8 @@ inline loaded_sound *GetSound(game_assets *Assets, sound_id ID)
 inline asset_sound_info *
 GetSoundInfo(game_assets *Assets, sound_id ID)
 {
-    Assert(ID.Value <= Assets->SoundCount);
-    asset_sound_info *Result = Assets->SoundInfos + ID.Value;
+    Assert(ID.Value <= Assets->AssetCount);
+    asset_sound_info *Result = &Assets->Assets[ID.Value].Sound;
 
     return(Result);
 }
