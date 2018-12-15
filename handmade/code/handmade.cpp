@@ -17,7 +17,7 @@
 struct add_low_entity_result
 {
     low_entity *Low;
-    uint32 LowIndex;
+    u32 LowIndex;
 };
 internal add_low_entity_result
 AddLowEntity(game_state *GameState, entity_type Type, world_position P)

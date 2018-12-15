@@ -7,6 +7,15 @@
    $Notice: (C) Copyright 2015 by Molly Rocket, Inc. All Rights Reserved. $
    ======================================================================== */
 
+enum asset_tag_id
+{
+    Tag_Smoothness,
+    Tag_Flatness,
+    Tag_FacingDirection, // NOTE(casey): Angle in radians off of due right
+    
+    Tag_Count,
+};
+
 enum asset_type_id
 {
     Asset_None,

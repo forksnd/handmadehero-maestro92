@@ -6,132 +6,58 @@
    $Notice: (C) Copyright 2015 by Molly Rocket, Inc. All Rights Reserved. $
    ======================================================================== */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include "handmade_platform.h"
-#include "handmade_asset_type_id.h"
+#include "test_asset_builder.h"
 
 FILE *Out = 0;
 
-struct asset_bitmap_info
-{
-    char *FileName;
-    r32 AlignPercentage[2];
-};
-
-struct asset_sound_info
-{
-    char *FileName;
-    u32 FirstSampleIndex;
-    u32 SampleCount;
-    u32 NextIDToPlay;
-};
-
-struct asset_tag
-{
-    uint32 ID; // NOTE(casey): Tag ID
-    real32 Value;
-};
-struct asset
-{
-    u64 DataOffset;
-    u32 FirstTagIndex;
-    u32 OnePastLastTagIndex;
-};
-struct asset_type
-{
-    u32 FirstAssetIndex;
-    u32 OnePastLastAssetIndex;
-};
-
-#define VERY_LARGE_NUMBER 4096
-
-uint32 BitmapCount;
-uint32 SoundCount;
-uint32 TagCount;
-uint32 AssetCount;
-asset_bitmap_info BitmapInfos[VERY_LARGE_NUMBER];
-asset_sound_info SoundInfos[VERY_LARGE_NUMBER];
-asset_tag Tags[VERY_LARGE_NUMBER];
-asset Assets[VERY_LARGE_NUMBER];
-asset_type AssetTypes[Asset_Count];
-
-u32 DEBUGUsedBitmapCount;
-u32 DEBUGUsedSoundCount;
-u32 DEBUGUsedAssetCount;
-u32 DEBUGUsedTagCount;
-asset_type *DEBUGAssetType;
-asset *DEBUGAsset;
-
 internal void
-BeginAssetType(asset_type_id TypeID)
+BeginAssetType(game_assets *Assets, asset_type_id TypeID)
 {
-    Assert(DEBUGAssetType == 0);
+    Assert(Assets->DEBUGAssetType == 0);
 
-    DEBUGAssetType = AssetTypes + TypeID;
-    DEBUGAssetType->FirstAssetIndex = DEBUGUsedAssetCount;
-    DEBUGAssetType->OnePastLastAssetIndex = DEBUGAssetType->FirstAssetIndex;
+    Assets->DEBUGAssetType = Assets->AssetTypes + TypeID;
+    Assets->DEBUGAssetType->TypeID = TypeID;
+    Assets->DEBUGAssetType->FirstAssetIndex = Assets->AssetCount;
+    Assets->DEBUGAssetType->OnePastLastAssetIndex = Assets->DEBUGAssetType->FirstAssetIndex;
 }
 
-internal void
-AddBitmapAsset(char *FileName, real32 AlignPercentageX, real32 AlignPercentageY)
+internal bitmap_id
+AddBitmapAsset(game_assets *Assets, char *FileName, r32 AlignPercentageX = 0.5f, r32 AlignPercentageY = 0.5f)
 {
-    Assert(DEBUGAssetType);
-    Assert(DEBUGAssetType->OnePastLastAssetIndex < AssetCount);
-    
-    asset *Asset = Assets + DEBUGAssetType->OnePastLastAssetIndex++;
-    Asset->FirstTagIndex = DEBUGUsedTagCount;
+    Assert(Assets->DEBUGAssetType);
+    Assert(Assets->DEBUGAssetType->OnePastLastAssetIndex < ArrayCount(Assets->Assets));
+
+    bitmap_id Result = {Assets->DEBUGAssetType->OnePastLastAssetIndex++};
+    asset *Asset = Assets->Assets + Result.Value;
+    Asset->FirstTagIndex = Assets->TagCount;
     Asset->OnePastLastTagIndex = Asset->FirstTagIndex;
-    Asset->SlotID = DEBUGAddBitmapInfo(Assets, FileName, AlignPercentageX, AlignPercentageY).Value;
-/*
-    internal bitmap_id
-        DEBUGAddBitmapInfo(char *FileName, v2 AlignPercentage)
-    {
-        Assert(Assets->DEBUGUsedBitmapCount < Assets->BitmapCount);
-        bitmap_id ID = {Assets->DEBUGUsedBitmapCount++};
+    Asset->Bitmap.FileName = FileName;
+    Asset->Bitmap.AlignPercentage[0] = AlignPercentageX;
+    Asset->Bitmap.AlignPercentage[1] = AlignPercentageY;
 
-        asset_bitmap_info *Info = Assets->BitmapInfos + ID.Value;
-        Info->FileName = PushString(&Assets->Arena, FileName);
-        Info->AlignPercentage = AlignPercentage;
-
-        return(ID);
-    }
-*/
-    
     Assets->DEBUGAsset = Asset;
+
+    return(Result);
 }
 
-internal asset *
+internal sound_id
 AddSoundAsset(game_assets *Assets, char *FileName, u32 FirstSampleIndex = 0, u32 SampleCount = 0)
 {
     Assert(Assets->DEBUGAssetType);
-    Assert(Assets->DEBUGAssetType->OnePastLastAssetIndex < Assets->AssetCount);
-    
-    asset *Asset = Assets->Assets + Assets->DEBUGAssetType->OnePastLastAssetIndex++;
-    Asset->FirstTagIndex = Assets->DEBUGUsedTagCount;
+    Assert(Assets->DEBUGAssetType->OnePastLastAssetIndex < ArrayCount(Assets->Assets));
+
+    sound_id Result = {Assets->DEBUGAssetType->OnePastLastAssetIndex++};
+    asset *Asset = Assets->Assets + Result.Value;
+    Asset->FirstTagIndex = Assets->TagCount;
     Asset->OnePastLastTagIndex = Asset->FirstTagIndex;
-    Asset->SlotID = DEBUGAddSoundInfo(Assets, FileName, FirstSampleIndex, SampleCount).Value;
-/*
-  
-  internal sound_id
-  DEBUGAddSoundInfo(char *FileName, u32 FirstSampleIndex, u32 SampleCount)
-  {
-  Assert(Assets->DEBUGUsedSoundCount < Assets->SoundCount);
-  sound_id ID = {Assets->DEBUGUsedSoundCount++};
+    Asset->Sound.FileName = FileName;
+    Asset->Sound.FirstSampleIndex = FirstSampleIndex;
+    Asset->Sound.SampleCount = SampleCount;
+    Asset->Sound.NextIDToPlay.Value = 0;
 
-  asset_sound_info *Info = Assets->SoundInfos + ID.Value;
-  Info->FileName = PushString(&Assets->Arena, FileName);
-  Info->FirstSampleIndex = FirstSampleIndex;
-  Info->SampleCount = SampleCount;
-  Info->NextIDToPlay.Value = 0;
-
-  return(ID);
-  }
-*/
-    
     Assets->DEBUGAsset = Asset;
 
-    return(Asset);
+    return(Result);
 }
 
 internal void
@@ -140,7 +66,7 @@ AddTag(game_assets *Assets, asset_tag_id ID, real32 Value)
     Assert(Assets->DEBUGAsset);
 
     ++Assets->DEBUGAsset->OnePastLastTagIndex;
-    asset_tag *Tag = Assets->Tags + Assets->DEBUGUsedTagCount++;
+    hha_tag *Tag = Assets->Tags + Assets->TagCount++;
 
     Tag->ID = ID;
     Tag->Value = Value;
@@ -150,7 +76,7 @@ internal void
 EndAssetType(game_assets *Assets)
 {
     Assert(Assets->DEBUGAssetType);
-    Assets->DEBUGUsedAssetCount = Assets->DEBUGAssetType->OnePastLastAssetIndex;
+    Assets->AssetCount = Assets->DEBUGAssetType->OnePastLastAssetIndex;
     Assets->DEBUGAssetType = 0;
     Assets->DEBUGAsset = 0;
 }
@@ -158,16 +84,24 @@ EndAssetType(game_assets *Assets)
 int
 main(int ArgCount, char **Args)
 {
+    game_assets Assets_;
+    game_assets *Assets = &Assets_;
+
+    Assets->TagCount = 1;
+    Assets->AssetCount = 1;
+    Assets->DEBUGAssetType = 0;
+    Assets->DEBUGAsset = 0;
+    
     BeginAssetType(Assets, Asset_Shadow);
-    AddBitmapAsset(Assets, "test/test_hero_shadow.bmp", V2(0.5f, 0.156682029f));
+    AddBitmapAsset(Assets, "test/test_hero_shadow.bmp", 0.5f, 0.156682029f);
     EndAssetType(Assets);
 
     BeginAssetType(Assets, Asset_Tree);
-    AddBitmapAsset(Assets, "test2/tree00.bmp", V2(0.493827164f, 0.295652181f));
+    AddBitmapAsset(Assets, "test2/tree00.bmp", 0.493827164f, 0.295652181f);
     EndAssetType(Assets);
 
     BeginAssetType(Assets, Asset_Sword);
-    AddBitmapAsset(Assets, "test2/rock03.bmp", V2(0.5f, 0.65625f));
+    AddBitmapAsset(Assets, "test2/rock03.bmp", 0.5f, 0.65625f);
     EndAssetType(Assets);
 
     BeginAssetType(Assets, Asset_Grass);
@@ -193,38 +127,38 @@ main(int ArgCount, char **Args)
     real32 AngleLeft = 0.5f*Tau32;
     real32 AngleFront = 0.75f*Tau32;
     
-    v2 HeroAlign = {0.5f, 0.156682029f};
+    r32 HeroAlign[] = {0.5f, 0.156682029f};
     
     BeginAssetType(Assets, Asset_Head);
-    AddBitmapAsset(Assets, "test/test_hero_right_head.bmp", HeroAlign);
+    AddBitmapAsset(Assets, "test/test_hero_right_head.bmp", HeroAlign[0], HeroAlign[1]);
     AddTag(Assets, Tag_FacingDirection, AngleRight);
-    AddBitmapAsset(Assets, "test/test_hero_back_head.bmp", HeroAlign);
+    AddBitmapAsset(Assets, "test/test_hero_back_head.bmp", HeroAlign[0], HeroAlign[1]);
     AddTag(Assets, Tag_FacingDirection, AngleBack);
-    AddBitmapAsset(Assets, "test/test_hero_left_head.bmp", HeroAlign);
+    AddBitmapAsset(Assets, "test/test_hero_left_head.bmp", HeroAlign[0], HeroAlign[1]);
     AddTag(Assets, Tag_FacingDirection, AngleLeft);
-    AddBitmapAsset(Assets, "test/test_hero_front_head.bmp", HeroAlign);
+    AddBitmapAsset(Assets, "test/test_hero_front_head.bmp", HeroAlign[0], HeroAlign[1]);
     AddTag(Assets, Tag_FacingDirection, AngleFront);
     EndAssetType(Assets);
 
     BeginAssetType(Assets, Asset_Cape);
-    AddBitmapAsset(Assets, "test/test_hero_right_cape.bmp", HeroAlign);
+    AddBitmapAsset(Assets, "test/test_hero_right_cape.bmp", HeroAlign[0], HeroAlign[1]);
     AddTag(Assets, Tag_FacingDirection, AngleRight);
-    AddBitmapAsset(Assets, "test/test_hero_back_cape.bmp", HeroAlign);
+    AddBitmapAsset(Assets, "test/test_hero_back_cape.bmp", HeroAlign[0], HeroAlign[1]);
     AddTag(Assets, Tag_FacingDirection, AngleBack);
-    AddBitmapAsset(Assets, "test/test_hero_left_cape.bmp", HeroAlign);
+    AddBitmapAsset(Assets, "test/test_hero_left_cape.bmp", HeroAlign[0], HeroAlign[1]);
     AddTag(Assets, Tag_FacingDirection, AngleLeft);
-    AddBitmapAsset(Assets, "test/test_hero_front_cape.bmp", HeroAlign);
+    AddBitmapAsset(Assets, "test/test_hero_front_cape.bmp", HeroAlign[0], HeroAlign[1]);
     AddTag(Assets, Tag_FacingDirection, AngleFront);
     EndAssetType(Assets);
 
     BeginAssetType(Assets, Asset_Torso);
-    AddBitmapAsset(Assets, "test/test_hero_right_torso.bmp", HeroAlign);
+    AddBitmapAsset(Assets, "test/test_hero_right_torso.bmp", HeroAlign[0], HeroAlign[1]);
     AddTag(Assets, Tag_FacingDirection, AngleRight);
-    AddBitmapAsset(Assets, "test/test_hero_back_torso.bmp", HeroAlign);
+    AddBitmapAsset(Assets, "test/test_hero_back_torso.bmp", HeroAlign[0], HeroAlign[1]);
     AddTag(Assets, Tag_FacingDirection, AngleBack);
-    AddBitmapAsset(Assets, "test/test_hero_left_torso.bmp", HeroAlign);
+    AddBitmapAsset(Assets, "test/test_hero_left_torso.bmp", HeroAlign[0], HeroAlign[1]);
     AddTag(Assets, Tag_FacingDirection, AngleLeft);
-    AddBitmapAsset(Assets, "test/test_hero_front_torso.bmp", HeroAlign);
+    AddBitmapAsset(Assets, "test/test_hero_front_torso.bmp", HeroAlign[0], HeroAlign[1]);
     AddTag(Assets, Tag_FacingDirection, AngleFront);
     EndAssetType(Assets);
 
@@ -255,7 +189,7 @@ main(int ArgCount, char **Args)
     u32 OneMusicChunk = 10*48000;
     u32 TotalMusicSampleCount = 7468095;
     BeginAssetType(Assets, Asset_Music);
-    asset *LastMusic = 0;
+    sound_id LastMusic = {0};
     for(u32 FirstSampleIndex = 0;
         FirstSampleIndex < TotalMusicSampleCount;
         FirstSampleIndex += OneMusicChunk)
@@ -265,10 +199,10 @@ main(int ArgCount, char **Args)
         {
             SampleCount = OneMusicChunk;
         }
-        asset *ThisMusic = AddSoundAsset(Assets, "test3/music_test.wav", FirstSampleIndex, SampleCount);
-        if(LastMusic)
+        sound_id ThisMusic = AddSoundAsset(Assets, "test3/music_test.wav", FirstSampleIndex, SampleCount);
+        if(LastMusic.Value)
         {
-            Assets->SoundInfos[LastMusic->SlotID].NextIDToPlay.Value = ThisMusic->SlotID;
+            Assets->Assets[LastMusic.Value].Sound.NextIDToPlay = ThisMusic;
         }
         LastMusic = ThisMusic;
     }
@@ -282,8 +216,30 @@ main(int ArgCount, char **Args)
     Out = fopen("test.hha", "wb");
     if(Out)
     {
+        hha_header Header = {};
+        Header.MagicValue = HHA_MAGIC_VALUE;
+        Header.Version = HHA_VERSION;
+        Header.TagCount = Assets->TagCount;
+        Header.AssetTypeCount = Asset_Count; // TODO(casey): Do we really want to do this?  Sparseness!
+        Header.AssetCount = Assets->AssetCount;
+
+        u32 TagArraySize = Header.TagCount*sizeof(hha_tag);
+        u32 AssetTypeArraySize = Header.AssetTypeCount*sizeof(hha_asset_type);
+        u32 AssetArraySize = Header.AssetCount*sizeof(hha_asset);
         
+        Header.Tags = sizeof(Header);
+        Header.AssetTypes = Header.Tags + TagArraySize;
+        Header.Assets = Header.AssetTypes + AssetTypeArraySize;
+
+        fwrite(&Header, sizeof(Header), 1, Out);
+        fwrite(Assets->Tags, TagArraySize, 1, Out);
+        fwrite(Assets->AssetTypes, AssetTypeArraySize, 1, Out);
+//        fwrite(AssetArray, AssetArraySize, 1, Out);
         
         fclose(Out);
+    }
+    else
+    {
+        printf("ERROR: Couldn't open file :(\n");
     }
 }
