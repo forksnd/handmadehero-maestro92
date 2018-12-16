@@ -138,7 +138,7 @@ OutputPlayingSounds(audio_state *AudioState,
                 v2 Volume = PlayingSound->CurrentVolume;
                 v2 dVolume = SecondsPerSample*PlayingSound->dCurrentVolume;
                 v2 dVolumeChunk = 4.0f*dVolume;
-                real32 dSample = PlayingSound->dSample*1.9f;
+                real32 dSample = PlayingSound->dSample;
                 real32 dSampleChunk = 4.0f*dSample;
 
                 // NOTE(casey): Channel 0
