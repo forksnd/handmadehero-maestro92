@@ -35,6 +35,19 @@ struct hha_header
     u64 Tags; // hha_tag[TagCount]
     u64 AssetTypes; // hha_asset_type[AssetTypeCount]
     u64 Assets; // hha_asset[AssetCount]
+
+    /* TODO(casey):
+
+       u32 FileGUID[8];
+       u32 RemovalCount;
+
+       struct hha_asset_removal
+       {
+           u32 FileGUID[8];
+           u32 AssetIndex;
+       };
+       
+     */
 };
 
 struct hha_tag

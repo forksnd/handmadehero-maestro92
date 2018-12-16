@@ -259,11 +259,12 @@ the line
 is where we used load the bitmaps from the bitmap file.
 now that we have our asset system, we want to replace that with getting the bitmaps from our asset system.
 
-now that we have 
-
-notice that when we load the bitmap memory, we are doing 
+notice that when we load the bitmap memory, we are doing
                 
                 Bitmap->Memory = Work->Assets->HHAContents + HHAAsset->DataOffset;
+
+note that this is a hack, cuz this assumes we loaded in our assets entirely.
+the whole point of the asset system is only load in things that we need.
 
 -   full code below:                
 

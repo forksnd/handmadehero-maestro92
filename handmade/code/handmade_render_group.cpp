@@ -823,7 +823,7 @@ TiledRenderGroupToOutput(platform_work_queue *RenderQueue,
             Work->ClipRect = ClipRect;
 #if 1
             // NOTE(casey): This is the multi-threaded path
-            PlatformAddEntry(RenderQueue, DoTiledRenderWork, Work);
+            Platform.AddEntry(RenderQueue, DoTiledRenderWork, Work);
 #else
             // NOTE(casey): This is the single-threaded path
             DoTiledRenderWork(RenderQueue, Work);
@@ -831,7 +831,7 @@ TiledRenderGroupToOutput(platform_work_queue *RenderQueue,
         }
     }
 
-    PlatformCompleteAllWork(RenderQueue);
+    Platform.CompleteAllWork(RenderQueue);
 }
 
 internal render_group *

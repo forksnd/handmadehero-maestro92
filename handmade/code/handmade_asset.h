@@ -44,7 +44,7 @@ struct asset_type
 
 struct asset_file
 {
-//    platform_file_handle Handle;
+    platform_file_handle *Handle;
 
     // TODO(casey): If we ever do thread stacks, AssetTypeArray
     // doesn't actually need to be kept here probably.
@@ -75,6 +75,7 @@ struct game_assets
     asset_type AssetTypes[Asset_Count];
 
     u8 *HHAContents;
+
 #if 0
     // NOTE(casey): Structured assets
 //    hero_bitmaps HeroBitmaps[4];
@@ -90,7 +91,8 @@ struct game_assets
 inline loaded_bitmap *GetBitmap(game_assets *Assets, bitmap_id ID)
 {
     Assert(ID.Value <= Assets->AssetCount);
-    loaded_bitmap *Result = Assets->Slots[ID.Value].Bitmap;
+    asset_slot *Slot = Assets->Slots + ID.Value;
+    loaded_bitmap *Result = (Slot->State >= AssetState_Loaded) ? Slot->Bitmap : 0;
 
     return(Result);
 }
@@ -98,7 +100,8 @@ inline loaded_bitmap *GetBitmap(game_assets *Assets, bitmap_id ID)
 inline loaded_sound *GetSound(game_assets *Assets, sound_id ID)
 {
     Assert(ID.Value <= Assets->AssetCount);
-    loaded_sound *Result = Assets->Slots[ID.Value].Sound;
+    asset_slot *Slot = Assets->Slots + ID.Value;
+    loaded_sound *Result = (Slot->State >= AssetState_Loaded) ? Slot->Sound : 0;
 
     return(Result);
 }

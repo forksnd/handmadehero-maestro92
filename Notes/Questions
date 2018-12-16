@@ -19,7 +19,8 @@ Things that I plan to bring to my game
 2.  multi-threading, work queue
     add volatile for the variables
 
-3. adding asserts everywhere
-4. look at physics
-5. look at the enforcing framerate
+3. 	adding asserts everywhere
+4. 	look at physics
+5. 	look at the enforcing framerate
+6.	write an asset system
     
