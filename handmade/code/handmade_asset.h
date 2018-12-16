@@ -7,43 +7,12 @@
    $Notice: (C) Copyright 2015 by Molly Rocket, Inc. All Rights Reserved. $
    ======================================================================== */
 
-struct bitmap_id
-{
-    uint32 Value;
-};
-
-struct sound_id
-{
-    uint32 Value;
-};
-
 struct loaded_sound
 {
     uint32 SampleCount; // NOTE(casey): This is the sample count divided by 8
     uint32 ChannelCount;
     int16 *Samples[2];
 };
-
-struct asset_bitmap_info
-{
-    char *FileName;
-    v2 AlignPercentage;
-};
-
-struct asset_sound_info
-{
-    char *FileName;
-    u32 FirstSampleIndex;
-    u32 SampleCount;
-    sound_id NextIDToPlay;
-};
-
-struct asset_tag
-{
-    uint32 ID; // NOTE(casey): Tag ID
-    real32 Value;
-};
-
 
 enum asset_state
 {
@@ -61,17 +30,6 @@ struct asset_slot
         loaded_sound *Sound;
     };
 };
-struct asset
-{
-    uint32 FirstTagIndex;
-    uint32 OnePastLastTagIndex;
-
-    union
-    {
-        asset_bitmap_info Bitmap;
-        asset_sound_info Sound;
-    };
-};
 
 struct asset_vector
 {
@@ -84,6 +42,18 @@ struct asset_type
     uint32 OnePastLastAssetIndex;
 };
 
+struct asset_file
+{
+//    platform_file_handle Handle;
+
+    // TODO(casey): If we ever do thread stacks, AssetTypeArray
+    // doesn't actually need to be kept here probably.
+    hha_header Header;
+    hha_asset_type *AssetTypeArray;
+
+    u32 TagBase;
+};
+
 struct game_assets
 {
     // TODO(casey): Not thrilled about this back-pointer
@@ -92,15 +62,19 @@ struct game_assets
 
     real32 TagRange[Tag_Count];
 
+    u32 FileCount;
+    asset_file *Files;
+    
     uint32 TagCount;
-    asset_tag *Tags;
+    hha_tag *Tags;
 
     uint32 AssetCount;
-    asset *Assets;
+    hha_asset *Assets;
     asset_slot *Slots;
     
     asset_type AssetTypes[Asset_Count];
 
+    u8 *HHAContents;
 #if 0
     // NOTE(casey): Structured assets
 //    hero_bitmaps HeroBitmaps[4];
@@ -129,11 +103,11 @@ inline loaded_sound *GetSound(game_assets *Assets, sound_id ID)
     return(Result);
 }
 
-inline asset_sound_info *
+inline hha_sound *
 GetSoundInfo(game_assets *Assets, sound_id ID)
 {
     Assert(ID.Value <= Assets->AssetCount);
-    asset_sound_info *Result = &Assets->Assets[ID.Value].Sound;
+    hha_sound *Result = &Assets->Assets[ID.Value].Sound;
 
     return(Result);
 }

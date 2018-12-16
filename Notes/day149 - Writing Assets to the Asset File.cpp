@@ -167,7 +167,6 @@ our .hha file will then look like below
         |       |   |  ...      |                           |                                                                       |
         |       |   |___________|                           |                                                                       |
         |       |___________________________________________|                                                                       |
-
         |        ___________________________                                                                                        |
         |       |                           |                                                                                       |
         |       |   asset *Assets;          |                                                                                       |
@@ -511,6 +510,17 @@ Casey starting to work on the game code to load in the asset
                 debug_read_file_result ReadResult = DEBUGPlatformReadEntireFile("test.hha");    
                 
 
+-   we first create the game side game_assets at the very top 
+
+                internal game_assets* AllocateGameAssets(memory_arena *Arena, memory_index Size, transient_state *TranState)
+                {
+                    game_assets *Assets = PushStruct(Arena, game_assets);
+                    SubArena(&Assets->Arena, Arena, Size);
+
+                    ..
+                    ...
+                }
+
 -   we first check the MagicValue and Version number
 
                 hha_header *Header = (hha_header *)ReadResult.Contents;
@@ -520,6 +530,27 @@ Casey starting to work on the game code to load in the asset
 -   recall that the file contains 3 arrays, the tags array, the asset array and the asset_slot array.
     we only wrote the for loop for the tags array. we will do the other two array in the next episode
 
+
+-   the way we parse the tags array is using the same trick we have been doing 
+
+                hha_tag *HHATags = (hha_tag *)((u8 *)ReadResult.Contents + Header->Tags);
+
+    first get the byte array, then intepret the memory in the form that we want. Here we are interpreting
+    the memory as an (hha_tag*) array
+
+
+
+-   as we read in the Tags Array, we read in the hha_tag one by one 
+    then we populate the "game_assets *Assets, Assets.Tags" Table
+
+                asset_tag *Dest = Assets->Tags + TagIndex;
+
+                Dest->ID = Source->ID;
+                Dest->Value = Source->Value;
+
+
+
+-   full code below:
 
                 handmade_asset.cpp
 
@@ -632,6 +663,9 @@ we will setup the compression in a way to allows us to do that random access
                 |               |
                 |_______________|
                 
+
+1:01:36
+explains what "Flat loading" means
 
 
 1:24:18
