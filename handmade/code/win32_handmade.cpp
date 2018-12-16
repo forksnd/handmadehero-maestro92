@@ -1210,29 +1210,88 @@ Win32MakeQueue(platform_work_queue *Queue, uint32 ThreadCount)
     }
 }
 
+struct win32_platform_file_handle
+{
+    platform_file_handle H;
+    HANDLE Win32Handle;
+};
+
 internal PLATFORM_GET_ALL_FILE_OF_TYPE_BEGIN(Win32GetAllFilesOfTypeBegin)
 {
     platform_file_group FileGroup = {};
 
+    // TODO(casey): Actually implement this!
+    FileGroup.FileCount = 1;
+    
     return(FileGroup);
 }
 
 internal PLATFORM_GET_ALL_FILE_OF_TYPE_END(Win32GetAllFilesOfTypeEnd)
 {
 }
-    
+
 internal PLATFORM_OPEN_FILE(Win32OpenFile)
 {
-    return(0);
-}
+    // TODO(casey): Actually implement this!
+    char *FileName = "test.hha";
+    
+    // TODO(casey): If we want, someday, make an actual arena used by Win32
+    win32_platform_file_handle *Result = (win32_platform_file_handle *)VirtualAlloc(
+        0, sizeof(win32_platform_file_handle),
+        MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
 
-internal PLATFORM_READ_DATA_FROM_FILE(Win32ReadDataFromFile)
-{
+    if(Result)
+    {    
+        Result->Win32Handle = CreateFileA(FileName, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
+        Result->H.NoErrors = (Result->Win32Handle != INVALID_HANDLE_VALUE);
+    }
+
+    return((platform_file_handle *)Result);
 }
 
 internal PLATFORM_FILE_ERROR(Win32FileError)
 {
+#if HANDMADE_INTERNAL
+    OutputDebugString("WIN32 FILE ERROR: ");
+    OutputDebugString(Message);
+    OutputDebugString("\n");
+#endif
+    
+    Handle->NoErrors = false;
 }
+
+internal PLATFORM_READ_DATA_FROM_FILE(Win32ReadDataFromFile)
+{
+    if(PlatformNoFileErrors(Source))
+    {
+        win32_platform_file_handle *Handle = (win32_platform_file_handle *)Source;
+        OVERLAPPED Overlapped = {};
+        Overlapped.Offset = (u32)((Offset >> 0) & 0xFFFFFFFF);
+        Overlapped.OffsetHigh = (u32)((Offset >> 32) & 0xFFFFFFFF);
+    
+        uint32 FileSize32 = SafeTruncateUInt64(Size);
+    
+        DWORD BytesRead;
+        if(ReadFile(Handle->Win32Handle, Dest, FileSize32, &BytesRead, &Overlapped) &&
+           (FileSize32 == BytesRead))
+        {
+            // NOTE(casey): File read succeeded!
+        }
+        else
+        {
+            Win32FileError(&Handle->H, "Read file failed.");
+        }
+    }
+}
+
+/*
+
+internal PLATFORM_FILE_ERROR(Win32CloseFile)
+{
+    CloseHandle(FileHandle);
+}
+
+*/
 
 int CALLBACK
 WinMain(HINSTANCE Instance,

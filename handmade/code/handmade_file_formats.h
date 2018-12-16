@@ -36,6 +36,8 @@ struct hha_header
     u64 AssetTypes; // hha_asset_type[AssetTypeCount]
     u64 Assets; // hha_asset[AssetCount]
 
+    // TODO(casey): Primacy numbers for asset files?
+    
     /* TODO(casey):
 
        u32 FileGUID[8];

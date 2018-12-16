@@ -7,8 +7,10 @@ start to define all the platform file apis.
 
 Refactored and cleaned up some of the asset streaming code.
 
+collapsed the LoadBitmapWork(); and LoadSoundWork(); into one type of work: LoadAssetWork();
+
 Keyword:
-Asset, Asset file, Asset loading, API design
+Asset, Asset file, Asset loading, File API, API design
 
 9:48
 Casey mentioned that we need to be able to rebase the tag indices.
