@@ -264,8 +264,8 @@ AllocateGameAssets(memory_arena *Arena, memory_index Size, transient_state *Tran
     }
     Assets->TagRange[Tag_FacingDirection] = Tau32;
 
-    Assets->TagCount = 0;
-    Assets->AssetCount = 0;
+    Assets->TagCount = 1;
+    Assets->AssetCount = 1;
 
     // NOTE(casey): This code was written using Snuffleupagus-Oriented Programming (SOP)
     {
@@ -301,8 +301,11 @@ AllocateGameAssets(memory_arena *Arena, memory_index Size, transient_state *Tran
         
             if(PlatformNoFileErrors(File->Handle))
             {
-                Assets->TagCount += File->Header.TagCount;
-                Assets->AssetCount += File->Header.AssetCount;
+                // NOTE(casey): The first asset and tag slot in every
+                // HHA is a null (reserved) so we don't count it as
+                // something we will need space for!
+                Assets->TagCount += (File->Header.TagCount - 1);
+                Assets->AssetCount += (File->Header.AssetCount - 1);
             }
             else
             {
@@ -318,6 +321,9 @@ AllocateGameAssets(memory_arena *Arena, memory_index Size, transient_state *Tran
     Assets->Slots = PushArray(Arena, Assets->AssetCount, asset_slot);
     Assets->Tags = PushArray(Arena, Assets->TagCount, hha_tag);
 
+    // NOTE(casey): Reserve one null tag at the beginning
+    ZeroStruct(Assets->Tags[0]);
+
     // NOTE(casey): Load tags
     for(u32 FileIndex = 0;
         FileIndex < Assets->FileCount;
@@ -326,15 +332,20 @@ AllocateGameAssets(memory_arena *Arena, memory_index Size, transient_state *Tran
         asset_file *File = Assets->Files + FileIndex;
         if(PlatformNoFileErrors(File->Handle))
         {
-            u32 TagArraySize = sizeof(hha_tag)*File->Header.TagCount;
-            Platform.ReadDataFromFile(File->Handle, File->Header.Tags,
+            // NOTE(casey): Skip the first tag, since it's null
+            u32 TagArraySize = sizeof(hha_tag)*(File->Header.TagCount - 1);
+            Platform.ReadDataFromFile(File->Handle, File->Header.Tags + sizeof(hha_tag),
                                       TagArraySize, Assets->Tags + File->TagBase);
         }
     }
 
+    // NOTE(casey): Reserve one null asset at the beginning
+    u32 AssetCount = 0;
+    ZeroStruct(*(Assets->Assets + AssetCount));
+    ++AssetCount;
+
     // TODO(casey): Excersize for the reader - how would you do this in a way
     // that scaled gracefully to hundreds of asset pack files?  (or more!)
-    u32 AssetCount = 0;
     for(u32 DestTypeID = 0;
         DestTypeID < Asset_Count;
         ++DestTypeID)
@@ -379,8 +390,15 @@ AllocateGameAssets(memory_arena *Arena, memory_index Size, transient_state *Tran
                             
                             Asset->FileIndex = FileIndex;
                             Asset->HHA = *HHAAsset;
-                            Asset->HHA.FirstTagIndex += File->TagBase;
-                            Asset->HHA.OnePastLastTagIndex += File->TagBase;
+                            if(Asset->HHA.FirstTagIndex == 0)
+                            {
+                                Asset->HHA.FirstTagIndex = Asset->HHA.OnePastLastTagIndex = 0;
+                            }
+                            else
+                            {
+                                Asset->HHA.FirstTagIndex += (File->TagBase - 1);
+                                Asset->HHA.OnePastLastTagIndex += (File->TagBase - 1);
+                            }
                         }
 
                         EndTemporaryMemory(TempMem);
@@ -393,42 +411,6 @@ AllocateGameAssets(memory_arena *Arena, memory_index Size, transient_state *Tran
     }
     
     Assert(AssetCount == Assets->AssetCount);
-    
-#if 0
-    debug_read_file_result ReadResult = Platform.DEBUGReadEntireFile("test.hha");
-    if(ReadResult.ContentsSize != 0)
-    {
-        hha_header *Header = (hha_header *)ReadResult.Contents;
-        
-        Assets->AssetCount = Header->AssetCount;
-        Assets->Assets = (hha_asset *)((u8 *)ReadResult.Contents + Header->Assets);
-        Assets->Slots = PushArray(Arena, Assets->AssetCount, asset_slot);
-
-        Assets->TagCount = Header->TagCount;
-        Assets->Tags = (hha_tag *)((u8 *)ReadResult.Contents + Header->Tags);
-
-        hha_asset_type *HHAAssetTypes = (hha_asset_type *)((u8 *)ReadResult.Contents + Header->AssetTypes);
-
-        for(u32 Index = 0;
-            Index < Header->AssetTypeCount;
-            ++Index)
-        {
-            hha_asset_type *Source = HHAAssetTypes + Index;
-
-            if(Source->TypeID < Asset_Count)
-            {
-                asset_type *Dest = Assets->AssetTypes + Source->TypeID;
-                // TODO(casey): Support merging!
-                Assert(Dest->FirstAssetIndex == 0);
-                Assert(Dest->OnePastLastAssetIndex == 0);
-                Dest->FirstAssetIndex = Source->FirstAssetIndex;
-                Dest->OnePastLastAssetIndex = Source->OnePastLastAssetIndex;
-            }
-        }
-
-        Assets->HHAContents = (u8 *)ReadResult.Contents;
-    }
-#endif
     
     return(Assets);
 }
