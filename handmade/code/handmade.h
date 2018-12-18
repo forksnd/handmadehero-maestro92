@@ -14,13 +14,11 @@
   
   - Audio
     - FIX CLICKING BUG AT END OF SAMPLES!!!
-    - Sound effect triggers
-    - Ambient sounds
-    - Music
     
   - Asset streaming
-    - File format
     - Memory management
+
+  - Particle systems
 
   - Rendering
     - Straighten out all coordinate systems!
@@ -87,7 +85,6 @@
       
   * Animation, should probably lead into rendering
     - Skeletal animation
-    - Particle systems
 
   PRODUCTION
   -> GAME
@@ -311,6 +308,14 @@ struct hero_bitmap_ids
     bitmap_id Torso;
 };
 
+struct particle
+{
+    v3 P;
+    v3 dP;
+    v4 Color;
+    v4 dColor;
+};
+
 struct game_state
 {
     bool32 IsInitialized;
@@ -349,11 +354,14 @@ struct game_state
     loaded_bitmap TestDiffuse; // TODO(casey): Re-fill this guy with gray.
     loaded_bitmap TestNormal;
 
-    random_series GeneralEntropy;
+    random_series EffectsEntropy; // NOTE(casey): This is entropy that doesn't affect the gameplay
     real32 tSine;
 
     audio_state AudioState;
     playing_sound *Music;
+
+    u32 NextParticle;
+    particle Particles[256];
 };
 
 struct task_with_memory
