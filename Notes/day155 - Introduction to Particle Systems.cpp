@@ -6,7 +6,7 @@ implemented a simple particle system
 implemented simple fade to existence, full alpha, then fade out of existence rendering for particles 
 
 Keyword:
-Graphics Particle System 
+Graphics, Particle System 
 
 
 6:38
