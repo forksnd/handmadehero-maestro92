@@ -32,17 +32,17 @@
 
 struct loaded_bitmap
 {
-    v2 AlignPercentage;
-    real32 WidthOverHeight;
-    
-    int32 Width;
-    int32 Height;
-    int32 Pitch;
     void *Memory;
+    v2 AlignPercentage;
+    r32 WidthOverHeight;    
+    s16 Width;
+    s16 Height;
+    // TODO(casey): Get rid of pitch!
+    s16 Pitch;    
 };
 
 struct environment_map
-{
+{    
     loaded_bitmap LOD[4];
     real32 Pz;
 };
