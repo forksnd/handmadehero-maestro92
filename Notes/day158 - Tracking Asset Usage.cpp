@@ -375,6 +375,11 @@ hence we added the
 31:03
 to differentiate between Sound and bitmap assets, Casey added the asset_state flags 
 
+notice that we added a "AssetState_Locked" flag. our plan is that, when assets are int AssetState_Locked state,
+we cant evict them
+
+(we didnt implement any of it this episode)
+
                 handmade_asset.h
 
                 enum asset_state
@@ -609,6 +614,9 @@ Casey writing the RemoveAssetHeaderFromList(); as well
 Interestly, Casey had the doubly linked list safeguard node to point to itself instead of null
 
 that way when we code, we never had to do extra if checks to see if the tail->next points to null or not.
+
+another thing is that if you have the safeguard node prev points to the tail, then you only have to store one head node.
+You dont need to store the tail node, cuz you can just get it from safeguard->prev. So you store 8 bytes of storage.
 
                 handmade_asset.cpp
 

@@ -383,7 +383,7 @@ FillGroundChunk(transient_state *TranState, game_state *GameState, ground_buffer
         v2 HalfDim = 0.5f*V2(Width, Height);
     
         // TODO(casey): Decide what our pushbuffer size is!
-        render_group *RenderGroup = AllocateRenderGroup(TranState->Assets, &Task->Arena, 0);
+        render_group *RenderGroup = AllocateRenderGroup(TranState->Assets, &Task->Arena, 0, true);
         Orthographic(RenderGroup, Buffer->Width, Buffer->Height, (Buffer->Width - 2) / Width);
         Clear(RenderGroup, V4(1.0f, 0.0f, 1.0f, 1.0f));
 
@@ -490,9 +490,9 @@ MakeEmptyBitmap(memory_arena *Arena, int32 Width, int32 Height, bool32 ClearToZe
 {
     loaded_bitmap Result = {};
 
-    Result.Width = SafeTruncateToUInt16(Width);
-    Result.Height = SafeTruncateToUInt16(Height);
-    Result.Pitch = SafeTruncateToUInt16(Result.Width*BITMAP_BYTES_PER_PIXEL);
+    Result.Width = Width;
+    Result.Height = Height;
+    Result.Pitch = Result.Width*BITMAP_BYTES_PER_PIXEL;
     int32 TotalBitmapSize = Width*Height*BITMAP_BYTES_PER_PIXEL;
     Result.Memory = PushSize(Arena, TotalBitmapSize, 16);
     if(ClearToZero)
@@ -910,7 +910,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
             SubArena(&Task->Arena, &TranState->TranArena, Megabytes(1));
         }
 
-        TranState->Assets = AllocateGameAssets(&TranState->TranArena, Megabytes(3), TranState);
+        TranState->Assets = AllocateGameAssets(&TranState->TranArena, Megabytes(4), TranState);
 
         GameState->Music = PlaySound(&GameState->AudioState, GetFirstSoundFrom(TranState->Assets, Asset_Music));
         
@@ -1062,9 +1062,9 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     
     loaded_bitmap DrawBuffer_ = {};
     loaded_bitmap *DrawBuffer = &DrawBuffer_;
-    DrawBuffer->Width = SafeTruncateToUInt16(Buffer->Width);
-    DrawBuffer->Height = SafeTruncateToUInt16(Buffer->Height);
-    DrawBuffer->Pitch = SafeTruncateToUInt16(Buffer->Pitch);
+    DrawBuffer->Width = Buffer->Width;
+    DrawBuffer->Height = Buffer->Height;
+    DrawBuffer->Pitch = Buffer->Pitch;
     DrawBuffer->Memory = Buffer->Memory;
 
 #if 0
@@ -1074,7 +1074,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 #endif
     
     // TODO(casey): Decide what our pushbuffer size is!
-    render_group *RenderGroup = AllocateRenderGroup(TranState->Assets, &TranState->TranArena, Megabytes(4));
+    render_group *RenderGroup = AllocateRenderGroup(TranState->Assets, &TranState->TranArena, Megabytes(4), false);
     real32 WidthOfMonitor = 0.635f; // NOTE(casey): Horizontal measurement of monitor in meters
     real32 MetersToPixels = (real32)DrawBuffer->Width*WidthOfMonitor;
     real32 FocalLength = 0.6f;

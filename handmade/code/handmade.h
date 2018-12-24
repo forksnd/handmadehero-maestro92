@@ -11,12 +11,20 @@
   TODO(casey):
 
   - Flush all thread queues before reloading DLL!
-  
-  - Audio
-    - FIX CLICKING BUG AT END OF SAMPLES!!!
     
   - Asset streaming
     - Memory management
+
+  - Debug code
+    - Fonts
+    - Logging
+    - Diagramming
+    - (A LITTLE GUI, but only a little!) Switches / sliders / etc.
+    - Draw tile chunks so we can verify that things are aligned / in the chunks we want them to be in / etc.
+    - Thread visualization
+  
+  - Audio
+    - FIX CLICKING BUG AT END OF SAMPLES!!!
 
   - Particle systems
 
@@ -28,14 +36,6 @@
     - Particle systems
     - Lighting
     - Final Optimization
-
-  - Debug code
-    - Fonts
-    - Logging
-    - Diagramming
-    - (A LITTLE GUI, but only a little!) Switches / sliders / etc.
-    - Draw tile chunks so we can verify that things are aligned / in the chunks we want them to be in / etc.
-    - Thread visualization
 
   ARCHITECTURE EXPLORATION
   - Z!
