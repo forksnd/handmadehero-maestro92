@@ -168,37 +168,66 @@ Pretty much they are at least some 32 kb or 64 kb in space.
 so if we just want to do this in some very inefficient fashion, 
 
 we can structure it in a way where every free block of memory can hold some information about what comes before 
-and what comes after 
+and what comes after, kind of like a doubly linked list
 
 
-     _______                    
-    |#######|                
-    |#######|                    ______________
-    |#######|                   | info in prev |
-    |       |                   |              |
-    |   A   |                   |              |
-    |       |                   |      A       |
-    |#######|                   |              |
-    |#######|                   | info in next |
-    |   B   |                   |______________|
+
+
+                                 _______________
+                                |     prev      |
+                                |###############|
+                                |###############|
+                                |###############|
+                                |     next      |
+                                |_______________|
+                                       | 
+     _______                           |
+    |#######|                          v
+    |#######|                    _______________
+    |#######|                   |     prev      |
+    |       |                   |               |
+    |   A   |                   |               |
+    |       |                   |      A        |
+    |#######|                   |               |
+    |#######|                   |     next      |
+    |   B   |                   |_______________|
     |       |                          |
     |#######|                          |
-    |       |                          |
-    |   C   |                          v
-    |_______|                    _______________ 
-                                | info in prev  |
+    |       |                          v
+    |   C   |                    _______________
+    |_______|                   |     prev      |
+                                |###############|
+                                |###############|
+                                |###############|
+                                |###############|
+                                |     next      |
+                                |_______________|
+                                       |
+                                       |
+                                       v
+                                 _______________ 
+                                |     prev      |
                                 |               |
                                 |      B        |
-                                | info in next  |
+                                |     next      |
                                 |_______________|
                                        |          
                                        |
                                        v
+                                 _______________
+                                |###############|
+                                |###############|
+                                |     next      |
+                                |_______________|
+                                       |
+                                       |
+                                       v
+
                                  _______________ 
-                                | info in prev  |
+                                |     prev      |
                                 |               |
                                 |      C        |
-                                | info in next  |
+                                |     next      |
                                 |_______________|
 
 just some info that will help us with any potential merging operation.
@@ -216,27 +245,27 @@ presumably, the one we want to put it in, is the smallest one that can fit your 
                                  _______________
                                 |               |
                                 |      A        |
-                                |               |--------
+                                |               |-------- check if we can fit in here
                                 |_______________|       |
                                 |###############|       |
-                                |###############|       |
-                                |###############|       |
-                                |###############|       |
+                                |###############| <-----| skip
+                                |###############|         
+                                |###############| -------
                                 |###############|       |
                                                         |
                                  _______________        |
                                 |               |       |
-                                |      B        | <------
+                                |      B        | <------ check if we can fit in here 
                                 |               |                                
                                 |               |--------
                                 |_______________|       |
-                                |###############|       |
-                                |###############|       |
-                                |###############|       |
+                                |###############| <------  skip
+                                |###############|       
+                                |###############| -------
                                 |###############|       |                         
                                 |               |       |
                                 |               |       |
-                                |      C        | <------
+                                |      C        | <------ check if we can fit in here
                                 |               |
                                 |_______________|
 
@@ -618,6 +647,8 @@ so instead of an assert, we replace it with an "if statement ", and we put the E
 Casey starting to consider how do we actually free memory. 
 Casey added a enum asset_memory_block_flags, and changed the definition of the asset_memory_block.
 
+notice that asset_memory_block got Prev and Next. so you can see we are going down the doubly linked list route
+
 
                 enum asset_memory_block_flags
                 {
@@ -644,7 +675,6 @@ Casey added a enum asset_memory_block_flags, and changed the definition of the a
                     ...
                     ...
                 };
-
 
 
 so inside the AllocateGameAssets(); function, we initialize our MemorySentinel node.
