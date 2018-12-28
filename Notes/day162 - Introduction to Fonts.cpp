@@ -11,7 +11,7 @@ described what kerning is, "mono spaced" vs "proportional spaced" fonts
 descrbied potential approaches to render font in handmade hero
 
 Keyword:
-debug, Fonts
+debug, Fonts, Rendering
 
 
 
