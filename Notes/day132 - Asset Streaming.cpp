@@ -28,8 +28,6 @@ for example a pointer to memory is not a good way to refer to an asset.
 
 
 
-
-
 12:14
 Casey starting to clean up the asset code.
 Previously all of our assets are in the game_state struct

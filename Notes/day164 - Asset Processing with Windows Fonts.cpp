@@ -1,9 +1,10 @@
 Handmade Hero Day 164 - Asset Processing with Windows Fonts
 
 Summary:
+extracted font bitmaps from windows. the same task as day 163 without using STB stb_truetype
 
 Keyword:
-Font, 
+Font, windows API
 
 
 0:31
