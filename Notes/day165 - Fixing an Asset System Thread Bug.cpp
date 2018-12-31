@@ -4,7 +4,7 @@ Summary:
 Casey attempting to solve a problem in our asset system 
 the problem is that we are at risk of freeing used assets
 
-Casey attempted to make GetBitmap(); function thread safe. [but i dont think it works]
+Casey attempted to make LRU list in the GetBitmap(); function thread safe. [but i dont think it works]
 Casey got rid of the AssetState_Lock mechanism, which was previously used to protect assets 
 in the background thread from getting evicted in the main thread.
 

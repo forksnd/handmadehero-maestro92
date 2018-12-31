@@ -335,6 +335,7 @@ struct game_state
     // TODO(casey): Should we allow split-screen?
     uint32 CameraFollowingEntityIndex;
     world_position CameraP;
+    world_position LastCameraP;
 
     controlled_hero ControlledHeroes[ArrayCount(((game_input *)0)->Controllers)];
 

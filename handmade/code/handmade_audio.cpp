@@ -96,6 +96,8 @@ OutputPlayingSounds(audio_state *AudioState,
 {    
     temporary_memory MixerMemory = BeginTemporaryMemory(TempArena);
 
+    u32 GenerationID = BeginGeneration(Assets);
+
     Assert((SoundBuffer->SampleCount & 3) == 0);
     u32 ChunkCount = SoundBuffer->SampleCount / 4;
     
@@ -135,7 +137,7 @@ OutputPlayingSounds(audio_state *AudioState,
         
         while(TotalChunksToMix && !SoundFinished)
         {
-            loaded_sound *LoadedSound = GetSound(Assets, PlayingSound->ID);
+            loaded_sound *LoadedSound = GetSound(Assets, PlayingSound->ID, GenerationID);
             if(LoadedSound)
             {
                 sound_id NextSoundInChain = GetNextSoundInChain(Assets, PlayingSound->ID);
@@ -328,6 +330,7 @@ OutputPlayingSounds(audio_state *AudioState,
         }
     }
 
+    EndGeneration(Assets, GenerationID);
     EndTemporaryMemory(MixerMemory);
 }
 
