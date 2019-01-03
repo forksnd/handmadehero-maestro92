@@ -1161,6 +1161,11 @@ one big change that Casey made is that in LoadBitmap(); he added a spin lock
 cuz multiple thread calling LoadBitmap(); threads are not guaranteed to get it immediately.
 so while the asset is queued, I wait to load it
 
+-   note that 
+                asset_state volatile *State = (asset_state volatile *)&Asset->State;
+
+we have the volatile keyword 
+
 
                 handmade_asset.cpp
 
@@ -1181,7 +1186,7 @@ so while the asset is queued, I wait to load it
                             // for what happens when two force-load people hit the load
                             // at the same time?
                             asset_state volatile *State = (asset_state volatile *)&Asset->State;
-                            while(Asset->State == AssetState_Queued) {}     <----------------------------------
+                            while(State == AssetState_Queued) {}     <----------------------------------
                         }
                     }    
                 }
