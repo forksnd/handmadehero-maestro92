@@ -374,6 +374,7 @@ internal PLATFORM_WORK_QUEUE_CALLBACK(FillGroundChunkWork)
     
     // TODO(casey): Decide what our pushbuffer size is!
     render_group *RenderGroup = AllocateRenderGroup(Work->TranState->Assets, &Work->Task->Arena, 0, true);
+    BeginRender(RenderGroup);
     Orthographic(RenderGroup, Buffer->Width, Buffer->Height, (Buffer->Width - 2) / Width);
     Clear(RenderGroup, V4(1.0f, 0.0f, 1.0f, 1.0f));
 
@@ -451,7 +452,7 @@ internal PLATFORM_WORK_QUEUE_CALLBACK(FillGroundChunkWork)
     Assert(AllResourcesPresent(RenderGroup));
 
     RenderGroupToOutput(RenderGroup, Buffer);
-    FinishRenderGroup(RenderGroup);
+    EndRender(RenderGroup);
 
     EndTaskWithMemory(Work->Task);
 }
@@ -651,6 +652,118 @@ MakePyramidNormalMap(loaded_bitmap *Bitmap, real32 Roughness)
 
         Row += Bitmap->Pitch;
     }
+}
+
+// TODO(casey): Fix this for looped live code editing
+global_variable render_group *DEBUGRenderGroup;
+global_variable r32 LeftEdge;
+global_variable r32 AtY;
+global_variable r32 FontScale;
+
+internal void
+DEBUGReset(u32 Width, u32 Height)
+{
+    FontScale = 20.0f;
+    Orthographic(DEBUGRenderGroup, Width, Height, 1.0f);
+    AtY = 0.5f*Height - 0.5f*FontScale;
+    LeftEdge = -0.5f*Width + 0.5f*FontScale;
+}
+
+internal void
+DEBUGTextLine(char *String)
+{    
+    if(DEBUGRenderGroup)
+    {
+        render_group *RenderGroup = DEBUGRenderGroup;
+    
+        asset_vector MatchVector = {};
+        asset_vector WeightVector = {};
+        WeightVector.E[Tag_UnicodeCodepoint] = 1.0f;
+
+        r32 CharScale = FontScale;
+        v4 Color = V4(1, 1, 1, 1);
+        r32 AtX = LeftEdge;
+        for(char *At = String;
+            *At;
+            )
+        {
+            if((At[0] == '\\') &&
+               (At[1] == '#') &&
+               (At[2] != 0) &&
+               (At[3] != 0) &&
+               (At[4] != 0))
+            {
+                r32 CScale = 1.0f / 9.0f;
+                Color = V4(Clamp01(CScale*(r32)(At[2] - '0')),
+                           Clamp01(CScale*(r32)(At[3] - '0')),
+                           Clamp01(CScale*(r32)(At[4] - '0')),
+                           1.0f);
+                At += 5;
+            }
+            else if((At[0] == '\\') &&
+                    (At[1] == '^') &&
+                    (At[2] != 0))
+            {
+                r32 CScale = 1.0f / 9.0f;
+                CharScale = FontScale*Clamp01(CScale*(r32)(At[2] - '0'));
+                At += 3;
+            }
+            else
+            {
+                if(*At != ' ')
+                {
+                    MatchVector.E[Tag_UnicodeCodepoint] = *At;
+                    // TODO(casey): This is too slow for text, at the moment!
+                    bitmap_id BitmapID = GetBestMatchBitmapFrom(RenderGroup->Assets, Asset_Font,
+                                                                &MatchVector, &WeightVector);
+                    PushBitmap(RenderGroup, BitmapID, CharScale, V3(AtX, AtY, 0), Color);
+                }
+                AtX += CharScale;
+
+                ++At;
+            }
+        }
+
+        AtY -= 1.2f*FontScale;
+    }
+}
+
+internal void
+OverlayCycleCounters(game_memory *Memory)
+{
+    char *NameTable[] =
+    {
+        "GameUpdateAndRender",
+        "RenderGroupToOutput",
+        "DrawRectangleSlowly",
+        "ProcessPixel",
+        "DrawRectangleQuickly",
+    };
+#if HANDMADE_INTERNAL
+    DEBUGTextLine("\\#900DEBUG \\#090CYCLE \\#990\\^5COUNTS:");
+    for(int CounterIndex = 0;
+        CounterIndex < ArrayCount(Memory->Counters);
+        ++CounterIndex)
+    {
+        debug_cycle_counter *Counter = Memory->Counters + CounterIndex;
+
+        if(Counter->HitCount)
+        {
+#if 0
+            char TextBuffer[256];
+            _snprintf_s(TextBuffer, sizeof(TextBuffer),
+                        "  %d: %I64ucy %uh %I64ucy/h\n",
+                        CounterIndex,
+                        Counter->CycleCount,
+                        Counter->HitCount,
+                        Counter->CycleCount / Counter->HitCount);
+            OutputDebugStringA(TextBuffer);
+#else
+            DEBUGTextLine(NameTable[CounterIndex]);
+#endif
+        }
+    }
+#endif
 }
 
 #if HANDMADE_INTERNAL
@@ -913,6 +1026,9 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
         TranState->Assets = AllocateGameAssets(&TranState->TranArena, Megabytes(16), TranState);
 
+        DEBUGRenderGroup = AllocateRenderGroup(TranState->Assets, &TranState->TranArena,
+                                               Megabytes(16), false);
+
         GameState->Music = PlaySound(&GameState->AudioState, GetFirstSoundFrom(TranState->Assets, Asset_Music));
         
         // TODO(casey): Pick a real number here!
@@ -953,6 +1069,12 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         }
         
         TranState->IsInitialized = true;
+    }
+
+    if(DEBUGRenderGroup)
+    {
+        BeginRender(DEBUGRenderGroup);
+        DEBUGReset(Buffer->Width, Buffer->Height);
     }
 
 #if 0
@@ -1076,6 +1198,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     
     // TODO(casey): Decide what our pushbuffer size is!
     render_group *RenderGroup = AllocateRenderGroup(TranState->Assets, &TranState->TranArena, Megabytes(4), false);
+    BeginRender(RenderGroup);
     real32 WidthOfMonitor = 0.635f; // NOTE(casey): Horizontal measurement of monitor in meters
     real32 MetersToPixels = (real32)DrawBuffer->Width*WidthOfMonitor;
     real32 FocalLength = 0.6f;
@@ -1653,7 +1776,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 #endif
     
     TiledRenderGroupToOutput(TranState->HighPriorityQueue, RenderGroup, DrawBuffer);    
-    FinishRenderGroup(RenderGroup);
+    EndRender(RenderGroup);
 
     // TODO(casey): Make sure we hoist the camera update out to a place where the renderer
     // can know about the location of the camera at the end of the frame so there isn't
@@ -1666,6 +1789,14 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     CheckArena(&TranState->TranArena);
 
     END_TIMED_BLOCK(GameUpdateAndRender);
+
+    OverlayCycleCounters(Memory);
+
+    if(DEBUGRenderGroup)
+    {
+        TiledRenderGroupToOutput(TranState->HighPriorityQueue, DEBUGRenderGroup, DrawBuffer);
+        EndRender(DEBUGRenderGroup);
+    }
 }
 
 extern "C" GAME_GET_SOUND_SAMPLES(GameGetSoundSamples)

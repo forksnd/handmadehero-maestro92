@@ -11,9 +11,6 @@
   TODO(casey):
 
   - Flush all thread queues before reloading DLL!
-    
-  - Asset streaming
-    - Memory management
 
   - Debug code
     - Fonts
