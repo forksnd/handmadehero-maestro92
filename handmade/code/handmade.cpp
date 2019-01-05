@@ -663,7 +663,7 @@ global_variable r32 FontScale;
 internal void
 DEBUGReset(u32 Width, u32 Height)
 {
-    FontScale = 20.0f;
+    FontScale = 1.0f;
     Orthographic(DEBUGRenderGroup, Width, Height, 1.0f);
     AtY = 0.5f*Height - 0.5f*FontScale;
     LeftEdge = -0.5f*Width + 0.5f*FontScale;
@@ -710,21 +710,25 @@ DEBUGTextLine(char *String)
             }
             else
             {
+                r32 CharDim = CharScale*10.0f;
                 if(*At != ' ')
                 {
                     MatchVector.E[Tag_UnicodeCodepoint] = *At;
                     // TODO(casey): This is too slow for text, at the moment!
                     bitmap_id BitmapID = GetBestMatchBitmapFrom(RenderGroup->Assets, Asset_Font,
                                                                 &MatchVector, &WeightVector);
-                    PushBitmap(RenderGroup, BitmapID, CharScale, V3(AtX, AtY, 0), Color);
+                    hha_bitmap *Info = GetBitmapInfo(RenderGroup->Assets, BitmapID);
+
+                    CharDim = CharScale*(r32)(Info->Dim[0] + 2);
+                    PushBitmap(RenderGroup, BitmapID, CharScale*(r32)Info->Dim[1], V3(AtX, AtY, 0), Color);
                 }
-                AtX += CharScale;
+                AtX += CharDim;
 
                 ++At;
             }
         }
 
-        AtY -= 1.2f*FontScale;
+        AtY -= 1.2f*80.0f*FontScale;
     }
 }
 
@@ -1029,7 +1033,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         DEBUGRenderGroup = AllocateRenderGroup(TranState->Assets, &TranState->TranArena,
                                                Megabytes(16), false);
 
-        GameState->Music = PlaySound(&GameState->AudioState, GetFirstSoundFrom(TranState->Assets, Asset_Music));
+//        GameState->Music = PlaySound(&GameState->AudioState, GetFirstSoundFrom(TranState->Assets, Asset_Music));
         
         // TODO(casey): Pick a real number here!
         TranState->GroundBufferCount = 256;
@@ -1469,7 +1473,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
             switch(Entity->Type)
             {
                 case EntityType_Hero:
-                {
+                {                    
                     // TODO(casey): Z!!!
                     real32 HeroSizeC = 2.5f;
                     PushBitmap(RenderGroup, GetFirstBitmapFrom(TranState->Assets, Asset_Shadow), HeroSizeC*1.0f, V3(0, 0, 0), V4(1, 1, 1, ShadowAlpha));
@@ -1478,6 +1482,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                     PushBitmap(RenderGroup, HeroBitmaps.Head, HeroSizeC*1.2f, V3(0, 0, 0));
                     DrawHitpoints(Entity, RenderGroup);
 
+#if 0
                     for(u32 ParticleSpawnIndex = 0;
                         ParticleSpawnIndex < 3;
                         ++ParticleSpawnIndex)
@@ -1615,6 +1620,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                         // NOTE(casey): Render the particle
                         PushBitmap(RenderGroup, Particle->BitmapID, 1.0f, Particle->P, Color);
                     }
+#endif
                 } break;
 
                 case EntityType_Wall:

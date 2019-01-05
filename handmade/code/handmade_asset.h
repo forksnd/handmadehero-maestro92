@@ -179,7 +179,8 @@ inline asset_memory_header *GetAsset(game_assets *Assets, u32 ID, u32 Generation
     return(Result);
 }
 
-inline loaded_bitmap *GetBitmap(game_assets *Assets, bitmap_id ID, u32 GenerationID)
+inline loaded_bitmap *
+GetBitmap(game_assets *Assets, bitmap_id ID, u32 GenerationID)
 {
     asset_memory_header *Header = GetAsset(Assets, ID.Value, GenerationID);
 
@@ -188,7 +189,17 @@ inline loaded_bitmap *GetBitmap(game_assets *Assets, bitmap_id ID, u32 Generatio
     return(Result);
 }
 
-inline loaded_sound *GetSound(game_assets *Assets, sound_id ID, u32 GenerationID)
+inline hha_bitmap *
+GetBitmapInfo(game_assets *Assets, bitmap_id ID)
+{
+    Assert(ID.Value <= Assets->AssetCount);
+    hha_bitmap *Result = &Assets->Assets[ID.Value].HHA.Bitmap;
+
+    return(Result);
+}
+
+inline loaded_sound *
+GetSound(game_assets *Assets, sound_id ID, u32 GenerationID)
 {
     asset_memory_header *Header = GetAsset(Assets, ID.Value, GenerationID);
 
