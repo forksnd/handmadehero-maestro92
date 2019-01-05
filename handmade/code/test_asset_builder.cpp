@@ -905,8 +905,8 @@ WriteNonHero(void)
         Character <= '~';
         ++Character)
     {
-//        AddCharacterAsset(Assets, "c:/Windows/Fonts/arial.ttf", "Arial", Character);
-        AddCharacterAsset(Assets, "c:/Windows/Fonts/cour.ttf", "Courier New", Character);
+        AddCharacterAsset(Assets, "c:/Windows/Fonts/arial.ttf", "Arial", Character);
+//        AddCharacterAsset(Assets, "c:/Windows/Fonts/cour.ttf", "Courier New", Character);
         AddTag(Assets, Tag_UnicodeCodepoint, (r32)Character);
     }
     EndAssetType(Assets);

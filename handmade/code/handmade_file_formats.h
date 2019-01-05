@@ -40,6 +40,7 @@ enum asset_type_id
     Asset_Torso,
 
     Asset_Font,
+    Asset_FontGlyph,
 
     //
     // NOTE(casey): Sounds!
@@ -68,6 +69,11 @@ struct bitmap_id
 };
 
 struct sound_id
+{
+    u32 Value;
+};
+
+struct font_id
 {
     u32 Value;
 };
@@ -127,12 +133,30 @@ struct hha_bitmap
 {
     u32 Dim[2];
     r32 AlignPercentage[2];
+    /* NOTE(casey): Data is:
+
+       u32 Pixels[Dim[1]][Dim[0]]
+    */
 };
 struct hha_sound
 {
     u32 SampleCount;
     u32 ChannelCount;
     u32 Chain; // NOTE(casey): hha_sound_chain
+    /* NOTE(casey): Data is:
+
+       s16 Channels[ChannelCount][SampleCount]
+    */
+};
+struct hha_font
+{
+    u32 CodePointCount;
+    r32 LineAdvance;
+    /* NOTE(casey): Data is:
+
+       bitmap_id CodePoints[CodePointCount];
+       r32 HorizontalAdvance[CodePointCount];
+    */
 };
 struct hha_asset
 {
@@ -143,6 +167,7 @@ struct hha_asset
     {
         hha_bitmap Bitmap;
         hha_sound Sound;
+        hha_font Font;
     };
 };
 

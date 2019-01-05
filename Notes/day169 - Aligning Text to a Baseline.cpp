@@ -2,7 +2,7 @@ Handmade Hero Day 169 - Aligning Text to a Baseline
 
 Summary:
 made all the font rendering respect their natual character size.
-made all the front rendering aligned properly with its baseline
+made all the font rendering aligned properly with its baseline
 
 Keyword:
 graphics, font

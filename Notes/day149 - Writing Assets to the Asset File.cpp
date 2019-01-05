@@ -246,7 +246,7 @@ the thing with writing the "asset *Assets;" array is that
 recall 
                 struct hha_asset
                 {
-                    u64 DataOffset;
+                    u64 DataOffset;     <-------------
                     u32 FirstTagIndex;
                     u32 OnePastLastTagIndex;
                     union
