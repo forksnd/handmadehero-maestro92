@@ -20,22 +20,47 @@ enum asset_type
     AssetType_Sound,
     AssetType_Bitmap,
     AssetType_Font,
+    AssetType_FontGlyph,
+};
+
+struct loaded_font;
+struct asset_source_font
+{
+    loaded_font *Font;
+};
+
+struct asset_source_font_glyph
+{
+    loaded_font *Font;
+    u32 Codepoint;
+};
+
+struct asset_source_bitmap
+{
+    char *FileName;
+};
+
+struct asset_source_sound
+{
+    char *FileName;
+    u32 FirstSampleIndex;
 };
 
 struct asset_source
 {
     asset_type Type;
-    char *FileName;
     union
     {
-        u32 FirstSampleIndex;
-        u32 Codepoint;
+        asset_source_bitmap Bitmap;
+        asset_source_sound Sound;
+        asset_source_font Font;
+        asset_source_font_glyph Glyph;
     };
-
-    char *FontName;
 };
 
-#define VERY_LARGE_NUMBER 4096
+// TODO(casey): Are there larger numbers than 4096?  Do we have evidence
+// in the natural world of things that can exist in quantities _larger_ than 4096?
+#define VERY_LARGE_NUMBER 4096    // NOTE(casey): 4096 should be enough for anybody
 
 struct game_assets
 {

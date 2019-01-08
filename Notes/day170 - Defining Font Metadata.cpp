@@ -8,7 +8,7 @@ made the distinction between Asset_Font and Asset_FontGlyph in our game engine
 
 made accessing font Glyph bitmaps a direct table look up instead of through the asset matching algorithm.
 
-added support to load font in our game.
+started to add support to load fonts as an asset in our game. (previously we were only loading font glyphs as assets in our game)
 
 loading fonts also sets us up for having kerning in the near future
 
