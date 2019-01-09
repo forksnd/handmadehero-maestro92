@@ -681,7 +681,7 @@ DEBUGTextLine(char *String)
         font_id FontID = GetBestMatchFontFrom(RenderGroup->Assets, Asset_Font,
                                               &MatchVector, &WeightVector);
 
-        loaded_font *Font = GetFont(RenderGroup->Assets, FontID, RenderGroup->GenerationID);
+        loaded_font *Font = PushFont(RenderGroup, FontID);
         if(Font)
         {
             hha_font *Info = GetFontInfo(RenderGroup->Assets, FontID);
@@ -776,6 +776,7 @@ OverlayCycleCounters(game_memory *Memory)
         }
     }
 #endif
+    DEBUGTextLine("AVA WA Ta");
 }
 
 #if HANDMADE_INTERNAL
