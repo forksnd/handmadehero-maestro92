@@ -4,6 +4,8 @@ Summary:
 
 talked about what kerning is again
 
+changed the font rendering HorizontalAdvance to pre-Advance 
+
 made the distinction between Asset_Font and Asset_FontGlyph in our game engine 
 
 made accessing font Glyph bitmaps a direct table look up instead of through the asset matching algorithm.
@@ -27,6 +29,18 @@ characters from the table
 -   instead of advancing by font dimensions (like what we had in day 169);, we have 
 
                 r32 AdvanceX = CharScale*GetHorizontalAdvanceForPair(Info, Font, PrevCodePoint, CodePoint);
+
+
+    also notice that we moved the two lines 
+
+                r32 AdvanceX = CharScale*GetHorizontalAdvanceForPair(Info, Font, PrevCodePoint, CodePoint);
+                AtX += AdvanceX;
+
+    before calling 
+
+                PushBitmap(RenderGroup, BitmapID, CharScale*(r32)Info->Dim[1], V3(AtX, AtY, 0), Color);
+
+    so we are doing pre-Advance
 
 
 -   full code below:

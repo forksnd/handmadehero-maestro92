@@ -7,6 +7,8 @@ loading font dynamically on demand, just like all other assets
 
 extracted kerning table from windows 
 
+loaded LineAdvance from font
+
 fixed some clipping issue when rendering characters
 
 Keyword:
@@ -209,16 +211,26 @@ Casey getting the game to finally render some text
 Casey starting to work on the kerning table from windows.
 these are just windows API calls.
 
-we read the kerning pair and we copy the value to our own kerning table 
+
+-   these three lines loads the kerning table from windows 
+
+                DWORD KerningPairCount = GetKerningPairsW(GlobalFontDeviceContext, 0, 0);
+                KERNINGPAIR *KerningPairs = (KERNINGPAIR *)malloc(KerningPairCount*sizeof(KERNINGPAIR));
+                GetKerningPairsW(GlobalFontDeviceContext, KerningPairCount, KerningPairs);
+
+
+    we read the kerning pair and we copy the value to our own kerning table 
 
 -   recall in day 162, the kerning table stores delta values. Every pair gets a "default" value,
-and our kerning table value has a delta value that deviates from that "default" value. 
+    and our kerning table value has a delta value that deviates from that "default" value. 
 
-so we need to store the default value in our table
+    so we need to store the default value in our table 
 
-this is also the reason why we are doing the math with "+=" sign here
+    this is also the reason why we are doing the math with "+=" sign here
 
                 Font->HorizontalAdvance[Pair->wFirst*Font->CodePointCount + Pair->wSecond] += (r32)Pair->iKernAmount;
+
+    according to windows documentation, iKernAmount is usually negative. Cuz kerning usually makes characters pack more tightly.
 
 -   Casey gets the default advance between characters at 36:11
     it uses the GetCharWidth32(); function 
@@ -233,12 +245,8 @@ this is also the reason why we are doing the math with "+=" sign here
                     ...
                     ...
 
-                    ABC *ABCs = (ABC *)malloc(sizeof(ABC)*Font->CodePointCount);
-                    GetCharABCWidthsW(GlobalFontDeviceContext, 0, (Font->CodePointCount - 1), ABCs);
                     for(u32 CodePointIndex = 0; CodePointIndex < Font->CodePointCount; ++CodePointIndex)
                     {
-                        ABC *This = ABCs + CodePointIndex;
-                        r32 W = (r32)This->abcA + (r32)This->abcB + (r32)This->abcC;
                         for(u32 OtherCodePointIndex = 0; OtherCodePointIndex < Font->CodePointCount; ++OtherCodePointIndex)
                         {
                             Font->HorizontalAdvance[CodePointIndex*Font->CodePointCount + OtherCodePointIndex] = (r32)W;
@@ -267,8 +275,13 @@ this is also the reason why we are doing the math with "+=" sign here
                 }
 
 
-36:18
-Casey explaining how gets the default spacing value with GetCharABCWidthsW();
+
+35:47
+now that we have loaded the kerning table from windows, we need to go back to our first double for loop 
+
+we just need to get the default horizontal advance value for each character.
+
+This is done with GetCharABCWidthsW();
 
 the way we use this function is that we Initialize an ABC struct.
 Then we call GetCharABCWidthsW(); to populate our ABC variable
@@ -321,6 +334,30 @@ so what we want to is to just add all three together
 
     at the end. that frees the memory that we use 
 
+
+-   the main purpose of this double for loop is main to setup for 2nd double for loop for the kerning table 
+            
+    lets say when we write 'a'
+
+    for our first loop, we just do 
+
+        a, b = a_default_spacing        b, a = b_default_spacing
+        a, c = a_default_spacing        b, c = b_default_spacing
+        a, d = a_default_spacing        b, d = b_default_spacing
+        a, e = a_default_spacing        b, e = b_default_spacing
+        ...                             ...
+        ...                             ...
+
+
+    then we update this table with the kerning table information
+
+        a, b = (a_default_spacing + kern(a,b))                  b, a = (b_default_spacing + kern(b,a)) 
+        a, c = (a_default_spacing + kern(a,c))                  b, c = (b_default_spacing + kern(b,c)) 
+        a, d = (a_default_spacing + kern(a,d))                  b, d = (b_default_spacing + kern(b,d)) 
+        a, e = (a_default_spacing + kern(a,e))                  b, e = (b_default_spacing + kern(b,e)) 
+        ...                                                     ...
+        ...                                                     ...
+
 -   full code below:
 
                 ABC *ABCs = (ABC *)malloc(sizeof(ABC)*Font->CodePointCount);
@@ -335,6 +372,24 @@ so what we want to is to just add all three together
                     }
                 }
                 free(ABCs);
+
+    
+                DWORD KerningPairCount = GetKerningPairsW(GlobalFontDeviceContext, 0, 0);
+                KERNINGPAIR *KerningPairs = (KERNINGPAIR *)malloc(KerningPairCount*sizeof(KERNINGPAIR));
+                GetKerningPairsW(GlobalFontDeviceContext, KerningPairCount, KerningPairs);
+                for(DWORD KerningPairIndex = 0;
+                    KerningPairIndex < KerningPairCount;
+                    ++KerningPairIndex)
+                {
+                    KERNINGPAIR *Pair = KerningPairs + KerningPairIndex;
+                    if((Pair->wFirst < Font->CodePointCount) &&
+                       (Pair->wSecond < Font->CodePointCount))
+                    {
+                        Font->HorizontalAdvance[Pair->wFirst*Font->CodePointCount + Pair->wSecond] += (r32)Pair->iKernAmount;
+                    }
+                }
+
+                free(KerningPairs);
 
 
 
@@ -477,13 +532,38 @@ MinX is minX that has pixel content.
                 Asset->Bitmap.AlignPercentage[1] = (1.0f + (MaxY - (BoundHeight - Font->TextMetric.tmDescent))) / (r32)Result.Height;
 
 
-59:33
-Casey mentions the clipping on the A
-Casey explains that it is clipping on the "text out". 
+59:33 
+At this point of video, we can notice that the front leg of 'A' is clipped 
+
+-   recall from day 164, we have this BoundWidth and BoundHeight becuz we want to put a bound on the search area for our 
+    1024 x 1024 bitmap.
+
+    and we initially set that area from the size dimensions given from GetTextExtentPoint32W();
+
+-   at 1:16:16 in Q/A, Casey also explains that he suspects windows is drawing the bitmap clipped cuz it doesnt have enough space.
+    so what we need to do is to move it over to the middle of the bitmap, so it can draw the left side 
+
+-   So Casey added the "PreStepX" variable to the BoundWidth and BoundHeight 
+    and we call TextOutW with PreStepX
+                
+                TextOutW(GlobalFontDeviceContext, PreStepX, 0, &CheesePoint, 1);
+
+-   at 1:19:14
+    we also notice that the 'V' is also clipped 
+
+    initially Casey only had 
+
+                int BoundWidth = Size.cx + PreStepX;
+
+    which only fixed the clipping on 'A'
+    Casey make the BoundWidth to be 
+
+                int BoundWidth = Size.cx + 2 * PreStepX;
+
+    and that fixed the clipping on 'V'
 
 
-So Casey made some modification
-Casey added the "PreStepX" variable
+-   full code below:
 
                 internal loaded_bitmap LoadGlyphBitmap(loaded_font *Font, u32 CodePoint, hha_asset *Asset)
                 {
@@ -508,9 +588,25 @@ Casey added the "PreStepX" variable
                         BoundHeight = MAX_FONT_HEIGHT;
                     }
 
+                    TextOutW(GlobalFontDeviceContext, PreStepX, 0, &CheesePoint, 1);
+
                     ...
                     ...
 
                     Asset->Bitmap.AlignPercentage[0] = (1.0f - (MinX - PreStepX)) / (r32)Result.Width;
                     Asset->Bitmap.AlignPercentage[1] = (1.0f + (MaxY - (BoundHeight - Font->TextMetric.tmDescent))) / (r32)Result.Height;
                 }
+
+
+1:18:18
+what also contributed to the clipping bug was setting the bitmap to be full white.
+when casey turn it to black, it works again
+
+
+                memset(GlobalFontBits, 0xFF, MAX_FONT_WIDTH*MAX_FONT_HEIGHT*sizeof(u32));
+
+    
+-   now we have 
+
+                memset(GlobalFontBits, 0x00, MAX_FONT_WIDTH*MAX_FONT_HEIGHT*sizeof(u32));
+    

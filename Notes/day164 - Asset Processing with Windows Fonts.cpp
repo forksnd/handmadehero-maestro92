@@ -65,38 +65,174 @@ then in our LoadGlyphBitmap(); we write the logic path for using fonts from wind
 
 
 10:01
-we start off with our TextOut function. 
-Windows always expect UTF-16
+we start off with our TextOut function. Windows always expect UTF-16
+
+the msdn documentation says 
+
+    "The TextOut function writes a character string at the specified location, 
+    using the currently selected font, background color, and text color."
+    https://docs.microsoft.com/en-us/windows/desktop/api/wingdi/nf-wingdi-textouta
+
 
 the TextOut(); function takes a DeviceContext, so we try to create the DeviceContext
+
 
 -   notice that we made DeviceContext a static variable.
     this is so that we dont want to create the device context and bitmap every time we call LoadGlyphBitmap();
 
 -   most of this is windows API calls. Not much to say.
 
-                internal loaded_bitmap
-                LoadGlyphBitmap(char *FileName, char *FontName, u32 Codepoint)
+                internal loaded_bitmap LoadGlyphBitmap(char *FileName, char *FontName, u32 Codepoint)
                 {
                     loaded_bitmap Result = {};    
 
                     static HDC DeviceContext = 0;
                     if(!DeviceContext)
                     {
-                        AddFontResourceExA(FileName, FR_PRIVATE, 0);
-                        int Height = 128; // TODO(casey): Figure out how to specify pixels properly here
+                        DeviceContext = CreateCompatibleDC(0);
+                    }
 
+                    wchar_t CheesePoint = (wchar_t)Codepoint;
+                    TextOutW(DeviceContext, 0, 0, &CheesePoint, 1);
+                    ...
+                    ...
+                }
+
+
+11:57
+then we want to call CreateCompatibleBitmap();
+and we want to select that in by calling SelectObject();
+its kind of like "set the active bitmap"
+
+-   we just gave it 1024 x 1024, this way we will always have plenty of room for any character that we are making
+
+                internal loaded_bitmap LoadGlyphBitmap(char *FileName, char *FontName, u32 Codepoint)
+                {
+                    loaded_bitmap Result = {};    
+
+                    static HDC DeviceContext = 0;
+                    if(!DeviceContext)
+                    {
                         DeviceContext = CreateCompatibleDC(0);
                         HBITMAP Bitmap = CreateCompatibleBitmap(DeviceContext, 1024, 1024);
                         SelectObject(DeviceContext, Bitmap);
-                        SetBkColor(DeviceContext, RGB(0, 0, 0));
+                    }
+
+                    wchar_t CheesePoint = (wchar_t)Codepoint;
+                    TextOutW(DeviceContext, 0, 0, &CheesePoint, 1);
+                    ...
+                    ...
+                }
+
+
+15:59
+then the thing we need to consider how much space did that text occupy
+we also call the GetTextMetrics(); function. that tells us the metrics on a specific font,
+such as how high or wide it is.
+
+                internal loaded_bitmap LoadGlyphBitmap(char *FileName, char *FontName, u32 Codepoint)
+                {
+                    loaded_bitmap Result = {};    
+
+                    static HDC DeviceContext = 0;
+                    if(!DeviceContext)
+                    {
+                        DeviceContext = CreateCompatibleDC(0);
+                        HBITMAP Bitmap = CreateCompatibleBitmap(DeviceContext, 1024, 1024);
+                        SelectObject(DeviceContext, Bitmap);
 
                         TEXTMETRIC TextMetric;
                         GetTextMetrics(DeviceContext, &TextMetric);
                     }
 
+                    wchar_t CheesePoint = (wchar_t)Codepoint;
+                    TextOutW(DeviceContext, 0, 0, &CheesePoint, 1);
+                    ...
+                    ...
+                }
 
-20:49
+
+
+16:52
+the next thing to consider is how much space did that text take up
+Then we want the GetTextentPoint32(); function
+https://docs.microsoft.com/en-us/windows/desktop/api/wingdi/nf-wingdi-gettextextentpoint32a
+
+"The GetTextExtentPoint32 function computes the width and height of the specified string of text."
+
+what this will do is that, when we do our text out, we want to know how big it is gonna be
+
+the function will populate the Size field.
+now we would know the region that the text occupy after we do our TextOut();
+
+
+                internal loaded_bitmap LoadGlyphBitmap(char *FileName, char *FontName, u32 Codepoint)
+                {
+                    loaded_bitmap Result = {};    
+
+                    static HDC DeviceContext = 0;
+                    if(!DeviceContext)
+                    {
+                        DeviceContext = CreateCompatibleDC(0);
+                        HBITMAP Bitmap = CreateCompatibleBitmap(DeviceContext, 1024, 1024);
+                        SelectObject(DeviceContext, Bitmap);
+
+                        TEXTMETRIC TextMetric;
+                        GetTextMetrics(DeviceContext, &TextMetric);
+                    }
+
+                    wchar_t CheesePoint = (wchar_t)Codepoint;
+
+                    SIZE size;
+                    GetTextentPoint32(DeviceContext, &CheesePoint, 1, &Size);
+                    int Width = Size.cx;
+                    int Height = Size.cy
+
+                    TextOutW(DeviceContext, 0, 0, &CheesePoint, 1);
+                    ...
+                    ...
+                }
+
+
+
+18:24
+one thing we have to do is to clear the background.
+
+we do by calling PatBlt();, one of the windows api
+
+                internal loaded_bitmap LoadGlyphBitmap(char *FileName, char *FontName, u32 Codepoint)
+                {
+                    loaded_bitmap Result = {};    
+
+                    static HDC DeviceContext = 0;
+                    if(!DeviceContext)
+                    {
+                        DeviceContext = CreateCompatibleDC(0);
+                        HBITMAP Bitmap = CreateCompatibleBitmap(DeviceContext, 1024, 1024);
+                        SelectObject(DeviceContext, Bitmap);
+
+                        TEXTMETRIC TextMetric;
+                        GetTextMetrics(DeviceContext, &TextMetric);
+                    }
+
+                    wchar_t CheesePoint = (wchar_t)Codepoint;
+
+                    SIZE size;
+                    GetTextentPoint32(DeviceContext, &CheesePoint, 1, &Size);
+                    int Width = Size.cx;
+                    int Height = Size.cy
+
+                    PatBlt(DeviceContext, 0, 0, Width, Height, BLACKNESS);
+                    TextOutW(DeviceContext, 0, 0, &CheesePoint, 1);
+                    ...
+                    ...
+                }
+
+
+
+
+
+20:04
 we set the text color by calling 
 
                 SetTextColor(DeviceContext, RGB(255, 255, 255));
@@ -111,31 +247,117 @@ when you draw text in windows There is this SetBkColor();
                 SetBkColor();
 
 that you have to call to set the color of background of your font bitmap in widnows
-
 https://docs.microsoft.com/en-us/windows/desktop/api/wingdi/nf-wingdi-setbkcolor
 
 
 
+21:58
+then just like in stb_truetype, we want to extract the font.
+
+Casey doesnt matter if its upside down 
+
+                internal loaded_bitmap LoadGlyphBitmap(char *FileName, char *FontName, u32 Codepoint)
+                {
+                    ...................................................
+                    ......... DeviceContext, TextOutW .................
+                    ...................................................
 
 
-33:03
-to pick the font you want you need the CreateFontA(); call.
+                    Result.Width = Width + 2;
+                    Result.Height = Height + 2;
+                    Result.Pitch = Result.Width*BITMAP_BYTES_PER_PIXEL;
+                    Result.Memory = malloc(Result.Height*Result.Pitch);
+                    Result.Free = Result.Memory;
+
+                    memset(Result.Memory, 0, Result.Height*Result.Pitch);
+
+                    u8 *DestRow = (u8 *)Result.Memory + (Result.Height - 1 - 1)*Result.Pitch;
+                    for(s32 Y = MinY; Y <= MaxY; ++Y)
+                    {
+                        for(s32 X = MinX; X <= MaxX; ++X)
+                        {
+
+                            COLORREF Pixel = GetPixel(GlobalFontDeviceContext, X, Y);
+                            u8 Alpha = (u8)(Pixel & 0xFF);
+
+                            *Dest++ = ((Alpha << 24) |
+                                       (Alpha << 16) |
+                                       (Alpha << 8) |
+                                       (Alpha << 0));
+
+                        }
+                    
+                        DestRow -= Result.Pitch;
+                    }
+                }
 
 
-                HFONT Font = CreateFontA(Height, 0, 0, 0,
-                                         FW_NORMAL, // NOTE(casey): Weight
-                                         FALSE, // NOTE(casey): Italic
-                                         FALSE, // NOTE(casey): Underline
-                                         FALSE, // NOTE(casey): Strikeout
-                                         DEFAULT_CHARSET, 
-                                         OUT_DEFAULT_PRECIS,
-                                         CLIP_DEFAULT_PRECIS, 
-                                         ANTIALIASED_QUALITY,
-                                         DEFAULT_PITCH|FF_DONTCARE,
-                                         FontName);
+35:10
+we call AddFontResourceExA(); function, this will get the font into windows        
+essentially we are telling windows to load this font.
+
+-   the FileName we pass in is gonna be the ".ttf" file.
+    for example, "arial.ttf"
+
+                test_asset_builder.cpp
+
+                internal loaded_bitmap LoadGlyphBitmap(char *FileName, char *FontName, u32 Codepoint)
+                {
+                    loaded_bitmap Result = {};    
+
+                    static HDC DeviceContext = 0;
+                    if(!DeviceContext)
+                    {
+                        AddFontResourceExA(FileName, FR_PRIVATE, 0);
+                        ...
+                        ...
+                    }
+
+                }
 
 
-which is super annoying. more examples of windows bad api design
+
+
+
+37:56
+Now we want get the font out.
+we do this by calling CreateFontA();
+
+-   we just say for now Height = 128
+
+-   width is 0, cuz we dont want any stretching 
+
+                test_asset_builder.cpp
+
+                internal loaded_bitmap LoadGlyphBitmap(char *FileName, char *FontName, u32 Codepoint)
+                {
+                    loaded_bitmap Result = {};    
+
+                    static HDC DeviceContext = 0;
+                    if(!DeviceContext)
+                    {
+                        AddFontResourceExA(FileName, FR_PRIVATE, 0);
+                        int Height = 128; // TODO(casey): Figure out how to specify pixels properly here
+                        HFONT Font = CreateFontA(Height, 0, 0, 0,
+                                                 FW_NORMAL, // NOTE(casey): Weight
+                                                 FALSE, // NOTE(casey): Italic
+                                                 FALSE, // NOTE(casey): Underline
+                                                 FALSE, // NOTE(casey): Strikeout
+                                                 DEFAULT_CHARSET, 
+                                                 OUT_DEFAULT_PRECIS,
+                                                 CLIP_DEFAULT_PRECIS, 
+                                                 ANTIALIASED_QUALITY,
+                                                 DEFAULT_PITCH|FF_DONTCARE,
+                                                 FontName);
+                        ...
+                        ...
+                    }
+
+                }
+
+
+
+
 
 
 45:05
@@ -143,12 +365,48 @@ after creating the font, now we want to tell the device Context to use this font
 
 we would call the SelectObject(); function.
 
-                SelectObject(DeviceContext, Font);
+
+                test_asset_builder.cpp
+
+                internal loaded_bitmap LoadGlyphBitmap(char *FileName, char *FontName, u32 Codepoint)
+                {
+                    loaded_bitmap Result = {};    
+
+                    static HDC DeviceContext = 0;
+                    if(!DeviceContext)
+                    {
+                        AddFontResourceExA(FileName, FR_PRIVATE, 0);
+                        int Height = 128; // TODO(casey): Figure out how to specify pixels properly here
+                        HFONT Font = CreateFontA(Height, 0, 0, 0,
+                                                 FW_NORMAL, // NOTE(casey): Weight
+                                                 FALSE, // NOTE(casey): Italic
+                                                 FALSE, // NOTE(casey): Underline
+                                                 FALSE, // NOTE(casey): Strikeout
+                                                 DEFAULT_CHARSET, 
+                                                 OUT_DEFAULT_PRECIS,
+                                                 CLIP_DEFAULT_PRECIS, 
+                                                 ANTIALIASED_QUALITY,
+                                                 DEFAULT_PITCH|FF_DONTCARE,
+                                                 FontName);
+        
+                        DeviceContext = CreateCompatibleDC(0);
+                        HBITMAP Bitmap = CreateCompatibleBitmap(DeviceContext, 1024, 1024);
+                        SelectObject(DeviceContext, Bitmap);
+        ------------>   SelectObject(DeviceContext, Font);
+                        SetBkColor(DeviceContext, RGB(0, 0, 0));
+
+                        TEXTMETRIC TextMetric;
+                        GetTextMetrics(DeviceContext, &TextMetric);
+                    }
+
+                    ...
+                    ...
+                }
+
 
 -   full code below:
     
-                internal loaded_bitmap
-                LoadGlyphBitmap(char *FileName, char *FontName, u32 Codepoint)
+                internal loaded_bitmap LoadGlyphBitmap(char *FileName, char *FontName, u32 Codepoint)
                 {
                     loaded_bitmap Result = {};    
 
@@ -185,25 +443,46 @@ we would call the SelectObject(); function.
 
 
 
-47:11
-Casey realizes that when we get the font bitmaps from the windows, the bitmaps has a layer of empty padding,
-which is why when we do the windows implementation, the fonts looks smaller than the ones from the stb_truetype library.
+46:40
+Casey thinks the text render in windows is smaller and thinner.
+
+Casey suspects that when we call GetTextExtentPoint32(); point for a letter, it is not giving us a tight rectangle.
+the bitmaps has a layer of empty padding,
+
+the stb_truetype library is giving us a tight rectangle enclosing the letter
 
 
 
-50:12
+
+49:20
 Casey proved his assumption by rendering the alpha in black. and as shown the windows implementation does have empty space 
-around the font bitmap.  
+at the top and bottom of the bitmap
 
+this shows that GetTextExtentPoint32(); is not giving us a tight rectangle.
 
 
 52:50
-Casey will scan the bitmap to get rid of the empty space.
+Casey couldnt find a way to tell windows to get rid of the empty space padding
+
+so he will just have to do it himself. He will scan the bitmap to get rid of the empty space.
+
+we can just scan the entire 1024 x 1024 bitmap, but we are also calling GetTextExtentPoint32(); to bounds the search area.
+this way we only have to go from 0 ~ Height and 0 ~ Width, instead of 0 ~ 1024 
+
 
                 test_asset_builder.cpp
 
                 internal loaded_bitmap LoadGlyphBitmap(char *FileName, char *FontName, u32 Codepoint)
                 {
+
+                    SIZE Size;
+                    GetTextExtentPoint32W(DeviceContext, &CheesePoint, 1, &Size);
+
+                    int Width = Size.cx;
+                    int Height = Size.cy;
+
+                    ...
+                    ...                    
 
                     s32 MinX = 10000;
                     s32 MinY = 10000;
