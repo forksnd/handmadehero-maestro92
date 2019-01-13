@@ -3,7 +3,7 @@ Handmade Hero Day 172 - Extracting Kerning Tables from Windows
 Summary:
 
 wrote code to load font in game code 
-loading font dynamically on demand, just like all other assets 
+loading font asset dynamically on demand, just like all other assets (bitmap, sound)
 
 extracted kerning table from windows 
 

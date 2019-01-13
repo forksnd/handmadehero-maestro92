@@ -148,16 +148,21 @@ struct hha_sound
        s16 Channels[ChannelCount][SampleCount]
     */
 };
+struct hha_font_glyph
+{
+    u32 UnicodeCodePoint;
+    bitmap_id BitmapID;
+};
 struct hha_font
 {
-    u32 CodePointCount;
+    u32 GlyphCount;
     r32 AscenderHeight;
     r32 DescenderHeight;    
     r32 ExternalLeading;
     /* NOTE(casey): Data is:
 
-       bitmap_id CodePoints[CodePointCount];
-       r32 HorizontalAdvance[CodePointCount];
+       hha_font_glyph CodePoints[GlyphCount];
+       r32 HorizontalAdvance[GlyphCount][GlyphCount];
     */
 };
 struct hha_asset
