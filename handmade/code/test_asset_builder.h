@@ -15,12 +15,13 @@
 #include "handmade_intrinsics.h"
 #include "handmade_math.h"
 
+#define ONE_PAST_MAX_FONT_CODEPOINT (0x10FFFF + 1)
+
 #define USE_FONTS_FROM_WINDOWS 1
 
 #if USE_FONTS_FROM_WINDOWS
 #include <windows.h>
 
-#define ONE_PAST_MAX_FONT_CODEPOINT (0x10FFFF + 1)
 #define MAX_FONT_WIDTH 1024
 #define MAX_FONT_HEIGHT 1024
 
@@ -58,6 +59,7 @@ struct loaded_font
     u32 GlyphCount;
 
     u32 *GlyphIndexFromCodePoint;
+    u32 OnePastHighestCodepoint;
 };
 
 enum asset_type
