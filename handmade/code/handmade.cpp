@@ -14,6 +14,8 @@
 #include "handmade_asset.cpp"
 #include "handmade_audio.cpp"
 
+internal void OverlayCycleCounters(game_memory *Memory);
+
 struct add_low_entity_result
 {
     low_entity *Low;
@@ -672,6 +674,8 @@ global_variable font_id FontID;
 internal void
 DEBUGReset(game_assets *Assets, u32 Width, u32 Height)
 {
+    TIMED_BLOCK();
+    
     asset_vector MatchVector = {};
     asset_vector WeightVector = {};
     FontID = GetBestMatchFontFrom(Assets, Asset_Font, &MatchVector, &WeightVector);
@@ -789,59 +793,17 @@ DEBUGTextLine(char *String)
     }
 }
 
-internal void
-OverlayCycleCounters(game_memory *Memory)
-{
-    char *NameTable[] =
-    {
-        "GameUpdateAndRender",
-        "RenderGroupToOutput",
-        "DrawRectangleSlowly",
-        "ProcessPixel",
-        "DrawRectangleQuickly",
-    };
-    DEBUGTextLine("\\5C0F\\8033\\6728\\514E");
-    DEBUGTextLine("111111");
-    DEBUGTextLine("999999");
-#if HANDMADE_INTERNAL
-    DEBUGTextLine("\\#900DEBUG \\#090CYCLE \\#990\\^5COUNTS:");
-    for(int CounterIndex = 0;
-        CounterIndex < ArrayCount(Memory->Counters);
-        ++CounterIndex)
-    {
-        debug_cycle_counter *Counter = Memory->Counters + CounterIndex;
-
-        if(Counter->HitCount)
-        {
-#if 0
-            char TextBuffer[256];
-            _snprintf_s(TextBuffer, sizeof(TextBuffer),
-                        "  %d: %I64ucy %uh %I64ucy/h\n",
-                        CounterIndex,
-                        Counter->CycleCount,
-                        Counter->HitCount,
-                        Counter->CycleCount / Counter->HitCount);
-            OutputDebugStringA(TextBuffer);
-#else
-            DEBUGTextLine(NameTable[CounterIndex]);
-#endif
-        }
-    }
-#endif
-    DEBUGTextLine("AVA WA Ta");
-}
-
 #if HANDMADE_INTERNAL
 game_memory *DebugGlobalMemory;
 #endif
 extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 {
-    Platform = Memory->PlatformAPI;
+    Platform = Memory->PlatformAPI;    
     
 #if HANDMADE_INTERNAL
     DebugGlobalMemory = Memory;
 #endif
-    BEGIN_TIMED_BLOCK(GameUpdateAndRender)
+    TIMED_BLOCK();
 
     Assert((&Input->Controllers[0].Terminator - &Input->Controllers[0].Buttons[0]) ==
            (ArrayCount(Input->Controllers[0].Buttons)));
@@ -1855,8 +1817,6 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     CheckArena(&GameState->WorldArena);
     CheckArena(&TranState->TranArena);
 
-    END_TIMED_BLOCK(GameUpdateAndRender);
-
     OverlayCycleCounters(Memory);
 
     if(DEBUGRenderGroup)
@@ -1872,4 +1832,42 @@ extern "C" GAME_GET_SOUND_SAMPLES(GameGetSoundSamples)
     transient_state *TranState = (transient_state *)Memory->TransientStorage;
 
     OutputPlayingSounds(&GameState->AudioState, SoundBuffer, TranState->Assets, &TranState->TranArena);
+}
+
+debug_record DebugRecordArray[__COUNTER__];
+
+#include <stdio.h>
+
+internal void
+OverlayCycleCounters(game_memory *Memory)
+{
+//    DEBUGTextLine("\\5C0F\\8033\\6728\\514E");
+//    DEBUGTextLine("111111");
+//    DEBUGTextLine("999999");
+#if HANDMADE_INTERNAL
+    DEBUGTextLine("\\#900DEBUG \\#090CYCLE \\#990\\^5COUNTS:");
+    for(int CounterIndex = 0;
+        CounterIndex < ArrayCount(DebugRecords_Main);
+        ++CounterIndex)
+    {
+        debug_record *Counter = DebugRecords_Main + CounterIndex;
+
+        if(Counter->HitCount)
+        {
+#if 1
+            char TextBuffer[256];
+            _snprintf_s(TextBuffer, sizeof(TextBuffer),
+                        "%s: %I64ucy %uh %I64ucy/h",
+                        Counter->FunctionName,
+                        Counter->CycleCount,
+                        Counter->HitCount,
+                        Counter->CycleCount / Counter->HitCount);
+            DEBUGTextLine(TextBuffer);
+            Counter->HitCount = 0;
+            Counter->CycleCount = 0;
+#endif
+        }
+    }
+#endif
+//    DEBUGTextLine("AVA WA Ta");
 }

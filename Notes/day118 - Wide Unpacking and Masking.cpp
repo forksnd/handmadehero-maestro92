@@ -116,7 +116,7 @@ Mi(WriteMask, I); is just the integer version of it.
 
 
 16:01
-mentioned that his friend Fabien told him, the SSE rounding mode, unless we change it, will do round to nearest by default,
+mentioned that his friend Fabian Giesen told him, the SSE rounding mode, unless we change it, will do round to nearest by default,
 
 so so we are changing the code
 

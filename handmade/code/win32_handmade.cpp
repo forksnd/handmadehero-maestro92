@@ -959,6 +959,7 @@ Win32GetSecondsElapsed(LARGE_INTEGER Start, LARGE_INTEGER End)
     return(Result);
 }
 
+#if 0
 internal void
 HandleDebugCycleCounters(game_memory *Memory)
 {
@@ -986,6 +987,7 @@ HandleDebugCycleCounters(game_memory *Memory)
     }
 #endif
 }
+#endif
 
 #if 0
 
@@ -1807,7 +1809,7 @@ WinMain(HINSTANCE Instance,
                         if(Game.UpdateAndRender)
                         {
                             Game.UpdateAndRender(&GameMemory, NewInput, &Buffer);
-                            HandleDebugCycleCounters(&GameMemory);
+//                            HandleDebugCycleCounters(&GameMemory);
                         }
 
                         LARGE_INTEGER AudioWallClock = Win32GetWallClock();
