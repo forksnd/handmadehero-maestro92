@@ -363,6 +363,8 @@ struct fill_ground_chunk_work
 };
 internal PLATFORM_WORK_QUEUE_CALLBACK(FillGroundChunkWork)
 {
+    TIMED_BLOCK();
+    
     fill_ground_chunk_work *Work = (fill_ground_chunk_work *)Data;
             
     loaded_bitmap *Buffer = &Work->GroundBuffer->Bitmap;
@@ -461,7 +463,7 @@ internal PLATFORM_WORK_QUEUE_CALLBACK(FillGroundChunkWork)
 
 internal void
 FillGroundChunk(transient_state *TranState, game_state *GameState, ground_buffer *GroundBuffer, world_position *ChunkP)
-{    
+{
     task_with_memory *Task = BeginTaskWithMemory(TranState);
     if(Task)
     {
@@ -678,6 +680,8 @@ DEBUGReset(game_assets *Assets, u32 Width, u32 Height)
     
     asset_vector MatchVector = {};
     asset_vector WeightVector = {};
+    MatchVector.E[Tag_FontType] = (r32)FontType_Debug;
+    WeightVector.E[Tag_FontType] = 1.0f;
     FontID = GetBestMatchFontFrom(Assets, Asset_Font, &MatchVector, &WeightVector);
 
     FontScale = 1.0f;
@@ -1836,7 +1840,41 @@ extern "C" GAME_GET_SOUND_SAMPLES(GameGetSoundSamples)
 
 debug_record DebugRecordArray[__COUNTER__];
 
+// TODO(casey): Stop using stdio!
 #include <stdio.h>
+
+internal void
+OutputDebugRecords(u32 CounterCount, debug_record *Counters)
+{
+    for(u32 CounterIndex = 0;
+        CounterIndex < CounterCount;
+        ++CounterIndex)
+    {
+        debug_record *Counter = Counters + CounterIndex;
+
+        u64 HitCount_CycleCount = AtomicExchangeU64(&Counter->HitCount_CycleCount, 0);
+        u32 HitCount = (u32)(HitCount_CycleCount >> 32);
+        u32 CycleCount = (u32)(HitCount_CycleCount & 0xFFFFFFFF);
+        
+        if(HitCount)
+        {
+#if 1
+            char TextBuffer[256];
+            _snprintf_s(TextBuffer, sizeof(TextBuffer),
+                        "%32s(%4d): %10ucy %8uh %10ucy/h",
+                        Counter->FunctionName,
+                        Counter->LineNumber,
+                        CycleCount,
+                        HitCount,
+                        CycleCount / HitCount);
+            DEBUGTextLine(TextBuffer);
+#endif
+        }
+    }
+}
+
+extern u32 const DebugRecords_Optimized_Count;
+debug_record DebugRecords_Optimized[];
 
 internal void
 OverlayCycleCounters(game_memory *Memory)
@@ -1846,28 +1884,8 @@ OverlayCycleCounters(game_memory *Memory)
 //    DEBUGTextLine("999999");
 #if HANDMADE_INTERNAL
     DEBUGTextLine("\\#900DEBUG \\#090CYCLE \\#990\\^5COUNTS:");
-    for(int CounterIndex = 0;
-        CounterIndex < ArrayCount(DebugRecords_Main);
-        ++CounterIndex)
-    {
-        debug_record *Counter = DebugRecords_Main + CounterIndex;
-
-        if(Counter->HitCount)
-        {
-#if 1
-            char TextBuffer[256];
-            _snprintf_s(TextBuffer, sizeof(TextBuffer),
-                        "%s: %I64ucy %uh %I64ucy/h",
-                        Counter->FunctionName,
-                        Counter->CycleCount,
-                        Counter->HitCount,
-                        Counter->CycleCount / Counter->HitCount);
-            DEBUGTextLine(TextBuffer);
-            Counter->HitCount = 0;
-            Counter->CycleCount = 0;
-#endif
-        }
-    }
+    OutputDebugRecords(DebugRecords_Optimized_Count, DebugRecords_Optimized);
+    OutputDebugRecords(ArrayCount(DebugRecords_Main), DebugRecords_Main);
 #endif
 //    DEBUGTextLine("AVA WA Ta");
 }

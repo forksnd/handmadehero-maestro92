@@ -7,12 +7,19 @@
    $Notice: (C) Copyright 2015 by Molly Rocket, Inc. All Rights Reserved. $
    ======================================================================== */
 
+enum asset_font_type
+{
+    FontType_Default = 0,
+    FontType_Debug = 10,
+};
+
 enum asset_tag_id
 {
     Tag_Smoothness,
     Tag_Flatness,
     Tag_FacingDirection, // NOTE(casey): Angle in radians off of due right
-    Tag_UnicodeCodepoint, 
+    Tag_UnicodeCodepoint,
+    Tag_FontType, // NOTE(casey): 0 - Default Game Font, 10 - Debug Font?
     
     Tag_Count,
 };

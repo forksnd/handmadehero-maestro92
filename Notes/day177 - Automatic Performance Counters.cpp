@@ -767,4 +767,4 @@ there are other ones useful for other ones.
 
 
 1:14:05
-Casey gave a rant on public setters and getters in C++
+Casey gave a rant on public setters and getters in C++;
