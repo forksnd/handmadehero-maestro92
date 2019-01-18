@@ -1,6 +1,17 @@
 Handmade Hero Day 179 - Tracking Debug Information Over Time
 
 Summary:
+addresses the debug records and rendering TIMED_BLOCKS tangling problem.
+elevated the "read from debug records" to the platform layer
+
+added a debug_frame_end_info struct in the platform layer
+took down timings for multiple operations in within the frame in the platform layer
+
+solved the debug reocrds and rendering TIMED_BLOCKS tangling issue 
+by having the debug_records array copied its data to a debug memory storage, then we print/render 
+debug data from the debug memory storage.
+
+added support for gathering statistics from debug data in the debug memory storage
 
 
 Keyword:
