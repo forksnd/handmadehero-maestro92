@@ -13,7 +13,6 @@
   - Flush all thread queues before reloading DLL!
 
   - Debug code
-    - Fonts
     - Logging
     - Diagramming
     - (A LITTLE GUI, but only a little!) Switches / sliders / etc.

@@ -79,6 +79,14 @@ so Casey spamed the TIMED_BLOCK everywhere, but there are some problems
 1.  any timing that encloses the rendering are totaly wrong, becuz the block 
     that is timing them is open when it actually gets printed 
 
+    for instance, if you look at OverlayCycleCounters(); that calls DEBUGTextLine();
+
+    if we put a TIMED_BLOCK in DEBUGTextLine(); which is inside the OverlayCycleCounters(); function
+    in which we are printing our debug numbers, that messes up the timing numbers.
+
+
+
+
     so we have to delay our timings for one frame, and print our values from the previous frame.
     so that we can have those blocks be closed before we try to go access them.
 

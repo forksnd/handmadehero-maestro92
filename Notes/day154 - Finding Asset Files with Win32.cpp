@@ -13,7 +13,7 @@ mentioned that dont ever use STL in Q/A
 
 mentioned the reason he does 
     
-                #define PLATFORM_OPEN_FILE(name) platform_file_handle *name(platform_file_group *FileGroup)
+                #define PLATFORM_OPEN_FILE(name) platform_file_handle *name(platform_file_group *FileGroup)                 ;
                 typedef PLATFORM_OPEN_FILE(platform_open_next_file);
 
 style coding for the platform functions
@@ -242,7 +242,7 @@ the platform_api needs to have a pointer to OpenNextFile.
 platform_api is like a dispatch table.
 
 
-the #define and typedef is 2 different things 
+the #define and typedef are for 2 different things 
 we are doing the typedef for the pointer reason 
 
 the #define is strictly for convenience.
@@ -251,7 +251,7 @@ consider the case
 
                 handmade_platform.h
     
-                #define PLATFORM_OPEN_FILE(name) platform_file_handle *name(platform_file_group *FileGroup)
+                #define PLATFORM_OPEN_FILE(name) platform_file_handle *name(platform_file_group *FileGroup)              (adding a';' for sublime syntax highlighting);
                 typedef PLATFORM_OPEN_FILE(platform_open_next_file);
 
 and for the definition, we have 
@@ -266,14 +266,78 @@ and for the definition, we have
 
 
 
-if casey wants to make a change, lets say we want to change platform_open_next_file to platform_open_next_file2
+
+So to understand typedef for function pointers, read the following link 
+                
+look for the answer by psychotik
+https://stackoverflow.com/questions/1591361/understanding-typedefs-for-function-pointers-in-c
+https://cs.nyu.edu/courses/spring12/CSCI-GA.3033-014/Assignment1/function_pointers.html
+
+A function pointer is like any other pointer, but it points to the address of a function 
+instead of the address of data (on heap or stack);
+
+Like any pointer, it needs to be typed correctly. 
+Functions are defined by their return value and the types of parameters they accept.
+
+assume an example,
+                
+                float doMultiplication (float num1, float num2 ) 
+                {
+                    return num1 * num2; 
+                }
+
+then you can have the following
+
+                typedef float (*pt2Func) (float, float);
+
+this typedef can be used to point to this doMulitplication function. 
+It is simply defining a pointer to a function which returns a float and takes two parameters, 
+each of type float. This definition has the friendly name pt2Func. 
+Note that pt2Func can point to ANY function which returns a float and takes in 2 floats.
+
+
+
+
+So you can create a pointer which points to another function
+                
+                pt2Func* myFnPtr = &doMultiplication;
+    
+
+and you can invoke the function using the pointer 
+
+                float result = (*myFnPtr)(2.0, 5.1);
+
+
+
+
+back to Caseys code. if we dont have the #define, the translates to 
+
+
+                handmade_platform.h
+
+                typedef platform_file_handle (*platform_open_next_file) (platform_file_group *FileGroup);
+
+
+                win32_handmade.cpp
+
+                internal platform_file_handle Win32OpenNextFile(platform_file_group *FileGroup)
+                {
+                    ...
+                    ...
+                }
+
+
+
+
+
+if casey wants to make a change, lets say we want to change platform_file_handle to platform_file_handle2
 with this #define, we only need to change one place.
 
 
                 handmade_platform.h
     
-                #define PLATFORM_OPEN_FILE(name) platform_file_handle* name(platform_file_group *FileGroup)
-                typedef PLATFORM_OPEN_FILE(platform_open_next_file2);
+    -------->   #define PLATFORM_OPEN_FILE(name) platform_file_handle2 (*name)(platform_file_group *FileGroup)                (adding a';' for sublime syntax highlighting);
+                typedef PLATFORM_OPEN_FILE(platform_open_next_file);
 
 
                 win32_handmade.cpp
@@ -291,12 +355,12 @@ without the #define, he will have to change two places
 
                 handmade_platform.h
     
-                typedef platform_file_handle* platform_open_next_file2(platform_file_group *FileGroup)
+    -------->   typedef platform_file_handle2 (*platform_open_next_file)(platform_file_group *FileGroup);
 
 
                 win32_handmade.cpp
 
-                internal platform_open_next_file2 Win32OpenNextFile
+    -------->   internal platform_file_handle2 Win32OpenNextFile(platform_file_group *FileGroup)
                 {
                     ...
                     ...
