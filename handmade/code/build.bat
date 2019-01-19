@@ -19,8 +19,8 @@ REM cl %CommonCompilerFlags% ..\handmade\code\win32_handmade.cpp /link -subsyste
 REM 64-bit build
 REM Optimization switches /wO2
 echo WAITING FOR PDB > lock.tmp
-cl %CommonCompilerFlags% -DDebugRecordArray=DebugRecords_Optimized -O2 -I..\iaca-win64\ -c ..\handmade\code\handmade_optimized.cpp -Fohandmade_optimized.obj -LD
-cl %CommonCompilerFlags% -DDebugRecordArray=DebugRecords_Main -I..\iaca-win64\ ..\handmade\code\handmade.cpp handmade_optimized.obj -Fmhandmade.map -LD /link -incremental:no -opt:ref -PDB:handmade_%random%.pdb -EXPORT:GameGetSoundSamples -EXPORT:GameUpdateAndRender -EXPORT:DEBUGGameFrameEnd
+cl %CommonCompilerFlags% -DDebugRecordArrayIndexConstant=1 -DDebugRecordArray=DebugRecords_Optimized -O2 -I..\iaca-win64\ -c ..\handmade\code\handmade_optimized.cpp -Fohandmade_optimized.obj -LD
+cl %CommonCompilerFlags% -DDebugRecordArrayIndexConstant=0 -DDebugRecordArray=DebugRecords_Main -I..\iaca-win64\ ..\handmade\code\handmade.cpp handmade_optimized.obj -Fmhandmade.map -LD /link -incremental:no -opt:ref -PDB:handmade_%random%.pdb -EXPORT:GameGetSoundSamples -EXPORT:GameUpdateAndRender -EXPORT:DEBUGGameFrameEnd
 del lock.tmp
 cl %CommonCompilerFlags% ..\handmade\code\win32_handmade.cpp -Fmwin32_handmade.map /link %CommonLinkerFlags%
 popd

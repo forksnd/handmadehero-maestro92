@@ -8,14 +8,14 @@ added a debug_frame_end_info struct in the platform layer
 took down timings for multiple operations in within the frame in the platform layer
 
 solved the debug reocrds and rendering TIMED_BLOCKS tangling issue 
-by having the debug_records array copied its data to a debug memory storage, then we print/render 
-debug data from the debug memory storage.
+by having the debug_records array copied its data to a debug memory storage at the end of a frame, 
+then during the frame, we print/render debug data from the debug memory storage.
 
 added support for gathering statistics from debug data in the debug memory storage
 
 
 Keyword:
-Frames per second, debug system, memory
+Frames per second, debug system, memory, profiling
 
 
 10:48

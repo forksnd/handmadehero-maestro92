@@ -312,7 +312,8 @@ and QueryPerformanceCounter work together to compute time.
 43:54
 Casey mentioned that __rdtsc(); is processor specific. So You cant use __rdtsc(); for timing on a user machine. 
 you can only use query performance counter for timings on a user machine. 
-So our game code has to be driven off of query performance counter.  
+So our game code has to be driven off of query performance counter.  (meaning, when to start the next frame,
+or how long to sleep till this frame ends);
 
 __rdtsc is only used for profiling cuz how it behaves varies from CPU to CPU. 
 so you dont want to ship a game using __rdtsc for game time.

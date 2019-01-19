@@ -16,7 +16,8 @@ __rdtsc
 a way of getting "a thing" inside the CPU that increments by one every time the CPU retires a clock cycle
 
 Example:
-if your cycle is 3.2 GHz Processor, that means 3.2 billion cycles per second. Each one of those cycle, this counter increments by one
+if your computer has a 3.2 GHz Processor, that means 3.2 billion cycles per second. 
+For each one of those cycle, this counter increments by one
 
 the RDTSC counter lets you access the value in this counter
 
@@ -39,27 +40,26 @@ so it is not foulproof. but a quite useful thing that give u indication of your 
 
 QueryPerformanceCounter
 https://msdn.microsoft.com/en-us/library/windows/desktop/ms644904(v=vs.85).aspx
-this is u asking windows, to the best of your knowledge, what the worlds real time now
-high resolution, 
+this is u asking windows, to the best of your knowledge, what the worlds real time now in high resolution, 
 
-		"Retrieves the current value of the performance counter, 
-		which is a high resolution (<1us) time stamp that can be used for time-interval measurements."
+        "Retrieves the current value of the performance counter, 
+        which is a high resolution (<1us) time stamp that can be used for time-interval measurements."
 
 resolution is actually (1<us);
 
 
 
 [From the following link, it says 
-				
-		"QueryPerformanceCounter returns the number of "ticks" since the computer was rebooted.
-		QueryPerformanceFrequency returns the number of "ticks" in a second
+                
+        "QueryPerformanceCounter returns the number of 'ticks' since the computer was rebooted.
+        QueryPerformanceFrequency returns the number of 'ticks' in a second
 
-		to measure the duration of a frame (or anything else), you will call QueryPerformanceCounter at the beginining
-		of the frame and save the value so that you can compare it to the returned at the end of a frame());
-		"
+        to measure the duration of a frame (or anything else), you will call QueryPerformanceCounter at the beginining
+        of the frame and save the value so that you can compare it to the returned at the end of a frame());
+        "
 https://www.gamedev.net/forums/topic/339194-can-somebody-please-explain-queryperformancecounter/
 ]
-	
+    
 
 [The following link also provides very good informatin about QueryPerformanceCounter 
 http://www.songho.ca/misc/timer/timer.html
