@@ -59,7 +59,7 @@ The process is the state of a memory layout. The memory layout is controlled on 
 when you are running this particular application, your process knows about the state of its memory, TLB and address space.
 The memory, The TLB and the address space is per process.
 
-The registers, the assembly instructions is not per process, it is actually done at a level below process.
+The registers, the assembly instructions is not per process, it is actually done at a level below process (namely threads);
 
 A process may want to have multiple simultaenous code execution states, which is what we call threads.
 In a process you have multiple threads. 
@@ -71,7 +71,6 @@ A thread has the a state of the registers in the processor.
 
 Process keeps track of the memory map, and it has a collection of threads
 Each threads stores the state of registers 
-
 
 
 Handmade hero is a process, inside this process there are many threads that runs. 
@@ -92,12 +91,20 @@ have 4 cores, each with 2 hyperthreads, giving you 8 logical processors.
 Notice that if you open the taks manager and open the "Performance" page, it will list the Number of logical processors on your machine
 
 so each one of these logical processor is capable of running a thread simultaenously. 
-So for our handmaro game, if Caseys computer has 16 logical processors on the CPU, we have only written work for one. 
+So for our handmaro game, if Casey_s computer has 16 logical processors on the CPU, we have only written work for one. 
 
 
 11:52
 we want to increase the number of threads we have available to the processor to run. So that it can fill up logical processors,
 with those threads and do more work. 
+
+
+[lets say our computer only has one core, we can create multiple threads. 
+  however, only one thread will be running on that core at any given time.
+  what that means is that the OS will be constantly switching threads in and out for the OS to run.
+  so when the OS switch threads, it is effectively saving all the thread0_s register state and memory to somewhere in memory, 
+  then loading in thread1_s register state and memory]
+
 
 
 12:14

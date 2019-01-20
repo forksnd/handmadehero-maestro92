@@ -2,6 +2,14 @@ Handmade Hero Day 181 - Log-based Performance Counters
 
 Summary:
 
+so from da 180, we have one debug system, in which we call TIMED_BLOCKS everywhere and  
+we have the print outs for all the timings for each functions 
+
+and we have a second debug system, where we collect debug_frame_end_info timings and 
+we render stacked graphs at the bottom.
+
+Casey wants to combine the two systems 
+
 proposes the concept of debug_event logging for our debug system.
 
 described the difference between __rdtsc(); and __rdtscp();
@@ -25,12 +33,22 @@ in which they have extremely low impact on the actual performance of the program
 
 but they do cost a lot to visualize
 
-we have the print outs for all the timings for each functions,
-and we render stacked graphs at the bottom.
+so we have one debug system, in which we call TIMED_BLOCKS everywhere and  
+we have the print outs for all the timings for each functions 
 
-Casey wants to somehow combine these to debugging visualizations
+and we have a second debug system, where we collect debug_frame_end_info timings and 
+we render stacked graphs at the bottom.
+
+Casey wants to somehow combine these two debugging systems
+
+what we dont get from the first system is any sense of who is taking up the time in our frame.
+that is the advantage of our 2nd system.
+our 2nd system, which renders a stacked bar can visually tell you that the blue section is taking the most time.
 
 
+if you remember, for our 2nd system, the platform layer is taking all the timings in debug_frame_end_info
+
+but for the 1st system, the game code has all the TIMED_BLOCKS
 
 
 5:27
@@ -497,3 +515,11 @@ someone asked, whats the point of CoreId in debug_event? It seems that the threa
 the reason is becuz that way we can see when tasks moved cores, that way we can see if we got task swapped, and if a task 
 moved from core 1 to core 2. it also helps you know for cache coherency, if a task should be happening on the same core, but arent,
 we want to be able to see that. 
+
+
+1:12:34
+how would you avoid collecting stats on debug rendering code?
+
+Casey says he hopes this debug_event log system can solve it.
+
+

@@ -1387,7 +1387,7 @@ WinMain(HINSTANCE Instance,
         HINSTANCE PrevInstance,
         LPSTR CommandLine,
         int ShowCode)
-{
+{    
     win32_state Win32State = {};
 
     platform_work_queue HighPriorityQueue = {};
