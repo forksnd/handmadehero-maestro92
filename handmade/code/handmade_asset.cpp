@@ -27,7 +27,7 @@ struct load_asset_work
 internal void
 LoadAssetWorkDirectly(load_asset_work *Work)
 {
-    TIMED_BLOCK();
+    TIMED_FUNCTION();
     
     Platform.ReadDataFromFile(Work->Handle, Work->Offset, Work->Size, Work->Destination);
     if(PlatformNoFileErrors(Work->Handle))
@@ -181,7 +181,7 @@ GenerationHasCompleted(game_assets *Assets, u32 CheckID)
 internal asset_memory_header *
 AcquireAssetMemory(game_assets *Assets, u32 Size, u32 AssetIndex)
 {
-    TIMED_BLOCK();
+    TIMED_FUNCTION();
     
     asset_memory_header *Result = 0;
 
@@ -269,7 +269,7 @@ struct asset_memory_size
 internal void
 LoadBitmap(game_assets *Assets, bitmap_id ID, b32 Immediate)
 {
-    TIMED_BLOCK();
+    TIMED_FUNCTION();
     
     asset *Asset = Assets->Assets + ID.Value;        
     if(ID.Value)
@@ -345,7 +345,7 @@ LoadBitmap(game_assets *Assets, bitmap_id ID, b32 Immediate)
 internal void
 LoadSound(game_assets *Assets, sound_id ID)
 {
-    TIMED_BLOCK();
+    TIMED_FUNCTION();
     
     asset *Asset = Assets->Assets + ID.Value;        
     if(ID.Value &&
@@ -402,7 +402,7 @@ LoadSound(game_assets *Assets, sound_id ID)
 internal void
 LoadFont(game_assets *Assets, font_id ID, b32 Immediate)
 {
-    TIMED_BLOCK();
+    TIMED_FUNCTION();
     
     // TODO(casey): Merge all this boilerplate!!!!  Same between LoadBitmap, LoadSound, and LoadFont
     asset *Asset = Assets->Assets + ID.Value;        
@@ -479,7 +479,7 @@ internal uint32
 GetBestMatchAssetFrom(game_assets *Assets, asset_type_id TypeID,
                       asset_vector *MatchVector, asset_vector *WeightVector)
 {
-    TIMED_BLOCK();
+    TIMED_FUNCTION();
     
     uint32 Result = 0;
 
@@ -521,7 +521,7 @@ GetBestMatchAssetFrom(game_assets *Assets, asset_type_id TypeID,
 internal uint32
 GetRandomAssetFrom(game_assets *Assets, asset_type_id TypeID, random_series *Series)
 {
-    TIMED_BLOCK();
+    TIMED_FUNCTION();
     
     uint32 Result = 0;
 
@@ -539,7 +539,7 @@ GetRandomAssetFrom(game_assets *Assets, asset_type_id TypeID, random_series *Ser
 internal uint32
 GetFirstAssetFrom(game_assets *Assets, asset_type_id TypeID)
 {
-    TIMED_BLOCK();
+    TIMED_FUNCTION();
     
     uint32 Result = 0;
 
@@ -606,7 +606,7 @@ GetBestMatchFontFrom(game_assets *Assets, asset_type_id TypeID, asset_vector *Ma
 internal game_assets *
 AllocateGameAssets(memory_arena *Arena, memory_index Size, transient_state *TranState)
 {
-    TIMED_BLOCK();
+    TIMED_FUNCTION();
     
     game_assets *Assets = PushStruct(Arena, game_assets);
 

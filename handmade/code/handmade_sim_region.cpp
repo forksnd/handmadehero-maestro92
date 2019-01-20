@@ -87,7 +87,7 @@ StoreEntityReference(entity_reference *Ref)
 internal sim_entity *
 AddEntityRaw(game_state *GameState, sim_region *SimRegion, uint32 StorageIndex, low_entity *Source)
 {
-    TIMED_BLOCK();
+    TIMED_FUNCTION();
 
     Assert(StorageIndex);
     sim_entity *Entity = 0;
@@ -156,7 +156,7 @@ AddEntity(game_state *GameState, sim_region *SimRegion, uint32 StorageIndex, low
 internal sim_region *
 BeginSim(memory_arena *SimArena, game_state *GameState, world *World, world_position Origin, rectangle3 Bounds, real32 dt)
 {
-    TIMED_BLOCK();
+    TIMED_FUNCTION();
 
     // TODO(casey): If entities were stored in the world, we wouldn't need the game state here!
     
@@ -234,7 +234,7 @@ BeginSim(memory_arena *SimArena, game_state *GameState, world *World, world_posi
 internal void
 EndSim(sim_region *Region, game_state *GameState)
 {
-    TIMED_BLOCK();
+    TIMED_FUNCTION();
 
     // TODO(casey): Maybe don't take a game state here, low entities should be stored
     // in the world??
@@ -439,7 +439,7 @@ HandleOverlap(game_state *GameState, sim_entity *Mover, sim_entity *Region, real
 internal bool32
 SpeculativeCollide(sim_entity *Mover, sim_entity *Region, v3 TestP)
 {
-    TIMED_BLOCK();
+    TIMED_FUNCTION();
 
     bool32 Result = true;
     
@@ -462,7 +462,7 @@ SpeculativeCollide(sim_entity *Mover, sim_entity *Region, v3 TestP)
 internal bool32
 EntitiesOverlap(sim_entity *Entity, sim_entity *TestEntity, v3 Epsilon = V3(0, 0, 0))
 {
-    TIMED_BLOCK();
+    TIMED_FUNCTION();
 
     bool32 Result = false;
     
@@ -491,7 +491,7 @@ internal void
 MoveEntity(game_state *GameState, sim_region *SimRegion, sim_entity *Entity, real32 dt,
            move_spec *MoveSpec, v3 ddP)
 {
-    TIMED_BLOCK();
+    TIMED_FUNCTION();
 
     Assert(!IsSet(Entity, EntityFlag_Nonspatial));
     

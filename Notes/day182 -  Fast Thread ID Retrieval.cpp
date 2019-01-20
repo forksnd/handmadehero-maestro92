@@ -11,7 +11,7 @@ briefly mentioned what the gs register is and how it is used for thread local st
 refactored the debug system definitions. Moved debug_record and debug_event definitions from handmade_debug.h code to handmade_platform.h
 so that both the win32 platform and the game code side can use a uniform memory for their debug_records and debug_events
 
-created the debug_table struct ans dfined an extern GlobalDebugTable debug_table; for this purpose.
+created the debug_table struct and defined an extern GlobalDebugTable debug_table; for this purpose.
 
 also made the debug_table flexible enough so that we can add as many TranslationUnit as we can, and anyone 
 who includes handmade_platform.h will have access to this global debug table for their debug memory.

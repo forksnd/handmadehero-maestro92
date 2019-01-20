@@ -1372,15 +1372,8 @@ PLATFORM_DEALLOCATE_MEMORY(Win32DeallocateMemory)
     }
 }
 
-inline void
-Win32RecordTimestamp(debug_frame_end_info *Info, char *Name, r32 Seconds)
-{
-    Assert(Info->TimestampCount < ArrayCount(Info->Timestamps));
-    
-    debug_frame_timestamp *Timestamp = Info->Timestamps + Info->TimestampCount++;
-    Timestamp->Name = Name;
-    Timestamp->Seconds = Seconds;
-}
+global_variable debug_table GlobalDebugTable_;
+debug_table *GlobalDebugTable = &GlobalDebugTable_;
 
 int CALLBACK
 WinMain(HINSTANCE Instance,
@@ -1642,8 +1635,13 @@ WinMain(HINSTANCE Instance,
                 uint64 LastCycleCount = __rdtsc();
                 while(GlobalRunning)
                 {
-                    debug_frame_end_info FrameEndInfo = {};
+                    FRAME_MARKER();
+
+                    //
+                    //
+                    //
                     
+                    BEGIN_BLOCK(ExecutableRefresh);
                     NewInput->dtForFrame = TargetSecondsPerFrame;
 
                     NewInput->ExecutableReloaded = false;                    
@@ -1652,17 +1650,22 @@ WinMain(HINSTANCE Instance,
                     {
                         Win32CompleteAllWork(&HighPriorityQueue);
                         Win32CompleteAllWork(&LowPriorityQueue);
-                        
+
+                        GlobalDebugTable = &GlobalDebugTable_;
                         Win32UnloadGameCode(&Game);
                         Game = Win32LoadGameCode(SourceGameCodeDLLFullPath,
                                                  TempGameCodeDLLFullPath,
                                                  GameCodeLockFullPath);
                         NewInput->ExecutableReloaded = true;
                     }
+                    END_BLOCK(ExecutableRefresh);
 
-                    Win32RecordTimestamp(&FrameEndInfo, "ExecutableReady", 
-                                         Win32GetSecondsElapsed(LastCounter, Win32GetWallClock()));
+                    //
+                    //
+                    //
 
+                    BEGIN_BLOCK(InputProcessing);
+                    
                     // TODO(casey): Zeroing macro
                     // TODO(casey): We can't zero everything because the up/down state will
                     // be wrong!!!
@@ -1814,9 +1817,13 @@ WinMain(HINSTANCE Instance,
                             }
                         }
                     }
+                    END_BLOCK(InputProcessing);
 
-                    Win32RecordTimestamp(&FrameEndInfo, "InputProcessed",
-                                         Win32GetSecondsElapsed(LastCounter, Win32GetWallClock()));
+                    //
+                    //
+                    //
+
+                    BEGIN_BLOCK(GameUpdate);
 
                     if(!GlobalPause)
                     {
@@ -1842,9 +1849,14 @@ WinMain(HINSTANCE Instance,
                         }
                     }
 
-                    Win32RecordTimestamp(&FrameEndInfo, "GameUpdated",
-                                         Win32GetSecondsElapsed(LastCounter, Win32GetWallClock()));
+                    END_BLOCK(GameUpdate);
 
+                    //
+                    //
+                    //
+
+                    BEGIN_BLOCK(AudioUpdate);
+                    
                     if(!GlobalPause)
                     {
                         LARGE_INTEGER AudioWallClock = Win32GetWallClock();
@@ -1974,9 +1986,14 @@ WinMain(HINSTANCE Instance,
                             SoundIsValid = false;
                         }
                     }
-                    
-                    Win32RecordTimestamp(&FrameEndInfo, "AudioUpdated",
-                                         Win32GetSecondsElapsed(LastCounter, Win32GetWallClock()));
+
+                    END_BLOCK(AudioUpdate);
+
+                    //
+                    //
+                    //
+
+                    BEGIN_BLOCK(FramerateWait);
 
                     if(!GlobalPause)
                     {
@@ -2017,9 +2034,14 @@ WinMain(HINSTANCE Instance,
                         }
                     }
 
-                    Win32RecordTimestamp(&FrameEndInfo, "FramerateWaitComplete",
-                                         Win32GetSecondsElapsed(LastCounter, Win32GetWallClock()));
-                
+                    END_BLOCK(FramerateWait);
+
+                    //
+                    //
+                    //
+
+                    BEGIN_BLOCK(FrameDisplay);
+                    
                     win32_window_dimension Dimension = Win32GetWindowDimension(Window);
                     HDC DeviceContext = GetDC(Window);
                     Win32DisplayBufferInWindow(&GlobalBackbuffer, DeviceContext,
@@ -2036,18 +2058,21 @@ WinMain(HINSTANCE Instance,
                     LARGE_INTEGER EndCounter = Win32GetWallClock();
                     LastCounter = EndCounter;
 
+                    END_BLOCK(FrameDisplay);
+                    
 #if HANDMADE_INTERNAL
-                    Win32RecordTimestamp(&FrameEndInfo, "EndOfFrame",
-                                         Win32GetSecondsElapsed(LastCounter, EndCounter));
-
                     uint64 EndCycleCount = __rdtsc();
                     uint64 CyclesElapsed = EndCycleCount - LastCycleCount;
                     LastCycleCount = EndCycleCount;
 
                     if(Game.DEBUGFrameEnd)
                     {
-                        Game.DEBUGFrameEnd(&GameMemory, &FrameEndInfo);
+                        GlobalDebugTable = Game.DEBUGFrameEnd(&GameMemory);
+                        // TODO(casey): Move this to a global variable so that
+                        // there can be timers below this one?
+                        GlobalDebugTable->RecordCount[TRANSLATION_UNIT_INDEX] = __COUNTER__;
                     }
+                    GlobalDebugTable_.EventArrayIndex_EventIndex = 0;
 #endif
                 }
             }

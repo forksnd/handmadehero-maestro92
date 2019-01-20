@@ -67,7 +67,7 @@ inline world_chunk *
 GetWorldChunk(world *World, int32 ChunkX, int32 ChunkY, int32 ChunkZ,
               memory_arena *Arena = 0)
 {
-    TIMED_BLOCK();
+    TIMED_FUNCTION();
 
     Assert(ChunkX > -TILE_CHUNK_SAFE_MARGIN);
     Assert(ChunkY > -TILE_CHUNK_SAFE_MARGIN);
@@ -196,7 +196,7 @@ inline void
 ChangeEntityLocationRaw(memory_arena *Arena, world *World, uint32 LowEntityIndex,
                         world_position *OldP, world_position *NewP)
 {
-    TIMED_BLOCK();
+    TIMED_FUNCTION();
 
     // TODO(casey): If this moves an entity into the camera bounds, should it automatically
     // go into the high set immediately?
@@ -289,7 +289,7 @@ ChangeEntityLocation(memory_arena *Arena, world *World,
                      uint32 LowEntityIndex, low_entity *LowEntity,
                      world_position NewPInit)
 {
-    TIMED_BLOCK();
+    TIMED_FUNCTION();
 
     world_position *OldP = 0;
     world_position *NewP = 0;

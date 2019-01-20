@@ -361,7 +361,7 @@ struct fill_ground_chunk_work
 };
 internal PLATFORM_WORK_QUEUE_CALLBACK(FillGroundChunkWork)
 {
-    TIMED_BLOCK();
+    TIMED_FUNCTION();
     
     fill_ground_chunk_work *Work = (fill_ground_chunk_work *)Data;
             
@@ -666,7 +666,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 #if HANDMADE_INTERNAL
     DebugGlobalMemory = Memory;
 #endif
-    TIMED_BLOCK();
+    TIMED_FUNCTION();
 
     Assert((&Input->Controllers[0].Terminator - &Input->Controllers[0].Buttons[0]) ==
            (ArrayCount(Input->Controllers[0].Buttons)));
@@ -1682,7 +1682,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     if(DEBUGRenderGroup)
     {
-        TIMED_BLOCK();
+        TIMED_BLOCK(DEBUGRenderGroup);
         DEBUGOverlay(Memory);
         TiledRenderGroupToOutput(TranState->HighPriorityQueue, DEBUGRenderGroup, DrawBuffer);
         EndRender(DEBUGRenderGroup);

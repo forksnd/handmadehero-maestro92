@@ -578,7 +578,8 @@ The only time that the mutex is comparable to AtomicCompareExchange is when the 
 Can you still time multiple section within a function?
 
 Yes, you can, you just have to wrap them in brackets.
-
+[this feels like its not very flexible? as a matter of fact, in day 183, Casey brought back the BEGIN and END block 
+    pattern]
 
 1:23:05
 How do threads wait on lock free structures?
