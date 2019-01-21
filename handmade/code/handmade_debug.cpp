@@ -200,7 +200,7 @@ DEBUGOverlay(game_memory *Memory)
         {
             hha_font *Info = GetFontInfo(RenderGroup->Assets, FontID);
 
-
+            
 #if 0
             for(u32 CounterIndex = 0;
                 CounterIndex < DebugState->CounterCount;
@@ -266,6 +266,15 @@ DEBUGOverlay(game_memory *Memory)
             }
 #endif
 
+            if(DebugState->FrameCount)
+            {
+                char TextBuffer[256];
+                _snprintf_s(TextBuffer, sizeof(TextBuffer),
+                            "Last frame time: %.02fms",
+                            DebugState->Frames[DebugState->FrameCount - 1].WallSecondsElapsed * 1000.0f);
+                DEBUGTextLine(TextBuffer);
+            }
+            
             AtY -= 300.0f;
 
             r32 LaneWidth = 8.0f;
@@ -420,6 +429,7 @@ CollateDebugRecords(debug_state *DebugState, u32 InvalidEventArrayIndex)
                 if(CurrentFrame)
                 {
                     CurrentFrame->EndClock = Event->Clock;
+                    CurrentFrame->WallSecondsElapsed = Event->SecondsElapsed;
 
                     r32 ClockRange = (r32)(CurrentFrame->EndClock - CurrentFrame->BeginClock);
 #if 0
@@ -439,11 +449,12 @@ CollateDebugRecords(debug_state *DebugState, u32 InvalidEventArrayIndex)
                 CurrentFrame->EndClock = 0;
                 CurrentFrame->RegionCount = 0;
                 CurrentFrame->Regions = PushArray(&DebugState->CollateArena, MAX_REGIONS_PER_FRAME, debug_frame_region);
+                CurrentFrame->WallSecondsElapsed = 0.0f;
             }
             else if(CurrentFrame)
             {
                 u32 FrameIndex = DebugState->FrameCount - 1;
-                debug_thread *Thread = GetDebugThread(DebugState, Event->ThreadID);
+                debug_thread *Thread = GetDebugThread(DebugState, Event->TC.ThreadID);
                 u64 RelativeClock = Event->Clock - CurrentFrame->BeginClock;
 
                 if(StringsAreEqual(Source->BlockName, "DrawRectangle"))
@@ -475,7 +486,7 @@ CollateDebugRecords(debug_state *DebugState, u32 InvalidEventArrayIndex)
                     {
                         open_debug_block *MatchingBlock = Thread->FirstOpenBlock;
                         debug_event *OpeningEvent = MatchingBlock->OpeningEvent;
-                        if((OpeningEvent->ThreadID == Event->ThreadID) &&
+                        if((OpeningEvent->TC.ThreadID == Event->TC.ThreadID) &&
                            (OpeningEvent->DebugRecordIndex == Event->DebugRecordIndex) &&
                            (OpeningEvent->TranslationUnit == Event->TranslationUnit))
                         {
@@ -483,10 +494,16 @@ CollateDebugRecords(debug_state *DebugState, u32 InvalidEventArrayIndex)
                             {
                                 if(Thread->FirstOpenBlock->Parent == 0)
                                 {
-                                    debug_frame_region *Region = AddRegion(DebugState, CurrentFrame);
-                                    Region->LaneIndex = Thread->LaneIndex;
-                                    Region->MinT = (r32)(OpeningEvent->Clock - CurrentFrame->BeginClock);
-                                    Region->MaxT = (r32)(Event->Clock - CurrentFrame->BeginClock);
+                                    r32 MinT = (r32)(OpeningEvent->Clock - CurrentFrame->BeginClock);
+                                    r32 MaxT = (r32)(Event->Clock - CurrentFrame->BeginClock);
+                                    r32 ThresholdT = 0.01f;
+                                    if((MaxT - MinT) > ThresholdT)
+                                    {
+                                        debug_frame_region *Region = AddRegion(DebugState, CurrentFrame);
+                                        Region->LaneIndex = Thread->LaneIndex;
+                                        Region->MinT = MinT;
+                                        Region->MaxT = MaxT;
+                                    }
                                 }
                             }
                             else

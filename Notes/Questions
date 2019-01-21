@@ -16,6 +16,13 @@ https://www.youtube.com/watch?v=LNidsMesxSE
 6.	follow up on __stdcall on windows
 
 
+7.	difference between macro and inline in practice
+
+8.	day 187 we had bug resulting from the linker throwing away an function 
+	and making it a macro fixed it. How does that work?
+
+	
+
 Things that I plan to bring to my game
 1.  memory
 2.  multi-threading, work queue
@@ -28,3 +35,4 @@ Things that I plan to bring to my game
 7.	use STB font.
 8.	write in "c with classes" stype
 9.	debug profile system that you can compile out
+10. 

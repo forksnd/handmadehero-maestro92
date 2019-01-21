@@ -415,11 +415,19 @@ enum debug_event_type
     DebugEvent_BeginBlock,
     DebugEvent_EndBlock,
 };
+struct threadid_coreindex
+{
+    u16 ThreadID;
+    u16 CoreIndex;
+};
 struct debug_event
 {
     u64 Clock;
-    u16 ThreadID;
-    u16 CoreIndex;
+    union
+    {
+        threadid_coreindex TC;
+        r32 SecondsElapsed;
+    };
     u16 DebugRecordIndex;
     u8 TranslationUnit;
     u8 Type;
@@ -447,32 +455,39 @@ struct debug_table
 
 extern debug_table *GlobalDebugTable;
 
-inline void
-RecordDebugEvent(int RecordIndex, debug_event_type EventType)
-{
-    u64 ArrayIndex_EventIndex = AtomicAddU64(&GlobalDebugTable->EventArrayIndex_EventIndex, 1);
-    u32 EventIndex = ArrayIndex_EventIndex & 0xFFFFFFFF;                
-    Assert(EventIndex < MAX_DEBUG_EVENT_COUNT);                         
-    debug_event *Event = GlobalDebugTable->Events[ArrayIndex_EventIndex >> 32] + EventIndex; 
-    Event->Clock = __rdtsc();
-    u32 ThreadID = GetThreadID();
-    Event->ThreadID = (u16)ThreadID;
-    Event->CoreIndex = 0;                                               
-    Event->DebugRecordIndex = (u16)RecordIndex;                         
-    Event->TranslationUnit = TRANSLATION_UNIT_INDEX;       
-    Event->Type = (u8)EventType;
-}
+// TODO(casey): I would like to switch away from the translation unit indexing
+// and just go to a more standard one-time hash table because the complexity
+// seems to be causing problems
+#define RecordDebugEventCommon(RecordIndex, EventType) \
+        u64 ArrayIndex_EventIndex = AtomicAddU64(&GlobalDebugTable->EventArrayIndex_EventIndex, 1); \
+        u32 EventIndex = ArrayIndex_EventIndex & 0xFFFFFFFF;            \
+        Assert(EventIndex < MAX_DEBUG_EVENT_COUNT);                     \
+        debug_event *Event = GlobalDebugTable->Events[ArrayIndex_EventIndex >> 32] + EventIndex; \
+        Event->Clock = __rdtsc();                       \
+        Event->DebugRecordIndex = (u16)RecordIndex;                     \
+        Event->TranslationUnit = TRANSLATION_UNIT_INDEX;                \
+        Event->Type = (u8)EventType;                                    
 
-#define FRAME_MARKER() \
+#define RecordDebugEvent(RecordIndex, EventType)        \
+    {                                                   \
+        RecordDebugEventCommon(RecordIndex, EventType); \
+        Event->TC.CoreIndex = 0;                                           \
+        Event->TC.ThreadID = (u16)GetThreadID();           \
+    }
+
+#define FRAME_MARKER(SecondsElapsedInit) \
      { \
      int Counter = __COUNTER__; \
-     RecordDebugEvent(Counter, DebugEvent_FrameMarker); \
+     RecordDebugEventCommon(Counter, DebugEvent_FrameMarker); \
+     Event->SecondsElapsed = SecondsElapsedInit; \
      debug_record *Record = GlobalDebugTable->Records[TRANSLATION_UNIT_INDEX] + Counter; \
      Record->FileName = __FILE__;                                        \
      Record->LineNumber = __LINE__;                                    \
      Record->BlockName = "Frame Marker";                                   \
 } 
-    
+
+#if HANDMADE_PROFILE
+
 
 #define TIMED_BLOCK__(BlockName, Number, ...) timed_block TimedBlock_##Number(__COUNTER__, __FILE__, __LINE__, BlockName, ## __VA_ARGS__)
 #define TIMED_BLOCK_(BlockName, Number, ...) TIMED_BLOCK__(BlockName, Number, ## __VA_ARGS__)
@@ -511,7 +526,16 @@ struct timed_block
         END_BLOCK_(Counter);
     }
 };
-    
+
+#else
+
+#define TIMED_BLOCK(BlockName, ...) 
+#define TIMED_FUNCTION(...) 
+#define BEGIN_BLOCK(Name)
+#define END_BLOCK(Name)
+
+#endif
+
 #ifdef __cplusplus
 }
 #endif
