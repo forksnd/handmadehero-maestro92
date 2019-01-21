@@ -6,6 +6,8 @@
    $Notice: (C) Copyright 2015 by Molly Rocket, Inc. All Rights Reserved. $
    ======================================================================== */
 
+#define IGNORED_TIMED_FUNCTION TIMED_FUNCTION
+
 inline v4
 Unpack4x8(uint32 Packed)
 {
@@ -189,7 +191,7 @@ DrawRectangleSlowly(loaded_bitmap *Buffer, v2 Origin, v2 XAxis, v2 YAxis, v4 Col
                     environment_map *Bottom,
                     real32 PixelsToMeters)
 {
-    TIMED_FUNCTION();
+    IGNORED_TIMED_FUNCTION();
 
     // NOTE(casey): Premultiply color up front   
     Color.rgb *= Color.a;
@@ -424,7 +426,7 @@ internal void
 DrawBitmap(loaded_bitmap *Buffer, loaded_bitmap *Bitmap,
            real32 RealX, real32 RealY, real32 CAlpha = 1.0f)
 {
-    TIMED_FUNCTION();
+    IGNORED_TIMED_FUNCTION();
 
     int32 MinX = RoundReal32ToInt32(RealX);
     int32 MinY = RoundReal32ToInt32(RealY);
@@ -506,7 +508,7 @@ DrawBitmap(loaded_bitmap *Buffer, loaded_bitmap *Bitmap,
 internal void
 ChangeSaturation(loaded_bitmap *Buffer, real32 Level)
 {
-    TIMED_FUNCTION();
+    IGNORED_TIMED_FUNCTION();
 
     uint8 *DestRow = (uint8 *)Buffer->Memory;
     for(int Y = 0;
@@ -548,7 +550,7 @@ internal void
 DrawMatte(loaded_bitmap *Buffer, loaded_bitmap *Bitmap,
           real32 RealX, real32 RealY, real32 CAlpha = 1.0f)
 {
-    TIMED_FUNCTION();
+    IGNORED_TIMED_FUNCTION();
 
     int32 MinX = RoundReal32ToInt32(RealX);
     int32 MinY = RoundReal32ToInt32(RealY);
@@ -631,7 +633,7 @@ internal void
 RenderGroupToOutput(render_group *RenderGroup, loaded_bitmap *OutputTarget,
                     rectangle2i ClipRect, bool Even)
 {
-    TIMED_FUNCTION();
+    IGNORED_TIMED_FUNCTION();
 
     real32 NullPixelsToMeters = 1.0f;
     
@@ -746,6 +748,8 @@ struct tile_render_work
 
 internal PLATFORM_WORK_QUEUE_CALLBACK(DoTiledRenderWork)
 {
+    TIMED_FUNCTION();
+
     tile_render_work *Work = (tile_render_work *)Data;
 
     RenderGroupToOutput(Work->RenderGroup, Work->OutputTarget, Work->ClipRect, true);
@@ -881,7 +885,7 @@ AllocateRenderGroup(game_assets *Assets, memory_arena *Arena, uint32 MaxPushBuff
 internal void
 BeginRender(render_group *Group)
 {
-    TIMED_FUNCTION();
+    IGNORED_TIMED_FUNCTION();
 
     if(Group)
     {
@@ -895,7 +899,7 @@ BeginRender(render_group *Group)
 internal void
 EndRender(render_group *Group)
 {
-    TIMED_FUNCTION();
+    IGNORED_TIMED_FUNCTION();
 
     if(Group)
     {
@@ -950,7 +954,7 @@ struct entity_basis_p_result
 };
 inline entity_basis_p_result GetRenderEntityBasisP(render_transform *Transform, v3 OriginalP)
 {
-    TIMED_FUNCTION();
+    IGNORED_TIMED_FUNCTION();
 
     entity_basis_p_result Result = {};
 
@@ -996,7 +1000,7 @@ inline entity_basis_p_result GetRenderEntityBasisP(render_transform *Transform, 
 inline void *
 PushRenderElement_(render_group *Group, uint32 Size, render_group_entry_type Type)
 {
-    TIMED_FUNCTION();
+    IGNORED_TIMED_FUNCTION();
 
     Assert(Group->InsideRender);
 

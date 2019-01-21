@@ -349,23 +349,23 @@ typedef GAME_GET_SOUND_SAMPLES(game_get_sound_samples);
 #define CompletePreviousWritesBeforeFutureWrites _WriteBarrier()
 inline uint32 AtomicCompareExchangeUInt32(uint32 volatile *Value, uint32 New, uint32 Expected)
 {
-    uint32 Result = _InterlockedCompareExchange((long *)Value, New, Expected);
+    uint32 Result = _InterlockedCompareExchange((long volatile *)Value, New, Expected);
 
     return(Result);
 }
 inline u64 AtomicExchangeU64(u64 volatile *Value, u64 New)
 {
-    u64 Result = _InterlockedExchange64((__int64 *)Value, New);
+    u64 Result = _InterlockedExchange64((__int64 volatile *)Value, New);
 
     return(Result);
 }
 inline u64 AtomicAddU64(u64 volatile *Value, u64 Addend)
 {
     // NOTE(casey): Returns the original value _prior_ to adding
-    u64 Result = _InterlockedExchangeAdd64((__int64 *)Value, Addend);
+    u64 Result = _InterlockedExchangeAdd64((__int64 volatile *)Value, Addend);
 
     return(Result);
-}
+}    
 inline u32 GetThreadID(void)
 {
     u8 *ThreadLocalStorage = (u8 *)__readgsqword(0x30);
@@ -454,8 +454,9 @@ RecordDebugEvent(int RecordIndex, debug_event_type EventType)
     u32 EventIndex = ArrayIndex_EventIndex & 0xFFFFFFFF;                
     Assert(EventIndex < MAX_DEBUG_EVENT_COUNT);                         
     debug_event *Event = GlobalDebugTable->Events[ArrayIndex_EventIndex >> 32] + EventIndex; 
-    Event->Clock = __rdtsc();                                           
-    Event->ThreadID = (u16)GetThreadID();
+    Event->Clock = __rdtsc();
+    u32 ThreadID = GetThreadID();
+    Event->ThreadID = (u16)ThreadID;
     Event->CoreIndex = 0;                                               
     Event->DebugRecordIndex = (u16)RecordIndex;                         
     Event->TranslationUnit = TRANSLATION_UNIT_INDEX;       

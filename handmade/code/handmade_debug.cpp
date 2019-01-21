@@ -266,6 +266,8 @@ DEBUGOverlay(game_memory *Memory)
             }
 #endif
 
+            AtY -= 300.0f;
+
             r32 LaneWidth = 8.0f;
             u32 LaneCount = DebugState->FrameBarLaneCount;
             r32 BarWidth = LaneWidth*LaneCount;
@@ -292,11 +294,16 @@ DEBUGOverlay(game_memory *Memory)
                 {0, 0.5f, 1},
             };
 
+            u32 MaxFrame = DebugState->FrameCount;
+            if(MaxFrame > 10)
+            {
+                MaxFrame = 10;
+            }
             for(u32 FrameIndex = 0;
-                FrameIndex < DebugState->FrameCount;
+                FrameIndex < MaxFrame;
                 ++FrameIndex)
             {
-                debug_frame *Frame = DebugState->Frames + FrameIndex;
+                debug_frame *Frame = DebugState->Frames + DebugState->FrameCount - (FrameIndex + 1);
                 r32 StackX = ChartLeft + BarSpacing*(r32)FrameIndex;
                 r32 StackY = ChartMinY;
                 for(u32 RegionIndex = 0;
@@ -438,6 +445,12 @@ CollateDebugRecords(debug_state *DebugState, u32 InvalidEventArrayIndex)
                 u32 FrameIndex = DebugState->FrameCount - 1;
                 debug_thread *Thread = GetDebugThread(DebugState, Event->ThreadID);
                 u64 RelativeClock = Event->Clock - CurrentFrame->BeginClock;
+
+                if(StringsAreEqual(Source->BlockName, "DrawRectangle"))
+                {
+                    int x = 5;
+                }
+
                 if(Event->Type == DebugEvent_BeginBlock)
                 {
                     open_debug_block *DebugBlock = DebugState->FirstFreeBlock;
@@ -457,7 +470,7 @@ CollateDebugRecords(debug_state *DebugState, u32 InvalidEventArrayIndex)
                     DebugBlock->NextFree = 0;
                 }
                 else if(Event->Type == DebugEvent_EndBlock)
-                {
+                {                    
                     if(Thread->FirstOpenBlock)
                     {
                         open_debug_block *MatchingBlock = Thread->FirstOpenBlock;
