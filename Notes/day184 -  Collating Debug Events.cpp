@@ -463,7 +463,7 @@ he just doesnt know how serialized __rdtsc(); is in that sense.
                 for (all 63 frames that we will visit)
                 {
 
-                    for(u32 EventIndex = 0; EventIndex < MAX_DEBUG_EVENT_COUNT; ++EventIndex)
+                    for(u32 EventIndex = 0; EventIndex < GlobalDebugTable->EventCount[EventArrayIndex]; ++EventIndex)
                     {
                         debug_event *Event = GlobalDebugTable->Events[EventArrayIndex] + EventIndex;            
                         debug_record *Source = (GlobalDebugTable->Records[Event->TranslationUnit] +
