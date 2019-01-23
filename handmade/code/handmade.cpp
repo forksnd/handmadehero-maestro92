@@ -1683,7 +1683,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     if(DEBUGRenderGroup)
     {
         TIMED_BLOCK(DEBUGRenderGroup);
-        DEBUGOverlay(Memory);
+        DEBUGOverlay(Memory, Input);
         TiledRenderGroupToOutput(TranState->HighPriorityQueue, DEBUGRenderGroup, DrawBuffer);
         EndRender(DEBUGRenderGroup);
     }

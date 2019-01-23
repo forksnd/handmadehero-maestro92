@@ -237,16 +237,34 @@ typedef struct game_controller_input
     };
 } game_controller_input;
 
+enum game_input_mouse_button
+{
+    PlatformMouseButton_Left,
+    PlatformMouseButton_Middle,
+    PlatformMouseButton_Right,
+    PlatformMouseButton_Extended0,
+    PlatformMouseButton_Extended1,
+
+    PlatformMouseButton_Count,
+};
 typedef struct game_input
 {
-    game_button_state MouseButtons[5];
-    int32 MouseX, MouseY, MouseZ;
+    game_button_state MouseButtons[PlatformMouseButton_Count];
+    r32 MouseX, MouseY, MouseZ;
 
-    bool32 ExecutableReloaded;
-    real32 dtForFrame;
+    b32 ExecutableReloaded;
+    r32 dtForFrame;
 
     game_controller_input Controllers[5];
 } game_input;
+
+inline b32 WasPressed(game_button_state State)
+{
+    b32 Result = ((State.HalfTransitionCount > 1) ||
+                  ((State.HalfTransitionCount == 1) && (State.EndedDown)));
+
+    return(Result);
+}
 
 typedef struct platform_file_handle
 {
@@ -434,7 +452,7 @@ struct debug_event
 };
 
 #define MAX_DEBUG_THREAD_COUNT 256
-#define MAX_DEBUG_EVENT_ARRAY_COUNT 64
+#define MAX_DEBUG_EVENT_ARRAY_COUNT 8
 #define MAX_DEBUG_TRANSLATION_UNITS 3
 #define MAX_DEBUG_EVENT_COUNT (16*65536)
 #define MAX_DEBUG_RECORD_COUNT (65536)
