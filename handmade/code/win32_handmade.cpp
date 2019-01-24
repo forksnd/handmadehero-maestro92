@@ -2001,6 +2001,8 @@ WinMain(HINSTANCE Instance,
                     //
                     //
 
+                    // TODO(casey): Leave this off until we have actual vblank support?
+#if 0
                     BEGIN_BLOCK(FramerateWait);
 
                     if(!GlobalPause)
@@ -2043,7 +2045,8 @@ WinMain(HINSTANCE Instance,
                     }
 
                     END_BLOCK(FramerateWait);
-
+#endif
+                    
                     //
                     //
                     //

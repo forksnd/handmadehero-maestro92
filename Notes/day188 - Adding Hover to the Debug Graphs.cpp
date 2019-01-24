@@ -14,7 +14,7 @@ discussed the two ways of how to map platform coordinates to game code UI coordi
 added a pause button to pause the data collation.
 
 Keyword:
-Game input, debug, profiling
+Game input, debug, profiling, UI
 
 1:20
 Casey says he notices that the game gets a lots lower as the game goes. He says that this makes
@@ -253,8 +253,8 @@ so Casey went with Option1, cuz he likes the symmetry
 
 
 38:44
-Casey added a PausedFlag which will pause the collation. so in terms of gathering debug_data, it will pause there
-
+Casey added a PausedFlag which will pause the collation. so in terms of gathering debug_data, it will pause there.
+The game will still run.
 
 
                 handmade_debug.h
