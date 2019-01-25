@@ -128,7 +128,7 @@ so we have multiple render groups that would use Asset
     |_______________|
     
 
-and they both might be this asset. When the render group starts rendering, they have the asset, when they are done,
+and they both might be using this asset. When the render group starts rendering, they have the asset, when they are done,
 they no longer need the asset. 
 
 so there is an interval that the asset is being used by a render group 
@@ -152,7 +152,7 @@ Here are some problems,
 -   needs to be atomic for multiple threading purposes.
     but this can be solved using atomic increment and atomic decrement. 
 
--   we dont really know when we are done with them.
+-   we dont really know when render groups are done with assets.
     right now we go through all the render groups and we do all the rendering. Acquire is easy, but we dont 
     ever figure out when we release our assets. 
 

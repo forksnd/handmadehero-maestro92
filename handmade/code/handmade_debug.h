@@ -7,6 +7,10 @@
    $Notice: (C) Copyright 2015 by Molly Rocket, Inc. All Rights Reserved. $
    ======================================================================== */
 
+struct render_group;
+struct game_assets;
+struct loaded_bitmap;
+
 struct debug_counter_snapshot
 {
     u32 HitCount;
@@ -63,7 +67,18 @@ struct debug_thread
 struct debug_state
 {
     b32 Initialized;
-    b32 Paused;
+
+    platform_work_queue *HighPriorityQueue;
+    
+    memory_arena DebugArena;
+    render_group *RenderGroup;
+
+    r32 LeftEdge;
+    r32 AtY;
+    r32 FontScale;
+    font_id FontID;
+    r32 GlobalWidth;
+    r32 GlobalHeight;
 
     debug_record *ScopeToRecord;
 
@@ -76,19 +91,18 @@ struct debug_state
     u32 FrameBarLaneCount;
     u32 FrameCount;
     r32 FrameBarScale;
+    b32 Paused;
+
+    rectangle2 ProfileRect;
 
     debug_frame *Frames;
     debug_thread *FirstThread;
     open_debug_block *FirstFreeBlock;
 };
 
-// TODO(casey): Fix this for looped live code editing
-struct render_group;
-struct game_assets;
-global_variable render_group *DEBUGRenderGroup;
+internal void DEBUGStart(game_assets *Assets, u32 Width, u32 Height);
+internal void DEBUGEnd(game_input *Input, loaded_bitmap *DrawBuffer);
 
-internal void DEBUGReset(game_assets *Assets, u32 Width, u32 Height);
-internal void DEBUGOverlay(game_memory *Memory, game_input *Input);
 internal void RefreshCollation(debug_state *DebugState);
 
 #define HANDMADE_DEBUG_H
