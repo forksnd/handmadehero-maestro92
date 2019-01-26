@@ -6,6 +6,9 @@ Drew a radial menu for debugging
 added tech for turning it on and off by right clicking 
 
 
+explained how C doesnt have closures, and how he would replicate that tech using C.
+essentially using a switch statement or a bunch of if else statements
+
 Keyword:
 UI, Debug system 
 
