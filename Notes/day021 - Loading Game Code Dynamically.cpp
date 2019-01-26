@@ -1,6 +1,10 @@
 Handmade Hero Day 021 - Loading Game Code Dynamically
 
 
+Summary:
+
+Keyword: 
+
 
 6:10
 
@@ -15,7 +19,7 @@ edit and continue
 
 
 9:08
-we have the platform code and the non-platform code compiled separately. Is there a way that doesn't kill the executable?
+we have the platform code and the non-platform code compiled separately. Is there a way that doesnt kill the executable?
 
 
 
@@ -23,7 +27,8 @@ we have the platform code and the non-platform code compiled separately. Is ther
 9:40
 we have the ability to load code out of a library dynamically.
 
-we can load a "dll" file and call GetProcAddress on it. GetProcAddress will give us a pointer to that function, and we can just call the function that way.
+we can load a "dll" file and call GetProcAddress on it. GetProcAddress will give us a pointer to that function, 
+and we can just call the function that way.
 
 
 
