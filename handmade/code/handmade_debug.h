@@ -7,6 +7,17 @@
    $Notice: (C) Copyright 2015 by Molly Rocket, Inc. All Rights Reserved. $
    ======================================================================== */
 
+enum debug_variable_type
+{
+    DebugVariableType_Boolean,
+};
+struct debug_variable
+{
+    debug_variable_type Type;
+    char *Name;
+    b32 Value;
+};
+
 struct render_group;
 struct game_assets;
 struct loaded_bitmap;

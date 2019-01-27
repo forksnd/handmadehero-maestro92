@@ -299,7 +299,7 @@ operator*(real32 A, v2 B)
 
     Result.x = A*B.x;
     Result.y = A*B.y;
-
+    
     return(Result);
 }
 

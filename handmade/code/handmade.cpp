@@ -396,7 +396,7 @@ internal PLATFORM_WORK_QUEUE_CALLBACK(FillGroundChunkWork)
             // TODO(casey): Look into wang hashing or some other spatial seed generation "thing"!
             random_series Series = RandomSeed(139*ChunkX + 593*ChunkY + 329*ChunkZ);
 
-#if 0
+#if DEBUGUI_GroundChunkCheckerboards
             v4 Color = V4(1, 0, 0, 1);
             if((ChunkX % 2) == (ChunkY % 2))
             {
@@ -960,9 +960,9 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     DEBUGStart(TranState->Assets, Buffer->Width, Buffer->Height);
 
-#if 0
+#if DEBUGUI_RecomputeGroundChunksOnEXEChange
     // TODO(casey): Re-enable this?  But make sure we don't touch ones in flight??
-    if(Input->ExecutableReloaded)
+    if(Memory->ExecutableReloaded)
     {
         for(uint32 GroundBufferIndex = 0;
             GroundBufferIndex < TranState->GroundBufferCount;
@@ -1073,7 +1073,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     DrawBuffer->Pitch = Buffer->Pitch;
     DrawBuffer->Memory = Buffer->Memory;
 
-#if 0
+#if DEBUGUI_TestWeirdDrawBufferSize
     // NOTE(casey): Enable this to test weird buffer sizes in the renderer!
     DrawBuffer->Width = 1279;
     DrawBuffer->Height = 719;
@@ -1112,7 +1112,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
             {
                 real32 GroundSideInMeters = World->ChunkDimInMeters.x;
                 PushBitmap(RenderGroup, Bitmap, 1.0f*GroundSideInMeters, Delta);
-#if 0
+#if DEBUGUI_GroundChunkOutlines
                 PushRectOutline(RenderGroup, Delta, V2(GroundSideInMeters, GroundSideInMeters), V4(1.0f, 1.0f, 0.0f, 1.0f));
 #endif
             }            
@@ -1306,7 +1306,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                     sim_entity *ClosestHero = 0;
                     real32 ClosestHeroDSq = Square(10.0f); // NOTE(casey): Ten meter maximum search!
 
-#if 0
+#if DEBUGUI_FamiliarFollowsHero
                     // TODO(casey): Make spatial queries easy for things!
                     sim_entity *TestEntity = SimRegion->Entities;
                     for(uint32 TestEntityIndex = 0;
@@ -1361,7 +1361,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                     PushBitmap(RenderGroup, HeroBitmaps.Head, HeroSizeC*1.2f, V3(0, 0, 0));
                     DrawHitpoints(Entity, RenderGroup);
 
-#if 0
+#if DEBUGUI_ParticleTest
                     for(u32 ParticleSpawnIndex = 0;
                         ParticleSpawnIndex < 3;
                         ++ParticleSpawnIndex)
@@ -1387,8 +1387,8 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                         MatchVector.E[Tag_UnicodeCodepoint] = (r32)Nothings[RandomChoice(&GameState->EffectsEntropy, ArrayCount(Nothings) - 1)];
                         WeightVector.E[Tag_UnicodeCodepoint] = 1.0f;
 
-                        Particle->BitmapID = GetBestMatchBitmapFrom(TranState->Assets, Asset_Font,
-                                                                    &MatchVector, &WeightVector);
+                        Particle->BitmapID = HeroBitmaps.Head; //GetBestMatchBitmapFrom(TranState->Assets, Asset_Font,
+                        //   &MatchVector, &WeightVector);
 
 //                        Particle->BitmapID = GetRandomBitmapFrom(TranState->Assets, Asset_Font, &GameState->EffectsEntropy);
                     }
@@ -1421,7 +1421,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                         Cel->VelocityTimesDensity += Density*Particle->dP;
                     }
 
-#if 0
+#if DEBUGUI_ParticleGrid
                     for(u32 Y = 0;
                         Y < PARTICLE_CEL_DIM;
                         ++Y)
@@ -1541,7 +1541,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
                 case EntityType_Space:
                 {
-#if 0
+#if DEBUGUI_UseSpaceOutlines
                     for(uint32 VolumeIndex = 0;
                         VolumeIndex < Entity->Collision->VolumeCount;
                         ++VolumeIndex)
@@ -1580,6 +1580,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         bool32 RowCheckerOn = false;
         int32 CheckerWidth = 16;
         int32 CheckerHeight = 16;
+        rectangle2i ClipRect = {0, 0, LOD->Width, LOD->Height};
         for(int32 Y = 0;
             Y < LOD->Height;
             Y += CheckerHeight)
@@ -1592,7 +1593,8 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                 v4 Color = CheckerOn ? V4(MapColor[MapIndex], 1.0f) : V4(0, 0, 0, 1);
                 v2 MinP = V2i(X, Y);
                 v2 MaxP = MinP + V2i(CheckerWidth, CheckerHeight);
-                DrawRectangle(LOD, MinP, MaxP, Color);
+                DrawRectangle(LOD, MinP, MaxP, Color, ClipRect, true);
+                DrawRectangle(LOD, MinP, MaxP, Color, ClipRect, false);
                 CheckerOn = !CheckerOn;
             }
             RowCheckerOn = !RowCheckerOn;

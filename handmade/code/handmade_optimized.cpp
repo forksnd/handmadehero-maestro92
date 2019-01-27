@@ -238,7 +238,7 @@ DrawRectangleQuickly(loaded_bitmap *Buffer, v2 Origin, v2 XAxis, v2 YAxis, v4 Co
                                                      *(uint32 *)(TexelPtr1 + TexturePitch + sizeof(uint32)),
                                                      *(uint32 *)(TexelPtr2 + TexturePitch + sizeof(uint32)),
                                                      *(uint32 *)(TexelPtr3 + TexturePitch + sizeof(uint32)));
-               
+                    
                     // NOTE(casey): Unpack bilinear samples
                     __m128i TexelArb = _mm_and_si128(SampleA, MaskFF00FF);
                     __m128i TexelAag = _mm_and_si128(_mm_srli_epi32(SampleA, 8), MaskFF00FF);
@@ -286,7 +286,7 @@ DrawRectangleQuickly(loaded_bitmap *Buffer, v2 Origin, v2 XAxis, v2 YAxis, v4 Co
                     __m128 TexelDr = _mm_cvtepi32_ps(_mm_srli_epi32(TexelDrb, 16));
                     __m128 TexelDg = _mm_cvtepi32_ps(_mm_and_si128(TexelDag, MaskFFFF));
                     __m128 TexelDb = _mm_cvtepi32_ps(_mm_and_si128(TexelDrb, MaskFFFF));
-
+                    
                     // NOTE(casey): Bilinear texture blend
                     __m128 ifX = _mm_sub_ps(One, fX);
                     __m128 ifY = _mm_sub_ps(One, fY);
@@ -326,7 +326,7 @@ DrawRectangleQuickly(loaded_bitmap *Buffer, v2 Origin, v2 XAxis, v2 YAxis, v4 Co
                     __m128 Blendedg = _mm_add_ps(_mm_mul_ps(InvTexelA, Destg), Texelg);
                     __m128 Blendedb = _mm_add_ps(_mm_mul_ps(InvTexelA, Destb), Texelb);
                     __m128 Blendeda = _mm_add_ps(_mm_mul_ps(InvTexelA, Desta), Texela);
-
+        
                     // NOTE(casey): Go from "linear" 0-1 brightness space to sRGB 0-255
 #if 1
                     Blendedr = _mm_mul_ps(Blendedr, _mm_rsqrt_ps(Blendedr));

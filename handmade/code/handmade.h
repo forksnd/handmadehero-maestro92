@@ -25,6 +25,7 @@
   - Particle systems
 
   - Rendering
+    - Get rid of "even" scan line notion?
     - Straighten out all coordinate systems!
       - Screen
       - World
