@@ -965,7 +965,7 @@ inline entity_basis_p_result GetRenderEntityBasisP(render_transform *Transform, 
         real32 OffsetZ = 0.0f;
     
         real32 DistanceAboveTarget = Transform->DistanceAboveTarget;
-#if 0
+#if DEBUGUI_UseDebugCamera
         // TODO(casey): How do we want to control the debug camera?
         if(1)
         {
