@@ -605,6 +605,20 @@ struct timed_block
 
 #endif
 
+//
+// NOTE(casey): Shared utils
+//
+inline u32
+StringLength(char *String)
+{
+    u32 Count = 0;
+    while(*String++)
+    {
+        ++Count;
+    }
+    return(Count);
+}
+
 #ifdef __cplusplus
 }
 #endif
