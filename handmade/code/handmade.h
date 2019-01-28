@@ -22,8 +22,6 @@
   - Audio
     - FIX CLICKING BUG AT END OF SAMPLES!!!
 
-  - Particle systems
-
   - Rendering
     - Get rid of "even" scan line notion?
     - Straighten out all coordinate systems!
@@ -58,35 +56,31 @@
     - What's the plan for robustness / shape definition?
     - (Implement reprojection to handle interpenetration)
     - "Things pushing other things"
+  - Animation
+    - Skeletal animation
   - Implement multiple sim regions per frame
     - Per-entity clocking
     - Sim region merging?  For multiple players?
     - Simple zoomed-out view for testing?
+  - AI
+    - Rudimentary monstar behavior example
+    * Pathfinding
+    - AI "storage"
     
+  PRODUCTION
+  -> GAME
+    - Entity system
+    - Rudimentary world gen (no quality, just "what sorts of things" we do)
+      - Placement of background things
+      - Connectivity?
+      - Non-overlapping?
+      - Map display
+        - Magnets - how they work???
   - Metagame / save game?
     - How do you enter "save slot"?
     - Persistent unlocks/etc.
     - Do we allow saved games?  Probably yes, just only for "pausing",
     * Continuous save for crash recovery?
-
-  - Rudimentary world gen (no quality, just "what sorts of things" we do)
-    - Placement of background things
-    - Connectivity?
-    - Non-overlapping?
-    - Map display
-      - Magnets - how they work???
-  - AI
-    - Rudimentary monstar behavior example
-    * Pathfinding
-    - AI "storage"
-      
-  * Animation, should probably lead into rendering
-    - Skeletal animation
-
-  PRODUCTION
-  -> GAME
-    - Entity system
-    - World generation
 */
 
 #include "handmade_platform.h"
