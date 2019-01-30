@@ -603,14 +603,22 @@ so we can add crazy rules here.]
 
 
 
+
+
+
+
+
+
+[## Confusion1 ##]
+
 [Just want to do a bit of a summary here:
 
 Is it just me, or this DEBUGBeginInteract(); UI code feels hacky?
-    feels like there are too many if conditions in the UI code?
-    I Hope Casey cleans this up]
+    feels like there are too many if conditions in the UI code? I Hope Casey cleans this up
 
-so my thinking for DEBUGBeginInteract(); it is essentially running an "algorithm/function" to determine 
-the UI InteractionType. 
+it seems to me that DEBUGBeginInteract(); has the logic of determining the UI InteractionType. 
+the UI InteractionType should be determined by the UI Element.
+
 
 the regular case for the algorithm is determined by the UI Element it is hovering on. However, there will be 
 overrides for special cases, that is when this function receives a suggested UI Interaction Type.
@@ -705,6 +713,154 @@ it just feels alot cleaner this way
 I guess a big reason why i feel this current UI code by Casey is hacky is cuz there are 
 too many if conditions all over the place. if you structure the code this way here,
 you just got once place where you have a switch statement determing the UI Interaction Type.]
+
+
+
+
+
+
+
+
+
+[## Confusion2 ##]
+
+it seems to me that DEBUGBeginInteract(); has the logic of determining the UI InteractionType. 
+the UI InteractionType should be determined by the UI Element.
+
+i think the confusion comes from the fact that we dont have UI Element in our game, we only have debug_variable. 
+
+previously, we have a one-to-one mapping of debug_variable to UI Element
+each debug_variable will have a disntinct type of UI Interaction 
+
+but the one-to-one mapping of debug_variable to UI Element is no longer true.
+
+in this case, if we are hovering on the profile view, we want one type of interaction, but if our mouse is hovering on the resize box,
+we want another type of interaction. 
+
+however, both the profile view and resize box is represented by the debug_variable.
+
+but the rendering code is only returning the debug_variable.
+
+
+so i think ideally, to make the code cleaner, we would want something like:
+
+
+     ___________________                                    
+    |                   |     UI Element enum                ___________________________  
+    |   rendering code  | ---------------------------->     |                           |   
+    |___________________|     debug_varaible                |                           |
+                                                            |                           |
+                                                            |    DEBUGBeginInteract     |   --------> UI Interaction Type
+                                                            |                           | 
+                                                            |                           |
+       User Input         ---------------------------->     |___________________________|
+                                                            
+
+
+that we we can have the code to be 
+
+                void DEBUGDrawMainMenu()
+                {
+                    while(var)
+                    {
+                        ...
+                        ...
+                        case DebugVariableType_CounterThreadList:
+                        {
+
+                            ...
+                            if(IsInRectangle(SizeBox, MouseP))
+                            {
+                                DebugState->NextUIElement = DebugUIElement_ResizeBox;
+                                DebugState->NextHot = Var;
+                            }
+                            else if(IsInRectangle(Bounds, MouseP))
+                            {
+                                DebugState->NextUIElement = DebugUIElement_RegularBox;
+                                DebugState->NextHot = Var;
+                            }
+                        }
+                        break;
+                        case DebugVariableType_Bool32:
+                        {
+                            DebugState->NextUIElement = DebugUIElement_ToggleBox;
+                        }
+                        ...
+                        ...
+                    }
+                }
+
+
+then in our DEBUGBeginInteract(); we will have 
+
+                void DEBUGBeginInteract()
+                {
+                    case DebugUIElement_ToggleBox:
+                    {
+                        DebugState->NextHotInteraction = DebugInteraction_ToggleValue;
+                    } break;
+
+                    case DebugUIElement_DragBox:
+                    {
+                        DebugState->NextHotInteraction = DebugInteraction_DragValue;
+                    } break;
+
+                    case DebugUIElement_ToggleBox:
+                    {
+                        DebugState->NextHotInteraction = DebugInteraction_ToggleValue;
+                    } break;                   
+                }
+
+i think this approach is worth a try.]
+
+
+
+
+[## Confusion3 ##]
+[while I mention in Confusion2 where a UI element will have a 1-to-1 mapping InteractionType, 
+    i dont think I can make that assumption. 
+
+lets say the debug_variable has a speical state, which changes the UI Interaction?
+
+a UI InteractionType can only be determined by:
+
+    debug_variable state + UI Element it is hovering on + input handling 
+
+
+so to make a slight change in my DEBUGBeginInteract(); code, it will have to be 
+
+                void DEBUGBeginInteract()
+                {
+                    case DebugUIElement_ToggleBox + debug_variable_state_1:
+                    {
+                        DebugState->NextHotInteraction = DebugInteraction_ToggleValue;
+                    } break;
+
+                    case DebugUIElement_DragBox + debug_variable_state_2:
+                    {
+                        DebugState->NextHotInteraction = DebugInteraction_DragValue;
+                    } break;
+
+                    case DebugUIElement_ToggleBox + + debug_variable_state_3:
+                    {
+                        DebugState->NextHotInteraction = DebugInteraction_ToggleValue;
+                    } break;                   
+                }
+
+the graph 
+
+     ___________________                                    
+    |                   |     UI Element enum                ___________________________  
+    |   rendering code  | ---------------------------->     |                           |   
+    |___________________|     debug_varaible                |                           |
+                                                            |                           |
+                                                            |    DEBUGBeginInteract     |   --------> UI Interaction Type
+                                                            |                           | 
+                                                            |                           |
+       User Input         ---------------------------->     |___________________________|
+                                                            
+still holds.]
+
 
 
 

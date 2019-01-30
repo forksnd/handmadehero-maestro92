@@ -43,18 +43,27 @@ DEBUGShouldBeWritten(debug_variable_type Type)
     return(Result);
 }
 
+struct debug_variable_reference
+{
+    debug_variable *Var;
+    debug_variable_reference *Next;
+    debug_variable_reference *Parent;
+};
 
 struct debug_variable_group
 {
     b32 Expanded;
-    debug_variable *FirstChild;    
-    debug_variable *LastChild;
+    debug_variable_reference *FirstChild;    
+    debug_variable_reference *LastChild;
 };
 
 struct debug_variable_hierarchy
 {
     v2 UIP;
-    debug_variable *Group;
+    debug_variable_reference *Group;
+
+    debug_variable_hierarchy *Next;
+    debug_variable_hierarchy *Prev;
 };
 
 struct debug_profile_settings
@@ -66,8 +75,6 @@ struct debug_variable
 {
     debug_variable_type Type;
     char *Name;
-    debug_variable *Next;
-    debug_variable *Parent;
 
     union
     {
@@ -159,6 +166,7 @@ enum debug_interaction
     DebugInteraction_TearValue,
 
     DebugInteraction_ResizeProfile,
+    DebugInteraction_MoveHierarchy,
 };
 struct debug_state
 {
@@ -178,16 +186,20 @@ struct debug_state
     v2 MenuP;
     b32 MenuActive;
 
-    debug_variable *RootGroup;
-    debug_variable_hierarchy Hierarchy;
+    debug_variable_reference *RootGroup;
+    debug_variable_hierarchy HierarchySentinel;
     
     debug_interaction Interaction;
     v2 LastMouseP;
     debug_interaction HotInteraction;
     debug_variable *Hot;
     debug_variable *InteractingWith;
-    debug_interaction NextHotInteraction;
+    debug_interaction NextHotInteraction;    
     debug_variable *NextHot;
+    // TODO(casey): Hierarchies should be debug variables!
+    debug_variable_hierarchy *NextHotHierarchy;
+
+    debug_variable_hierarchy *DraggingHierarchy;
 
     r32 LeftEdge;
     r32 RightEdge;
