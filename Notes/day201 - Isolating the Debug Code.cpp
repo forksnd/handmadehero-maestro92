@@ -525,7 +525,9 @@ so if you do make it to be
                 };
 
 that means you can add debug_variable to any level that you want.
-but here, we really only need to add debug_variable to the top level, so we made a separate debug_tree class.]
+but here, we really only need to add debug_variable to the top level, so we made a separate debug_tree class.
+
+also I think Casey wants to make the concept that: I have a list of trees more explicit.]
 
 
 
@@ -582,4 +584,9 @@ which is essentially an array.
                     debug_variable *RootGroup;
                     debug_view* ViewHash[4096];
                     ...
-                }
+                };
+
+
+
+Casey will finish this up next episode
+
