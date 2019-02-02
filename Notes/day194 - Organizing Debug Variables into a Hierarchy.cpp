@@ -194,9 +194,11 @@ so visually, you have something like:
                         "Bool32": true,
                     },
 
+
                         |   ^
                  Next   |   |  Parent
                         v   |
+
 
                     "debug_variable2": 
                     {
@@ -209,9 +211,11 @@ so visually, you have something like:
                                     "Bool32": true,
                                 },
 
+
                                         |   ^
                                  Next   |   |  Parent
                                         v   |
+
 
                                 "debug_variable4": 
                                 {
@@ -221,9 +225,11 @@ so visually, you have something like:
                             }
                     }
 
+
                         |   ^
                  Next   |   |  Parent
                         v   |
+
 
                     "debug_variable5": 
                     {
