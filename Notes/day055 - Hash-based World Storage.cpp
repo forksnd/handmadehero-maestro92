@@ -18,7 +18,7 @@ linked list has a better worst case scenario
 
 
 28:38
-so if you just want a constant amount of memory (which we often do in Game Development), it is better to use the open addressing version
+so if you just want a constant amount of memory (which we often do in Game Development);, it is better to use the open addressing version
 Example: if you just have 512 mb of storage
 
 512 in the open addressing case will be all devoted to the hash table elements
