@@ -35,18 +35,18 @@ graphical explanation of the equation for Perspective
 
 
 
-	 P				   |
-		o			   | P_
-					   o
-					   |				camera
-	-------------------|-------------------o---------------> Z
- 	     			   |
-					   |      d (monitor to camera)       
-					   |
-					   |
+     P                 |
+        o              | P_
+                       o
+                       |                c (camera)
+    -------------------|-------------------o---------------> Z
+                       |
+                       |      d (monitor to camera)       
+                       |
+                       |
                        |
 
-     			   monitor
+                   monitor
 
 
 
@@ -56,110 +56,110 @@ derives the equation for perspective
 Cz - Pz = Camera.z - P.z
 
 note that Z axis goes from left to right
-so Camera.z is hier
+so Camera.z is higher
 
 
-				P_			d
-			________ =  ___________
+             P_ - c         d
+            ________ =  ___________
 
-				P 		  Cz - Pz
+              P - c        Cz - Pz
 
 
 
-				d * P
-		   ______________  = P_
+            d * (P - c)
+           ______________  = P_ - c
 
-			  Cz - Pz 
+              Cz - Pz 
 
 
 
 35:25
 putting this formula into our code, we edit the GetRenderEntityBasisP(); function
 
--	CameraDistanceAboveTarget is Cz 
--	EntityBaseP is Pz
--	DistanceToPZ is Cz - Pz
--	FocalLength is d
--	the NearClipPlane is essentially what zNear is in the gluProject function
+-   CameraDistanceAboveTarget is Cz 
+-   EntityBaseP is Pz
+-   DistanceToPZ is Cz - Pz
+-   FocalLength is d
+-   the NearClipPlane is essentially what zNear is in the gluProject function
 
 
-				 P				   |             near clip plane
-					o			   | P_           |  
-								   o          <---|
-								   |			  |	   camera
-				-------------------|--------------|----o---------------> Z
-			 	     			   |              |
-								   |      d (monitor to camera)       
-								   |
-								   |
-			                       |
+                 P                 |             near clip plane
+                    o              | P_           |  
+                                   o          <---|
+                                   |              |    camera
+                -------------------|--------------|----o---------------> Z
+                                   |              |
+                                   |      d (monitor to camera)       
+                                   |
+                                   |
+                                   |
 
-			     			   monitor
+                               monitor
 
     essentially we are only rendering things in front of the near clip plane
 
--	here is the actual function
+-   here is the actual function
 
--	51:49
-	had the problem of whether to do this function in pixel space or world space.
-	i am skipping that part 
+-   51:49
+    had the problem of whether to do this function in pixel space or world space.
+    i am skipping that part 
 
-				inline entity_basis_p_result GetRenderEntityBasisP(render_group *RenderGroup, render_entity_basis *EntityBasis,
-				                                                   v2 ScreenCenter)
-				{
-				    entity_basis_p_result Result = {};
+                inline entity_basis_p_result GetRenderEntityBasisP(render_group *RenderGroup, render_entity_basis *EntityBasis,
+                                                                   v2 ScreenCenter)
+                {
+                    entity_basis_p_result Result = {};
 
-				    v3 EntityBaseP = RenderGroup->MetersToPixels*EntityBasis->Basis->P;
+                    v3 EntityBaseP = RenderGroup->MetersToPixels*EntityBasis->Basis->P;
 
-				    // TODO(casey): The values of 20 and 20 seem wrong - did I mess something up here?
-				    real32 FocalLength = RenderGroup->MetersToPixels*20.0f;
-				    real32 CameraDistanceAboveTarget = RenderGroup->MetersToPixels*20.0f;
-				    real32 DistanceToPZ = (CameraDistanceAboveTarget - EntityBaseP.z); 		
-				    real32 NearClipPlane = RenderGroup->MetersToPixels*0.2f;
+                    // TODO(casey): The values of 20 and 20 seem wrong - did I mess something up here?
+                    real32 FocalLength = RenderGroup->MetersToPixels*20.0f;
+                    real32 CameraDistanceAboveTarget = RenderGroup->MetersToPixels*20.0f;
+                    real32 DistanceToPZ = (CameraDistanceAboveTarget - EntityBaseP.z);      
+                    real32 NearClipPlane = RenderGroup->MetersToPixels*0.2f;
 
-				    v3 RawXY = V3(EntityBaseP.xy + EntityBasis->Offset.xy, 1.0f);
+                    v3 RawXY = V3(EntityBaseP.xy + EntityBasis->Offset.xy, 1.0f);
 
-				    if(DistanceToPZ > NearClipPlane)
-				    {
-				        v3 ProjectedXY = (1.0f / DistanceToPZ) * FocalLength*RawXY;        
-				        Result.P = ScreenCenter + ProjectedXY.xy;
-				        Result.Scale = ProjectedXY.z;
-				        Result.Valid = true;
-				    }
-				    
-				    return(Result);
-				}
+                    if(DistanceToPZ > NearClipPlane)
+                    {
+                        v3 ProjectedXY = (1.0f / DistanceToPZ) * FocalLength*RawXY;        
+                        Result.P = ScreenCenter + ProjectedXY.xy;
+                        Result.Scale = ProjectedXY.z;
+                        Result.Valid = true;
+                    }
+                    
+                    return(Result);
+                }
 
 
 
--	GetRenderEntityBasisP(); function gets called in the RenderGroupToOutput(); function;
+-   GetRenderEntityBasisP(); function gets called in the RenderGroupToOutput(); function;
 
-				internal void
-				RenderGroupToOutput(render_group *RenderGroup, loaded_bitmap *OutputTarget)
-				{
-		
-				    for(uint32 BaseAddress = 0; BaseAddress < RenderGroup->PushBufferSize;  )
-				    {
+                internal void
+                RenderGroupToOutput(render_group *RenderGroup, loaded_bitmap *OutputTarget)
+                {
+        
+                    for(uint32 BaseAddress = 0; BaseAddress < RenderGroup->PushBufferSize;  )
+                    {
 
-						...
-						...
-				        switch(Header->Type)
-				        {
-				        	
-				        	...
+                        ...
+                        ...
+                        switch(Header->Type)
+                        {
+                            
+                            ...
 
-			            	case RenderGroupEntryType_render_entry_bitmap:
-				            {
-				                render_entry_bitmap *Entry = (render_entry_bitmap *)Data;
+                            case RenderGroupEntryType_render_entry_bitmap:
+                            {
+                                render_entry_bitmap *Entry = (render_entry_bitmap *)Data;
 
-				                entity_basis_p_result Basis = GetRenderEntityBasisP(RenderGroup, &Entry->EntityBasis, ScreenCenter);
-				                Assert(Entry->Bitmap);
+                                entity_basis_p_result Basis = GetRenderEntityBasisP(RenderGroup, &Entry->EntityBasis, ScreenCenter);
+                                Assert(Entry->Bitmap);
 
-				            }
-				            ...
-				            ...
-				        }
-				}
+                            }
+                            ...
+                            ...
+                        }
+                }
 
 
 

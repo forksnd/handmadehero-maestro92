@@ -929,6 +929,8 @@ Perspective(render_group *RenderGroup, int32 PixelWidth, int32 PixelHeight,
     RenderGroup->Transform.ScreenCenter = V2(0.5f*PixelWidth, 0.5f*PixelHeight);
 
     RenderGroup->Transform.Orthographic = false;
+    RenderGroup->Transform.OffsetP = V3(0, 0, 0);
+    RenderGroup->Transform.Scale = 1.0f;
 }
 
 inline void
@@ -944,6 +946,8 @@ Orthographic(render_group *RenderGroup, int32 PixelWidth, int32 PixelHeight, rea
     RenderGroup->Transform.ScreenCenter = V2(0.5f*PixelWidth, 0.5f*PixelHeight);
 
     RenderGroup->Transform.Orthographic = true;
+    RenderGroup->Transform.OffsetP = V3(0, 0, 0);
+    RenderGroup->Transform.Scale = 1.0f;
 }
 
 inline entity_basis_p_result GetRenderEntityBasisP(render_transform *Transform, v3 OriginalP)
@@ -1111,10 +1115,8 @@ PushRect(render_group *Group, rectangle2 Rectangle, r32 Z, v4 Color = V4(1, 1, 1
 }
 
 inline void
-PushRectOutline(render_group *Group, v3 Offset, v2 Dim, v4 Color = V4(1, 1, 1, 1))
+PushRectOutline(render_group *Group, v3 Offset, v2 Dim, v4 Color = V4(1, 1, 1, 1), real32 Thickness = 0.1f)
 {
-    real32 Thickness = 0.1f;
-    
     // NOTE(casey): Top and bottom
     PushRect(Group, Offset - V3(0, 0.5f*Dim.y, 0), V2(Dim.x, Thickness), Color);
     PushRect(Group, Offset + V3(0, 0.5f*Dim.y, 0), V2(Dim.x, Thickness), Color);
@@ -1159,6 +1161,24 @@ CoordinateSystem(render_group *Group, v2 Origin, v2 XAxis, v2 YAxis, v4 Color,
     }
 #endif
 }
+
+#if 0
+inline v2
+CompleteUnproject()
+{
+    if(Transform->Orthographic)
+    {
+        Result.P = Transform->ScreenCenter + Transform->MetersToPixels*P.xy;
+    }
+    else
+    {
+        v2 A = (FinalP - Transform->ScreenCenter) / Transform->MetersToPixels;
+        v2 Result = ((Transform->DistanceAboveTarget - P.z)/Transform->FocalLength)*A; 
+    }
+
+    Result -= Transform->OffsetP;
+}
+#endif
 
 inline v2
 Unproject(render_group *Group, v2 ProjectedXY, real32 AtDistanceFromCamera)
