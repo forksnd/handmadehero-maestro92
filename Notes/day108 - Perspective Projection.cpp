@@ -62,23 +62,23 @@ so Camera.z is higher
              P_ - c         d
             ________ =  ___________
 
-              P - c        Cz - Pz
+              P - c      C.z - P.z
 
 
 
             d * (P - c)
            ______________  = P_ - c
 
-              Cz - Pz 
+             C.z - P.z 
 
 
 
 35:25
 putting this formula into our code, we edit the GetRenderEntityBasisP(); function
 
--   CameraDistanceAboveTarget is Cz 
+-   CameraDistanceAboveTarget is C.z 
 -   EntityBaseP is Pz
--   DistanceToPZ is Cz - Pz
+-   DistanceToPZ is C.z - P.z
 -   FocalLength is d
 -   the NearClipPlane is essentially what zNear is in the gluProject function
 

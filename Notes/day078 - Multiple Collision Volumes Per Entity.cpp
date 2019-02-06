@@ -39,7 +39,7 @@ each is bounding box is stored at a dimension and at some offset relative to you
 so the new design behind entity ground point will be that, the ground point for entities will be just on the ground.
 Whereas previously, we said the ground point is 1/2 zDim
 
-Then the entity also has a list of offset bounding boxes (as many as he wants)
+Then the entity also has a list of offset bounding boxes (as many as he wants);
 
 this design allow us to have multiple collision regions per entity, which is very flexible
 

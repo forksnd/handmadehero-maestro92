@@ -24,6 +24,7 @@
 
   - Rendering
     - Get rid of "even" scan line notion?
+    - Real projections with solid concept of project/unproject
     - Straighten out all coordinate systems!
       - Screen
       - World
