@@ -1606,7 +1606,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                 {
                     v4 OutlineColor = V4(1, 1, 0, 1);
                     PushRectOutline(RenderGroup, Volume->OffsetP - V3(0, 0, 0.5f*Volume->Dim.z), Volume->Dim.xy, OutlineColor, 0.05f);
-
+                    
                     DEBUG_BEGIN_HOT_ELEMENT(Entity);
                     DEBUG_VALUE(Entity->StorageIndex);
                     DEBUG_VALUE(Entity->Updatable);
