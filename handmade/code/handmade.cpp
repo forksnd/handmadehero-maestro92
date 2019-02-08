@@ -13,6 +13,7 @@
 #include "handmade_entity.cpp"
 #include "handmade_asset.cpp"
 #include "handmade_audio.cpp"
+#include "handmade_meta.cpp"
 
 struct add_low_entity_result
 {
@@ -684,7 +685,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     Assert((&Input->Controllers[0].Terminator - &Input->Controllers[0].Buttons[0]) ==
            (ArrayCount(Input->Controllers[0].Buttons)));
-
+    
     uint32 GroundBufferWidth = 256;
     uint32 GroundBufferHeight = 256;
 

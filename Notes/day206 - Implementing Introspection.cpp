@@ -18,7 +18,7 @@ discussed what "Recursive Descent Parser" is in the Q/A
 explained what introspection is in programming languages 
 
 Keyword:
-introspection
+introspection, metaprogramming
 
 
 
@@ -251,7 +251,41 @@ and we will do a switch on the token type
                 }
 
 
+17:45
+Casey showing us a printf trick, using the "precision" modifier
+so the modifier is in the format of ".number", and has slightly different meanings for the different conversion specifiers
 
+https://www.cprogramming.com/tutorial/printf-format-strings.html
+
+
+also here we have 
+
+"if the width specification is an asterisk '*', an int argument from the argulment list supplies the value.
+The width argumet must precede the value thats being formatted in the argument list"
+
+so if you have 
+                printf("%0*f", 5, 3);
+
+this outputs 
+                00003
+
+https://docs.microsoft.com/en-us/cpp/c-runtime-library/format-specification-syntax-printf-and-wprintf-functions?view=vs-2017
+[just super complicated rules in c printf. not worth remembering it]
+
+
+anyways, so initially Casey has
+
+
+                token Token = GetToken();
+                printf("%d: %s\n", Token.Type, Token.Text)
+
+but printf is null terminated, so this will keep on printing till forever, so we have to specify how many characters to print
+
+                token Token = GetToken();
+                printf("%d: %.*s\n", Token.Type, Token.TextLength, Token.Text);
+
+
+[i dont understand... doesnt really matter. Its just understanding different rules of printf]...
 
 20:19
 Next Casey added the tokenizer struct 

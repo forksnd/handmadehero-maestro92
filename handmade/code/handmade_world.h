@@ -7,7 +7,7 @@
    $Notice: (C) Copyright 2015 by Molly Rocket, Inc. All Rights Reserved. $
    ======================================================================== */
 
-struct world_position
+introspect(category:"world") struct world_position
 {
     // TODO(casey): It seems like we have to store ChunkX/Y/Z with each
     // entity because even though the sim region gather doesn't need it
