@@ -1,7 +1,7 @@
 Handmade Hero Day 207 - Using Introspection Data
 
 Summary:
-followed up on day 206, officially added the introspection code into the debug system.
+followed up on day 206, demonstarted how to add the introspection code into the debug system.
 generated metaprogramming code from the simple_preprocessor.cs
 
 Keyword:

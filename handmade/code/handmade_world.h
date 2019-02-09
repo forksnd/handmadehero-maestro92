@@ -15,9 +15,9 @@ introspect(category:"world") struct world_position
     // in entities WITHOUT going through their world_chunk, and thus
     // still need to know the ChunkX/Y/Z
     
-    int32 ChunkX;
-    int32 ChunkY;
-    int32 ChunkZ;
+    s32 ChunkX;
+    s32 ChunkY;
+    s32 ChunkZ;
 
     // NOTE(casey): These are the offsets from the chunk center
     v3 Offset_;

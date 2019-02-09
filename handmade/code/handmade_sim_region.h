@@ -71,7 +71,7 @@ introspect(category:"sim_region") struct sim_entity_collision_volume_group
     // has any volume... in the future, this could be compressed if necessary to say
     // that the VolumeCount can be 0 if the TotalVolume should be used as the only
     // collision volume for the entity.
-    uint32 VolumeCount;
+    u32 VolumeCount;
     sim_entity_collision_volume *Volumes; 
 };
 
@@ -79,35 +79,35 @@ introspect(category:"regular butter") struct sim_entity
 {
     // NOTE(casey): These are only for the sim region
     world_chunk *OldChunk;
-    uint32 StorageIndex;
-    bool32 Updatable;
+    u32 StorageIndex;
+    b32 Updatable;
 
     //
     
     entity_type Type;
-    uint32 Flags;
+    u32 Flags;
     
     v3 P;
     v3 dP;
     
-    real32 DistanceLimit;
+    r32 DistanceLimit;
 
     sim_entity_collision_volume_group *Collision;
 
-    real32 FacingDirection;
-    real32 tBob;
+    r32 FacingDirection;
+    r32 tBob;
 
-    int32 dAbsTileZ;
+    s32 dAbsTileZ;
 
     // TODO(casey): Should hitpoints themselves be entities?
-    uint32 HitPointMax;
+    u32 HitPointMax;
     hit_point HitPoint[16];
 
     entity_reference Sword;
 
     // TODO(casey): Only for stairwells!
     v2 WalkableDim;
-    real32 WalkableHeight;
+    r32 WalkableHeight;
     
     // TODO(casey): Generation index so we know how "up to date" this entity is.
 };
@@ -124,15 +124,15 @@ introspect(category:"regular butter") struct sim_region
     // to sim entities!
     
     world *World;
-    real32 MaxEntityRadius;
-    real32 MaxEntityVelocity;
+    r32 MaxEntityRadius;
+    r32 MaxEntityVelocity;
 
     world_position Origin;
     rectangle3 Bounds;
     rectangle3 UpdatableBounds;
     
-    uint32 MaxEntityCount;
-    uint32 EntityCount;
+    u32 MaxEntityCount;
+    u32 EntityCount;
     sim_entity *Entities;
     
     // TODO(casey): Do I really want a hash for this??
