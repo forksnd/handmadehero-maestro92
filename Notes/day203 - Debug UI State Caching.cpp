@@ -146,6 +146,9 @@ so if you want to print the value of the first child, you would do the following
 
 so converting from what I described above to Casey_s code, you have something 
 
+The TreeNode is debug_variable
+the LinkedListNode is debug_variable_link
+
                 struct debug_variable_link
                 {
                     debug_variable_link *Next;
