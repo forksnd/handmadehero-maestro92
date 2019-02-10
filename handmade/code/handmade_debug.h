@@ -40,11 +40,6 @@ enum debug_view_type
     DebugViewType_Collapsible,
 };
 
-struct debug_id
-{
-    void *Value[2];
-};
-
 struct debug_view
 {
     debug_id ID;
@@ -166,6 +161,8 @@ enum debug_interaction_type
 
     DebugInteraction_Resize,
     DebugInteraction_Move,
+
+    DebugInteraction_Select,
 };
 
 struct debug_interaction
@@ -198,6 +195,9 @@ struct debug_state
     
     v2 MenuP;
     b32 MenuActive;
+
+    u32 SelectedIDCount;
+    debug_id SelectedID[64];
 
     debug_variable_group *RootGroup;
     debug_view *ViewHash[4096];
