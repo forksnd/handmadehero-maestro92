@@ -210,29 +210,34 @@ instead, he put it in debug_variable_link
                 };
 
 
-[again, i dont quite follow this. To explain it interms of the drawings that I have in day 203   
-so previously we had 
-"
-The TreeNode is debug_variable
-the LinkedListNode is debug_variable_link
-"
-                struct TreeNode
-                {
-                    int value;         
-                    LinkedListNode* list;
-                };
+
+[so essentialy with this change Casey has a hiearchy where each node is a linked list of nodes instead of just a single node
 
 
-                struct LinkedListNode
-                {
-                    LinkedListNode* prev;
-                    LinkedListNode* next;
-                    TreeNode* treeNode;
-                };
+                                       _______
+                                      |       |
+                                      |       |
+                                      |_______|
+                                       /    \
+                              ---------      ---------
+                             /                        \
+                            /                          \
+                  ----------                            -------
+                 /                                             \
+                /                                               \
+            _______         _______                           _______         _______         _______ 
+           |       | ----> |       |                         |       | ----> |       | ----> |       |
+           |       |       |       |                         |       |       |       |       |       |
+           |_______|       |_______|                         |_______|       |_______|       |_______|       
 
 
-im just gonna assume that now debug_variable is the "int value" in TreeNode, its just purely data 
-i think Casey just means he wants debug_variable to just represent data, and nothing else ]
+
+
+
+
+
+
+also now debug_variable just represents data, purely data, and nothing else]
 
 
 
