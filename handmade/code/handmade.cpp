@@ -397,15 +397,19 @@ internal PLATFORM_WORK_QUEUE_CALLBACK(FillGroundChunkWork)
             // TODO(casey): Look into wang hashing or some other spatial seed generation "thing"!
             random_series Series = RandomSeed(139*ChunkX + 593*ChunkY + 329*ChunkZ);
 
-#if DEBUGUI_GroundChunkCheckerboards
-            v4 Color = V4(1, 0, 0, 1);
-            if((ChunkX % 2) == (ChunkY % 2))
+            v4 Color;
+            DEBUG_IF(GroundChunks_Checkerboards)
             {
-                Color = V4(0, 0, 1, 1);
+                Color = V4(1, 0, 0, 1);
+                if((ChunkX % 2) == (ChunkY % 2))
+                {
+                    Color = V4(0, 0, 1, 1);
+                }
             }
-#else
-            v4 Color = {1, 1, 1, 1};
-#endif
+            else
+            {
+                Color = {1, 1, 1, 1};
+            }
             
             v2 Center = V2(ChunkOffsetX*Width, ChunkOffsetY*Height);
 
@@ -670,6 +674,7 @@ DEBUGGetGameAssets(game_memory *Memory)
 
     return(Assets);
 }
+
 
 #if HANDMADE_INTERNAL
 game_memory *DebugGlobalMemory;
@@ -973,19 +978,19 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         TranState->IsInitialized = true;
     }
 
-#if DEBUGUI_RecomputeGroundChunksOnEXEChange
-    // TODO(casey): Re-enable this?  But make sure we don't touch ones in flight??
-    if(Memory->ExecutableReloaded)
+    DEBUG_IF(GroundChunks_RecomputeOnEXEChange)
     {
-        for(uint32 GroundBufferIndex = 0;
-            GroundBufferIndex < TranState->GroundBufferCount;
-            ++GroundBufferIndex)
+        if(Memory->ExecutableReloaded)
         {
-            ground_buffer *GroundBuffer = TranState->GroundBuffers + GroundBufferIndex;
-            GroundBuffer->P = NullPosition();            
-        }        
+            for(uint32 GroundBufferIndex = 0;
+                GroundBufferIndex < TranState->GroundBufferCount;
+                ++GroundBufferIndex)
+            {
+                ground_buffer *GroundBuffer = TranState->GroundBuffers + GroundBufferIndex;
+                GroundBuffer->P = NullPosition();            
+            }        
+        }
     }
-#endif
     
     world *World = GameState->World;
 
@@ -1088,11 +1093,12 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     DrawBuffer->Pitch = Buffer->Pitch;
     DrawBuffer->Memory = Buffer->Memory;
 
-#if DEBUGUI_TestWeirdDrawBufferSize
-    // NOTE(casey): Enable this to test weird buffer sizes in the renderer!
-    DrawBuffer->Width = 1279;
-    DrawBuffer->Height = 719;
-#endif
+    DEBUG_IF(Renderer_TestWeirdDrawBufferSize)
+    {
+        // NOTE(casey): Enable this to test weird buffer sizes in the renderer!
+        DrawBuffer->Width = 1279;
+        DrawBuffer->Height = 719;
+    }
 
     v2 MouseP = {Input->MouseX, Input->MouseY};
 
@@ -1131,9 +1137,10 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
             {
                 real32 GroundSideInMeters = World->ChunkDimInMeters.x;
                 PushBitmap(RenderGroup, Bitmap, 1.0f*GroundSideInMeters, Delta);
-#if DEBUGUI_GroundChunkOutlines
-                PushRectOutline(RenderGroup, Delta, V2(GroundSideInMeters, GroundSideInMeters), V4(1.0f, 1.0f, 0.0f, 1.0f));
-#endif
+                DEBUG_IF(GroundChunks_Outlines)
+                {
+                    PushRectOutline(RenderGroup, Delta, V2(GroundSideInMeters, GroundSideInMeters), V4(1.0f, 1.0f, 0.0f, 1.0f));
+                }
             }            
         }
     }
@@ -1325,24 +1332,25 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                     sim_entity *ClosestHero = 0;
                     real32 ClosestHeroDSq = Square(10.0f); // NOTE(casey): Ten meter maximum search!
 
-#if DEBUGUI_FamiliarFollowsHero
-                    // TODO(casey): Make spatial queries easy for things!
-                    sim_entity *TestEntity = SimRegion->Entities;
-                    for(uint32 TestEntityIndex = 0;
-                        TestEntityIndex < SimRegion->EntityCount;
-                        ++TestEntityIndex, ++TestEntity)
+                    DEBUG_IF(AI_Familiar_FollowsHero)
                     {
-                        if(TestEntity->Type == EntityType_Hero)
-                        {            
-                            real32 TestDSq = LengthSq(TestEntity->P - Entity->P);            
-                            if(ClosestHeroDSq > TestDSq)
-                            {
-                                ClosestHero = TestEntity;
-                                ClosestHeroDSq = TestDSq;
+                        // TODO(casey): Make spatial queries easy for things!
+                        sim_entity *TestEntity = SimRegion->Entities;
+                        for(uint32 TestEntityIndex = 0;
+                            TestEntityIndex < SimRegion->EntityCount;
+                            ++TestEntityIndex, ++TestEntity)
+                        {
+                            if(TestEntity->Type == EntityType_Hero)
+                            {            
+                                real32 TestDSq = LengthSq(TestEntity->P - Entity->P);            
+                                if(ClosestHeroDSq > TestDSq)
+                                {
+                                    ClosestHero = TestEntity;
+                                    ClosestHeroDSq = TestDSq;
+                                }
                             }
                         }
                     }
-#endif
                     
                     if(ClosestHero && (ClosestHeroDSq > Square(3.0f)))
                     {
@@ -1380,145 +1388,147 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                     PushBitmap(RenderGroup, HeroBitmaps.Head, HeroSizeC*1.2f, V3(0, 0, 0));
                     DrawHitpoints(Entity, RenderGroup);
 
-#if DEBUGUI_ParticleTest
-                    for(u32 ParticleSpawnIndex = 0;
-                        ParticleSpawnIndex < 3;
-                        ++ParticleSpawnIndex)
+                    DEBUG_IF(Particles_Test)
                     {
-                        particle *Particle = GameState->Particles + GameState->NextParticle++;
-                        if(GameState->NextParticle >= ArrayCount(GameState->Particles))
+                        for(u32 ParticleSpawnIndex = 0;
+                            ParticleSpawnIndex < 3;
+                            ++ParticleSpawnIndex)
                         {
-                            GameState->NextParticle = 0;
-                        }
+                            particle *Particle = GameState->Particles + GameState->NextParticle++;
+                            if(GameState->NextParticle >= ArrayCount(GameState->Particles))
+                            {
+                                GameState->NextParticle = 0;
+                            }
 
-                        Particle->P = V3(RandomBetween(&GameState->EffectsEntropy, -0.05f, 0.05f), 0, 0);
-                        Particle->dP = V3(RandomBetween(&GameState->EffectsEntropy, -0.01f, 0.01f), 7.0f*RandomBetween(&GameState->EffectsEntropy, 0.7f, 1.0f), 0.0f);
-                        Particle->ddP = V3(0.0f, -9.8f, 0.0f);
-                        Particle->Color = V4(RandomBetween(&GameState->EffectsEntropy, 0.75f, 1.0f),
-                                             RandomBetween(&GameState->EffectsEntropy, 0.75f, 1.0f),
-                                             RandomBetween(&GameState->EffectsEntropy, 0.75f, 1.0f),
-                                             1.0f);
-                        Particle->dColor = V4(0, 0, 0, -0.25f);
+                            Particle->P = V3(RandomBetween(&GameState->EffectsEntropy, -0.05f, 0.05f), 0, 0);
+                            Particle->dP = V3(RandomBetween(&GameState->EffectsEntropy, -0.01f, 0.01f), 7.0f*RandomBetween(&GameState->EffectsEntropy, 0.7f, 1.0f), 0.0f);
+                            Particle->ddP = V3(0.0f, -9.8f, 0.0f);
+                            Particle->Color = V4(RandomBetween(&GameState->EffectsEntropy, 0.75f, 1.0f),
+                                                 RandomBetween(&GameState->EffectsEntropy, 0.75f, 1.0f),
+                                                 RandomBetween(&GameState->EffectsEntropy, 0.75f, 1.0f),
+                                                 1.0f);
+                            Particle->dColor = V4(0, 0, 0, -0.25f);
 
-                        asset_vector MatchVector = {};
-                        asset_vector WeightVector = {};
-                        char Nothings[] = "NOTHINGS";
-                        MatchVector.E[Tag_UnicodeCodepoint] = (r32)Nothings[RandomChoice(&GameState->EffectsEntropy, ArrayCount(Nothings) - 1)];
-                        WeightVector.E[Tag_UnicodeCodepoint] = 1.0f;
+                            asset_vector MatchVector = {};
+                            asset_vector WeightVector = {};
+                            char Nothings[] = "NOTHINGS";
+                            MatchVector.E[Tag_UnicodeCodepoint] = (r32)Nothings[RandomChoice(&GameState->EffectsEntropy, ArrayCount(Nothings) - 1)];
+                            WeightVector.E[Tag_UnicodeCodepoint] = 1.0f;
 
-                        Particle->BitmapID = HeroBitmaps.Head; //GetBestMatchBitmapFrom(TranState->Assets, Asset_Font,
-                        //   &MatchVector, &WeightVector);
+                            Particle->BitmapID = HeroBitmaps.Head; //GetBestMatchBitmapFrom(TranState->Assets, Asset_Font,
+                            //   &MatchVector, &WeightVector);
 
 //                        Particle->BitmapID = GetRandomBitmapFrom(TranState->Assets, Asset_Font, &GameState->EffectsEntropy);
-                    }
+                        }
                     
-                    // NOTE(casey): Particle system test
-                    ZeroStruct(GameState->ParticleCels);
+                        // NOTE(casey): Particle system test
+                        ZeroStruct(GameState->ParticleCels);
 
-                    r32 GridScale = 0.25f;
-                    r32 InvGridScale = 1.0f / GridScale;
-                    v3 GridOrigin = {-0.5f*GridScale*PARTICLE_CEL_DIM, 0.0f, 0.0f};
-                    for(u32 ParticleIndex = 0;
-                        ParticleIndex < ArrayCount(GameState->Particles);
-                        ++ParticleIndex)
-                    {
-                        particle *Particle = GameState->Particles + ParticleIndex;
-
-                        v3 P = InvGridScale*(Particle->P - GridOrigin);
-                        
-                        s32 X = TruncateReal32ToInt32(P.x);
-                        s32 Y = TruncateReal32ToInt32(P.y);
-
-                        if(X < 0) {X = 0;}
-                        if(X > (PARTICLE_CEL_DIM - 1)) {X = (PARTICLE_CEL_DIM - 1);}
-                        if(Y < 0) {Y = 0;}
-                        if(Y > (PARTICLE_CEL_DIM - 1)) {Y = (PARTICLE_CEL_DIM - 1);}
-                        
-                        particle_cel *Cel = &GameState->ParticleCels[Y][X];
-                        real32 Density = Particle->Color.a;
-                        Cel->Density += Density;
-                        Cel->VelocityTimesDensity += Density*Particle->dP;
-                    }
-
-#if DEBUGUI_ParticleGrid
-                    for(u32 Y = 0;
-                        Y < PARTICLE_CEL_DIM;
-                        ++Y)
-                    {
-                        for(u32 X = 0;
-                            X < PARTICLE_CEL_DIM;
-                            ++X)
+                        r32 GridScale = 0.25f;
+                        r32 InvGridScale = 1.0f / GridScale;
+                        v3 GridOrigin = {-0.5f*GridScale*PARTICLE_CEL_DIM, 0.0f, 0.0f};
+                        for(u32 ParticleIndex = 0;
+                            ParticleIndex < ArrayCount(GameState->Particles);
+                            ++ParticleIndex)
                         {
+                            particle *Particle = GameState->Particles + ParticleIndex;
+
+                            v3 P = InvGridScale*(Particle->P - GridOrigin);
+                        
+                            s32 X = TruncateReal32ToInt32(P.x);
+                            s32 Y = TruncateReal32ToInt32(P.y);
+
+                            if(X < 0) {X = 0;}
+                            if(X > (PARTICLE_CEL_DIM - 1)) {X = (PARTICLE_CEL_DIM - 1);}
+                            if(Y < 0) {Y = 0;}
+                            if(Y > (PARTICLE_CEL_DIM - 1)) {Y = (PARTICLE_CEL_DIM - 1);}
+                        
                             particle_cel *Cel = &GameState->ParticleCels[Y][X];
-                            real32 Alpha = Clamp01(0.1f*Cel->Density);
-                            PushRect(RenderGroup, GridScale*V3((r32)X, (r32)Y, 0) + GridOrigin, GridScale*V2(1.0f, 1.0f),
-                                     V4(Alpha, Alpha, Alpha, 1.0f));
+                            real32 Density = Particle->Color.a;
+                            Cel->Density += Density;
+                            Cel->VelocityTimesDensity += Density*Particle->dP;
                         }
-                    }
-#endif
+
+                        DEBUG_IF(Particles_ShowGrid)
+                        {
+                            for(u32 Y = 0;
+                                Y < PARTICLE_CEL_DIM;
+                                ++Y)
+                            {
+                                for(u32 X = 0;
+                                    X < PARTICLE_CEL_DIM;
+                                    ++X)
+                                {
+                                    particle_cel *Cel = &GameState->ParticleCels[Y][X];
+                                    real32 Alpha = Clamp01(0.1f*Cel->Density);
+                                    PushRect(RenderGroup, GridScale*V3((r32)X, (r32)Y, 0) + GridOrigin, GridScale*V2(1.0f, 1.0f),
+                                             V4(Alpha, Alpha, Alpha, 1.0f));
+                                }
+                            }
+                        }
                     
-                    for(u32 ParticleIndex = 0;
-                        ParticleIndex < ArrayCount(GameState->Particles);
-                        ++ParticleIndex)
-                    {
-                        particle *Particle = GameState->Particles + ParticleIndex;                        
-
-                        v3 P = InvGridScale*(Particle->P - GridOrigin);
-                        
-                        s32 X = TruncateReal32ToInt32(P.x);
-                        s32 Y = TruncateReal32ToInt32(P.y);
-
-                        if(X < 1) {X = 1;}
-                        if(X > (PARTICLE_CEL_DIM - 2)) {X = (PARTICLE_CEL_DIM - 2);}
-                        if(Y < 1) {Y = 1;}
-                        if(Y > (PARTICLE_CEL_DIM - 2)) {Y = (PARTICLE_CEL_DIM - 2);}
-
-                        particle_cel *CelCenter = &GameState->ParticleCels[Y][X];
-                        particle_cel *CelLeft = &GameState->ParticleCels[Y][X - 1];
-                        particle_cel *CelRight = &GameState->ParticleCels[Y][X + 1];
-                        particle_cel *CelDown = &GameState->ParticleCels[Y - 1][X];
-                        particle_cel *CelUp = &GameState->ParticleCels[Y + 1][X];
-
-                        v3 Dispersion = {};
-                        real32 Dc = 1.0f;
-                        Dispersion += Dc*(CelCenter->Density - CelLeft->Density)*V3(-1.0f, 0.0f, 0.0f);
-                        Dispersion += Dc*(CelCenter->Density - CelRight->Density)*V3(1.0f, 0.0f, 0.0f);
-                        Dispersion += Dc*(CelCenter->Density - CelDown->Density)*V3(0.0f, -1.0f, 0.0f);
-                        Dispersion += Dc*(CelCenter->Density - CelUp->Density)*V3(0.0f, 1.0f, 0.0f);
-
-                        v3 ddP = Particle->ddP + Dispersion;
-
-                        // NOTE(casey): Simulate the particle forward in time
-                        Particle->P += (0.5f*Square(Input->dtForFrame)*Input->dtForFrame*ddP +
-                                        Input->dtForFrame*Particle->dP);
-                        Particle->dP += Input->dtForFrame*ddP;
-                        Particle->Color += Input->dtForFrame*Particle->dColor;
-
-                        if(Particle->P.y < 0.0f)
+                        for(u32 ParticleIndex = 0;
+                            ParticleIndex < ArrayCount(GameState->Particles);
+                            ++ParticleIndex)
                         {
-                            r32 CoefficientOfRestitution = 0.3f;
-                            r32 CoefficientOfFriction = 0.7f;
-                            Particle->P.y = -Particle->P.y;
-                            Particle->dP.y = -CoefficientOfRestitution*Particle->dP.y;
-                            Particle->dP.x = CoefficientOfFriction*Particle->dP.x;
-                        }
+                            particle *Particle = GameState->Particles + ParticleIndex;                        
+
+                            v3 P = InvGridScale*(Particle->P - GridOrigin);
                         
-                        // TODO(casey): Shouldn't we just clamp colors in the renderer??
-                        v4 Color;
-                        Color.r = Clamp01(Particle->Color.r);
-                        Color.g = Clamp01(Particle->Color.g);
-                        Color.b = Clamp01(Particle->Color.b);
-                        Color.a = Clamp01(Particle->Color.a);
+                            s32 X = TruncateReal32ToInt32(P.x);
+                            s32 Y = TruncateReal32ToInt32(P.y);
 
-                        if(Color.a > 0.9f)
-                        {
-                            Color.a = 0.9f*Clamp01MapToRange(1.0f, Color.a, 0.9f);
+                            if(X < 1) {X = 1;}
+                            if(X > (PARTICLE_CEL_DIM - 2)) {X = (PARTICLE_CEL_DIM - 2);}
+                            if(Y < 1) {Y = 1;}
+                            if(Y > (PARTICLE_CEL_DIM - 2)) {Y = (PARTICLE_CEL_DIM - 2);}
+
+                            particle_cel *CelCenter = &GameState->ParticleCels[Y][X];
+                            particle_cel *CelLeft = &GameState->ParticleCels[Y][X - 1];
+                            particle_cel *CelRight = &GameState->ParticleCels[Y][X + 1];
+                            particle_cel *CelDown = &GameState->ParticleCels[Y - 1][X];
+                            particle_cel *CelUp = &GameState->ParticleCels[Y + 1][X];
+
+                            v3 Dispersion = {};
+                            real32 Dc = 1.0f;
+                            Dispersion += Dc*(CelCenter->Density - CelLeft->Density)*V3(-1.0f, 0.0f, 0.0f);
+                            Dispersion += Dc*(CelCenter->Density - CelRight->Density)*V3(1.0f, 0.0f, 0.0f);
+                            Dispersion += Dc*(CelCenter->Density - CelDown->Density)*V3(0.0f, -1.0f, 0.0f);
+                            Dispersion += Dc*(CelCenter->Density - CelUp->Density)*V3(0.0f, 1.0f, 0.0f);
+
+                            v3 ddP = Particle->ddP + Dispersion;
+
+                            // NOTE(casey): Simulate the particle forward in time
+                            Particle->P += (0.5f*Square(Input->dtForFrame)*Input->dtForFrame*ddP +
+                                            Input->dtForFrame*Particle->dP);
+                            Particle->dP += Input->dtForFrame*ddP;
+                            Particle->Color += Input->dtForFrame*Particle->dColor;
+
+                            if(Particle->P.y < 0.0f)
+                            {
+                                r32 CoefficientOfRestitution = 0.3f;
+                                r32 CoefficientOfFriction = 0.7f;
+                                Particle->P.y = -Particle->P.y;
+                                Particle->dP.y = -CoefficientOfRestitution*Particle->dP.y;
+                                Particle->dP.x = CoefficientOfFriction*Particle->dP.x;
+                            }
+                        
+                            // TODO(casey): Shouldn't we just clamp colors in the renderer??
+                            v4 Color;
+                            Color.r = Clamp01(Particle->Color.r);
+                            Color.g = Clamp01(Particle->Color.g);
+                            Color.b = Clamp01(Particle->Color.b);
+                            Color.a = Clamp01(Particle->Color.a);
+
+                            if(Color.a > 0.9f)
+                            {
+                                Color.a = 0.9f*Clamp01MapToRange(1.0f, Color.a, 0.9f);
+                            }
+
+                            // NOTE(casey): Render the particle
+                            PushBitmap(RenderGroup, Particle->BitmapID, 1.0f, Particle->P, Color);
                         }
-
-                        // NOTE(casey): Render the particle
-                        PushBitmap(RenderGroup, Particle->BitmapID, 1.0f, Particle->P, Color);
                     }
-#endif
                 } break;
 
                 case EntityType_Wall:
@@ -1560,15 +1570,16 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
                 case EntityType_Space:
                 {
-#if DEBUGUI_UseSpaceOutlines
-                    for(uint32 VolumeIndex = 0;
-                        VolumeIndex < Entity->Collision->VolumeCount;
-                        ++VolumeIndex)
+                    DEBUG_IF(Simulation_UseSpaceOutlines)
                     {
-                        sim_entity_collision_volume *Volume = Entity->Collision->Volumes + VolumeIndex;                        
-                        PushRectOutline(RenderGroup, Volume->OffsetP - V3(0, 0, 0.5f*Volume->Dim.z), Volume->Dim.xy, V4(0, 0.5f, 1.0f, 1));
+                        for(uint32 VolumeIndex = 0;
+                            VolumeIndex < Entity->Collision->VolumeCount;
+                            ++VolumeIndex)
+                        {
+                            sim_entity_collision_volume *Volume = Entity->Collision->Volumes + VolumeIndex;                        
+                            PushRectOutline(RenderGroup, Volume->OffsetP - V3(0, 0, 0.5f*Volume->Dim.z), Volume->Dim.xy, V4(0, 0.5f, 1.0f, 1));
+                        }
                     }
-#endif
                 } break;
 
                 default:

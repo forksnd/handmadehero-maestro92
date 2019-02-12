@@ -197,7 +197,7 @@ so for the proper solution, we unproject by the current transform.
 Casey adding tech to fully examine the moused picked entity for the debug system
 
 
-               for(uint32 VolumeIndex = 0; VolumeIndex < Entity->Collision->VolumeCount; ++VolumeIndex)
+                for(uint32 VolumeIndex = 0; VolumeIndex < Entity->Collision->VolumeCount; ++VolumeIndex)
                 {
                     sim_entity_collision_volume *Volume = Entity->Collision->Volumes + VolumeIndex;                        
 
