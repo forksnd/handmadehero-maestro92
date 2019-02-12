@@ -12,6 +12,8 @@ added a #define so that when we are in debug mode, we will create a debug_event 
 explained why in the Q/A we are doing GetKeyState(); for "shift", "alt" and "control" instead of tracking all the 
 WM_KEYUP and WM_KEYDOWN events for it 
 
+explained why we nested levels of C preprocessors macros when we want to stringize a macro with it
+
 Keyword:
 debug system, keyboard input
 
@@ -284,7 +286,7 @@ for example: DebugValue_ShowLightingSamples
                 #define DEBUG_IF_(Path) DEBUG_IF__(Path)
                 #define DEBUG_IF(Path) DEBUG_IF_(Path)
 
-do note that Casey didnt finish this part. This will be finalized in tomorrows episoe
+do note that Casey didnt finish this part. This will be finalized in tomorrow_s episode
 
 
 25:23
@@ -480,7 +482,7 @@ the result is three strings exactly the same
                 Foo
 
 
-now lets say we want to stringize the line number into a string 
+now lets say we want to Stringizing the line number into a string 
 
 
                 #define ThreeTime__(Param) #Param
@@ -498,3 +500,9 @@ the OneTime will actually give you a compiler error, cuz __LINE__ itself is a ma
 
             TwoTimeResult gives you: "__LINE__"
             ThreeTimeResults gives you the : "697"
+
+
+this is also mentioned in here 
+https://gcc.gnu.org/onlinedocs/cpp/Stringizing.html
+
+                "if you want to stringize the result of expansion of a macro argument, you have to use two levels of macros"
