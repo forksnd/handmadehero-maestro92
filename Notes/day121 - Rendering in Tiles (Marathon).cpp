@@ -719,7 +719,7 @@ so anytime we write a 128 bit write, there are only two ways it can happen.
 so we are either perfectly only in one bucket. 
 or we straddle two buckets.
 
-depending on the proceossrs, like these more or less.
+depending on the processors, like these more or less.
 meaning sometimes the processor doesnt care if you writes these unaligned.
 so on some processors it is extremely important
 on others it might not be.

@@ -897,7 +897,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         GameState->CameraP = NewCameraP;
         
         AddMonstar(GameState, CameraTileX - 3, CameraTileY + 2, CameraTileZ);
-        for(int FamiliarIndex = 0;
+        for(u32 FamiliarIndex = 0;
             FamiliarIndex < 1;
             ++FamiliarIndex)
         {
@@ -1006,7 +1006,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
 #endif
     
-    for(int ControllerIndex = 0;
+    for(u32 ControllerIndex = 0;
         ControllerIndex < ArrayCount(Input->Controllers);
         ++ControllerIndex)
     {

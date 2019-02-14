@@ -7,6 +7,9 @@ changed the events array in debug_table to a temporary storage instead of a buff
 changed the debug_frame data structure to a linked list. Everytime we get a new DebugType_FrameMarker, we 
 add a new debug_frame to our debug_frame linkes list
 
+left the game at a state where we will keep on creating debug_frame for each frame without freeing any.
+the game will run to a point where it the debug system rans out of memory. This will be fixed in day 216
+
 
 Keyword:
 debug system
@@ -285,6 +288,7 @@ so in the DebugCollation part, when we see a DebugType_FrameMarker, we just upda
 1:00:28
 So now Casey will write the FreeFrame(); function. This is the first time we will have to reclaim some memory 
 99.9% of the time, memory isnt something that you think about. This is the first destructor style of code we will do.
+[how about the asset system?]
 
 this is where we actually want to free a thing. 
 

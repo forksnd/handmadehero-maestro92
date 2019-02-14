@@ -1,6 +1,6 @@
 Handmade Hero Day 131 - Asynchronous Ground Chunk Composition
 Summary:
-modified the PushSize function to be able to specify memory alignment
+modified the PushSize(); function to be able to specify memory alignment
 
 created the concept of TasksWithMemory.
 
@@ -66,7 +66,7 @@ we can see that we make the Transient->GroundBuffers = PushArray(); call
                         TranState->HighPriorityQueue = Memory->HighPriorityQueue;
                         TranState->LowPriorityQueue = Memory->LowPriorityQueue;
                         TranState->GroundBufferCount = 256;
-                        TranState->GroundBuffers = PushArray(&TranState->TranArena, TranState->GroundBufferCount, ground_buffer);
+    --------------->    TranState->GroundBuffers = PushArray(&TranState->TranArena, TranState->GroundBufferCount, ground_buffer);
 
                         for(uint32 GroundBufferIndex = 0; GroundBufferIndex < TranState->GroundBufferCount; ++GroundBufferIndex)
                         {
@@ -231,14 +231,13 @@ the GetAlignmentOffset(); function is below:
 
     the the example for 0x0007. Alignment mask is 15, which is 01111
 
-    thne (ResultPointer & AlignmentMask); returns the extra bits from your previous boundary.
+    then (ResultPointer & AlignmentMask); returns the extra bits from your previous boundary.
     the previous boundary in this ciase is 0x0000, so the extra amount of memory is 7.
 
     after that, we just compute teh offset needed to the next alignemnt by doing Alignment - (ResultPointer & AlignmentMask);
     16 - 7 = 9
 
-                inline memory_index
-                GetAlignmentOffset(memory_arena *Arena, memory_index Alignment)
+                inline memory_index GetAlignmentOffset(memory_arena *Arena, memory_index Alignment)
                 {
                     memory_index AlignmentOffset = 0;
                     
