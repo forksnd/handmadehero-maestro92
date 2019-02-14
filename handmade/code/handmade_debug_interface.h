@@ -76,19 +76,16 @@ struct debug_event
     };
 };
 
-#define MAX_DEBUG_THREAD_COUNT 256
-#define MAX_DEBUG_EVENT_ARRAY_COUNT 8
-#define MAX_DEBUG_EVENT_COUNT (16*65536)
 struct debug_table
 {
     // TODO(casey): No attempt is currently made to ensure that the final
     // debug records being written to the event array actually complete
-    // their output prior to the swap of the event array index.
-    
+    // their output prior to the swap of the event array index.    
     u32 CurrentEventArrayIndex;
+    // TODO(casey): This could actually be a u32 atomic now, since we
+    // only need 1 bit to store which array we're using...
     u64 volatile EventArrayIndex_EventIndex;
-    u32 EventCount[MAX_DEBUG_EVENT_ARRAY_COUNT];
-    debug_event Events[MAX_DEBUG_EVENT_ARRAY_COUNT][MAX_DEBUG_EVENT_COUNT];
+    debug_event Events[2][16*65536];
 };
 
 extern debug_table *GlobalDebugTable;
@@ -96,7 +93,7 @@ extern debug_table *GlobalDebugTable;
 #define RecordDebugEvent(EventType, Block)           \
         u64 ArrayIndex_EventIndex = AtomicAddU64(&GlobalDebugTable->EventArrayIndex_EventIndex, 1); \
         u32 EventIndex = ArrayIndex_EventIndex & 0xFFFFFFFF;            \
-        Assert(EventIndex < MAX_DEBUG_EVENT_COUNT);                     \
+        Assert(EventIndex < ArrayCount(GlobalDebugTable->Events[0]));   \
         debug_event *Event = GlobalDebugTable->Events[ArrayIndex_EventIndex >> 32] + EventIndex; \
         Event->Clock = __rdtsc();                       \
         Event->Type = (u8)EventType;                                    \
@@ -178,7 +175,7 @@ StringLength(char *String)
 #endif
 
 
-#if defined(__cplusplus) && defined(HANDMADE_INTERNAL)
+#if defined(__cplusplus) && HANDMADE_INTERNAL
 
 inline void
 DEBUGValueSetEventData(debug_event *Event, r32 Value)
@@ -316,7 +313,7 @@ inline debug_event DEBUGInitializeValue(debug_type Type, debug_event *SubEvent, 
 
 #else
 
-inline debug_id DEBUG_POINTER_ID(void *Pointer) {debug_id NullID = {}; return(NullID)}
+inline debug_id DEBUG_POINTER_ID(void *Pointer) {debug_id NullID = {}; return(NullID);}
 
 #define DEBUG_BEGIN_DATA_BLOCK(...)
 #define DEBUG_END_DATA_BLOCK(...)
