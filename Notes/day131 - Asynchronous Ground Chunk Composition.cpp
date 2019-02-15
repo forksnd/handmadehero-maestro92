@@ -247,7 +247,7 @@ the GetAlignmentOffset(); function is below:
                     {
                         AlignmentOffset = Alignment - (ResultPointer & AlignmentMask);
                     }
-
+ 
                     return(AlignmentOffset);
                 }
 

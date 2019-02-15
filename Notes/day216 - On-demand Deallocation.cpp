@@ -17,8 +17,7 @@ debug system, memory
 
 
 26:21
-
-So Casey wants to introduce the tech of seeing variable values over frames (to help with debugging);
+So Casey wants to introduce the tech of inspecting variables values over frames (to help with debugging);
 [essentially visual studio_s debugger watch window by frames?]
 
 Casey introduces the concept of Debug Element. He also introduces its relationship with 
@@ -27,9 +26,9 @@ Debug Event and Debug UI
 
 Previously, our concept of debug element were derived from debug events.
 for example, if you have a DEBUG_CAMERA_DISTANCE that we are toggling,
-we are actually directly editing a debug element that contains this DEBUG_CAMERA_DISTANCE value 
+we are actually directly editing a debug_event that contains this DEBUG_CAMERA_DISTANCE value 
 
-Casey now wants to have a debug element that is permenant
+Casey now wants to have a debug element that is permenant instead of a transient debug_event
 
 
 so what we actually want is like some sort of a table 

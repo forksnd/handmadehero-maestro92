@@ -90,6 +90,10 @@ struct debug_table
 
 extern debug_table *GlobalDebugTable;
 
+#define UniqueFileCounterString__(A, B, C) A "(" #B ")." #C
+#define UniqueFileCounterString_(A, B, C) UniqueFileCounterString__(A, B, C)
+#define UniqueFileCounterString(A, B, C) UniqueFileCounterString_(A, B, C)
+
 #define RecordDebugEvent(EventType, Block)           \
         u64 ArrayIndex_EventIndex = AtomicAddU64(&GlobalDebugTable->EventArrayIndex_EventIndex, 1); \
         u32 EventIndex = ArrayIndex_EventIndex & 0xFFFFFFFF;            \
@@ -99,8 +103,7 @@ extern debug_table *GlobalDebugTable;
         Event->Type = (u8)EventType;                                    \
         Event->CoreIndex = 0;                                           \
         Event->ThreadID = (u16)GetThreadID();                         \
-        Event->FileName = __FILE__;                                      \
-        Event->LineNumber = __LINE__;                                   \
+        Event->GUID = UniqueFileCounterString(__FILE__, __LINE__, __COUNTER__) \
         Event->BlockName = Block;                              \
     
 #define FRAME_MARKER(SecondsElapsedInit) \
