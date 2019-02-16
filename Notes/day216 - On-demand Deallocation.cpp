@@ -6,9 +6,9 @@ picked up where we left off on day 215.
 implemented on-demand deallocation for debug frames.
 
 this is essentially the same concept as the memory deallocation for the asset system,
-essentially whenever we request for new memory in the debug memory arena, we deallocate some 
-to fullfill that request
-[I think Casey_s implementation of PushSizeWithDeallocation(); doesnt work....]
+only that in the asset system, it is variable sized. Here we have fixed size.
+so essentially, we still keep a LRU linked list, and we just free the oldest one whenever we run out of memory.  
+[Casey_s implementation of PushSizeWithDeallocation(); doesnt work.... he corrects it in day 218]
 
 briefly explained what memory alignment is the Q/A
 
