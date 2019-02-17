@@ -8,8 +8,8 @@
    ======================================================================== */
 
 // TODO(casey): Have the meta-parser ignore its own #define
-#define introspect(params)
-#define counted_pointer(params)
+#define introspect(IGNORED)
+#define counted_pointer(IGNORED)
 
 #include "handmade_config.h"
 
@@ -103,6 +103,8 @@ typedef uint64 u64;
 typedef real32 r32;
 typedef real64 r64;
 
+#define PointerToU32(Pointer) ((u32)(memory_index)(Pointer))
+    
 #pragma pack(push, 1)
 struct bitmap_id
 {
@@ -498,7 +500,7 @@ typedef struct platform_api
     debug_platform_write_entire_file *DEBUGWriteEntireFile;
     debug_platform_execute_system_command *DEBUGExecuteSystemCommand;
     debug_platform_get_process_state *DEBUGGetProcessState;
-#endif    debug_table *
+#endif
 
 } platform_api;
 

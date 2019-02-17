@@ -257,18 +257,28 @@ RequireToken(tokenizer *Tokenizer, token_type DesiredType)
     return(Result);
 }
 
-static void
+static bool
 ParseIntrospectionParams(tokenizer *Tokenizer)
 {
+    bool Valid = true;
+    
     for(;;)
     {
         token Token = GetToken(Tokenizer);
+        if(TokenEquals(Token, "IGNORED"))
+        {
+            Valid = false;
+            break;
+        }
+        
         if((Token.Type == Token_CloseParen) ||
            (Token.Type == Token_EndOfStream))
         {
             break;
         }
     }
+
+    return(Valid);
 }
 
 static void
@@ -289,7 +299,7 @@ ParseMember(tokenizer *Tokenizer, token StructTypeToken, token MemberTypeToken)
 
             case Token_Identifier:
             {
-                printf("   {%s, MetaType_%.*s, \"%.*s\", (u32)&((%.*s *)0)->%.*s},\n",
+                printf("   {%s, MetaType_%.*s, \"%.*s\", PointerToU32(&((%.*s *)0)->%.*s)},\n",
                        IsPointer ? "MetaMemberFlag_IsPointer" : "0",
                        MemberTypeToken.TextLength, MemberTypeToken.Text,
                        Token.TextLength, Token.Text,
@@ -358,16 +368,17 @@ ParseIntrospectable(tokenizer *Tokenizer)
 {
     if(RequireToken(Tokenizer, Token_OpenParen))
     {
-        ParseIntrospectionParams(Tokenizer);
-
-        token TypeToken = GetToken(Tokenizer);
-        if(TokenEquals(TypeToken, "struct"))
+        if(ParseIntrospectionParams(Tokenizer))
         {
-            ParseStruct(Tokenizer);
-        }
-        else
-        {
-            fprintf(stderr, "ERROR: Introspection is only supported for structs right now :(\n");            
+            token TypeToken = GetToken(Tokenizer);
+            if(TokenEquals(TypeToken, "struct"))
+            {
+                ParseStruct(Tokenizer);
+            }
+            else
+            {
+                fprintf(stderr, "ERROR: Introspection is only supported for structs right now :(\n");            
+            }
         }
     }
     else
