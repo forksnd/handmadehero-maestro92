@@ -446,6 +446,11 @@ struct game_state
     particle Particles[256];
     
     particle_cel ParticleCels[PARTICLE_CEL_DIM][PARTICLE_CEL_DIM];
+
+    // NOTE(casey): Thank you to Ron Gilbert and friends for
+    // introducing the word "cutscene" into the game development
+    // vocabulary.
+    r32 tCutScene;
 };
 
 struct task_with_memory

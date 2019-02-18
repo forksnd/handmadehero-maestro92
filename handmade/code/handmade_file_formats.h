@@ -20,6 +20,9 @@ enum asset_tag_id
     Tag_FacingDirection, // NOTE(casey): Angle in radians off of due right
     Tag_UnicodeCodepoint,
     Tag_FontType, // NOTE(casey): 0 - Default Game Font, 10 - Debug Font?
+
+    Tag_ShotIndex,
+    Tag_LayerIndex,
     
     Tag_Count,
 };
@@ -63,6 +66,8 @@ enum asset_type_id
     //
     //
     //
+
+    Asset_OpeningCutscene,
     
     Asset_Count,
 };
