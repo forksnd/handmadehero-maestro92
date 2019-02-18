@@ -493,8 +493,8 @@ Win32ResizeDIBSection(win32_offscreen_buffer *Buffer, int Width, int Height)
     Buffer->Pitch = Align16(Width*BytesPerPixel);
     int BitmapMemorySize = (Buffer->Pitch*Buffer->Height);
     Buffer->Memory = VirtualAlloc(0, BitmapMemorySize, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
-
-    // TODO(casey): Probably clear this to black
+    // NOTE(casey): VirtualAlloc should _only_ have given us back
+    // zero'd memory which is all black, so we don't need to clear it.
 }
 
 internal void
@@ -1429,12 +1429,80 @@ global_variable debug_table GlobalDebugTable_;
 debug_table *GlobalDebugTable = &GlobalDebugTable_;
 #endif
 
+internal void
+FadeOut(HINSTANCE Instance)
+{
+#if 0
+    WNDCLASSA WindowClass = {};
+
+    WindowClass.style = CS_HREDRAW|CS_VREDRAW;
+    WindowClass.lpfnWndProc = DefWindowProcA;
+    WindowClass.hInstance = Instance;
+    WindowClass.hCursor = LoadCursor(0, IDC_ARROW);
+    WindowClass.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
+    WindowClass.lpszClassName = "HandmadeFadeOutWindowClass";
+
+    if(RegisterClassA(&WindowClass))
+    {
+        HWND Window =
+            CreateWindowExA(
+                WS_EX_TOPMOST|WS_EX_LAYERED,
+                WindowClass.lpszClassName,
+                "Handmade Hero",
+                WS_OVERLAPPEDWINDOW,
+                CW_USEDEFAULT,
+                CW_USEDEFAULT,
+                CW_USEDEFAULT,
+                CW_USEDEFAULT,
+                0,
+                0,
+                Instance,
+                0);
+        if(Window)
+        {
+            ToggleFullscreen(Window);
+
+            ShowWindow(Window, SW_SHOW);
+
+            RECT ClientRect;
+            GetClientRect(Window, &ClientRect);
+            int Width = ClientRect.right - ClientRect.left;
+            int Height = ClientRect.bottom - ClientRect.top;
+            
+            win32_offscreen_buffer Buffer;
+            Win32ResizeDIBSection(&Buffer, Width, Height);
+
+            HDC ScreenDC = GetDC(0);
+            HDC CompatDC = CreateCompatibleDC();
+            
+            for(u32 AlphaLevel = 50;
+                AlphaLevel <= 255;
+                ++AlphaLevel)
+            {
+                BLENDFUNCTION Blend = {};
+                Blend.BlendOp = AC_SRC_OVER;
+                Blend.BlendFlags = 0;
+                Blend.SourceConstantAlpha = (BYTE)AlphaLevel;
+                Blend.AlphaFormat = 0;
+                UpdateLayeredWindow(Window, 
+                                    0, 0, 0, 0, 0, RGB(0, 0, 0),
+                                    &Blend, ULW_ALPHA);
+                int Error = GetLastError();
+                Sleep(1000);
+            }
+        }
+    }
+#endif
+}
+
 int CALLBACK
 WinMain(HINSTANCE Instance,
         HINSTANCE PrevInstance,
         LPSTR CommandLine,
         int ShowCode)
-{    
+{
+    FadeOut(Instance);
+    
     win32_state Win32State = {};
 
     platform_work_queue HighPriorityQueue = {};
@@ -1512,6 +1580,7 @@ WinMain(HINSTANCE Instance,
     WindowClass.lpfnWndProc = Win32MainWindowCallback;
     WindowClass.hInstance = Instance;
     WindowClass.hCursor = LoadCursor(0, IDC_ARROW);
+    WindowClass.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
 //    WindowClass.hIcon;
     WindowClass.lpszClassName = "HandmadeHeroWindowClass";
 
@@ -1522,7 +1591,7 @@ WinMain(HINSTANCE Instance,
                 0, // WS_EX_TOPMOST|WS_EX_LAYERED,
                 WindowClass.lpszClassName,
                 "Handmade Hero",
-                WS_OVERLAPPEDWINDOW|WS_VISIBLE,
+                WS_OVERLAPPEDWINDOW,
                 CW_USEDEFAULT,
                 CW_USEDEFAULT,
                 CW_USEDEFAULT,
@@ -1533,6 +1602,9 @@ WinMain(HINSTANCE Instance,
                 0);
         if(Window)
         {
+            ToggleFullscreen(Window);
+            ShowWindow(Window, SW_SHOW);
+
             win32_sound_output SoundOutput = {};
 
             // TODO(casey): How do we reliably query on this on Windows?
@@ -1922,6 +1994,10 @@ WinMain(HINSTANCE Instance,
                         if(Game.UpdateAndRender)
                         {
                             Game.UpdateAndRender(&GameMemory, NewInput, &Buffer);
+                            if(GameMemory.QuitRequested)
+                            {
+                                GlobalRunning = false;
+                            }
 //                            HandleDebugCycleCounters(&GameMemory);
                         }
                     }

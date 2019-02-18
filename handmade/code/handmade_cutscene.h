@@ -45,5 +45,15 @@ struct layered_scene
     v3 CameraEnd;
 };
 
+// NOTE(casey): Thank you to Ron Gilbert and friends for
+// introducing the word "cutscene" into the game development
+// vocabulary.
+struct playing_cutscene
+{
+    u32 SceneCount;
+    layered_scene *Scenes;
+    r32 t;
+};
+
 #define HANDMADE_CUTSCENE_H
 #endif

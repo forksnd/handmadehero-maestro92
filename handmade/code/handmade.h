@@ -89,6 +89,7 @@
 #include "handmade_math.h"
 #include "handmade_file_formats.h"
 #include "handmade_meta.h"
+#include "handmade_cutscene.h"
 
 #define DLIST_INSERT(Sentinel, Element)         \
     (Element)->Next = (Sentinel)->Next;         \
@@ -447,10 +448,7 @@ struct game_state
     
     particle_cel ParticleCels[PARTICLE_CEL_DIM][PARTICLE_CEL_DIM];
 
-    // NOTE(casey): Thank you to Ron Gilbert and friends for
-    // introducing the word "cutscene" into the game development
-    // vocabulary.
-    r32 tCutScene;
+    playing_cutscene CurrentCutscene;
 };
 
 struct task_with_memory
