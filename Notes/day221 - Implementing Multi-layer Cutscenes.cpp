@@ -8,7 +8,7 @@ added Tag_ShotIndex and Tag_LayerIndex as asset_tag_id
 rendered cut scenes in perspective mode. gave different layers their own z depth, which creates that parallax effect.
 
 Keyword:
-cut scene, asset system
+cutscene, asset system
 
 
 4:44

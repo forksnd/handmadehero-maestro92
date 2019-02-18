@@ -1,8 +1,8 @@
 Handmade Hero Day 120 - Measuring Port Usage with IACA
 
 Summary:
-mentioned that Fabien argues the profiling methods we wrote in 119 is not accurate.
-Fabien suggested to use the Intel Architecture Code Analyzer(IACA); to profile actualy cycles counts instead.
+mentioned that Fabian Giesen argues the profiling methods we wrote in 119 is not accurate.
+Fabian suggested to use the Intel Architecture Code Analyzer(IACA); to profile actualy cycles counts instead.
 Casey used the IACA tool to profile his pixel rendering code.
 
 Got rid of all the conversions from 0~255 to 0~1 space 
@@ -33,7 +33,7 @@ IACA, optimizations
 
 1:29
 
-from day119, Casey mentioned that Fabien did not like the we were attributing our counts here 
+from day119, Casey mentioned that Fabian did not like the we were attributing our counts here 
 
 recall from day 119, we have the following code:
 
@@ -84,7 +84,7 @@ recall from day 119, we have the following code:
 				}
 
 
-Fabien said it is a not a useful number by putting a throughput number in here.
+Fabian said it is a not a useful number by putting a throughput number in here.
 this is becuz the throughput number already includes the parallelism in the CPU
 
 for example if the throughput for add is 1, that means there is one add unit.
@@ -94,18 +94,18 @@ that means there are 3 and units in the processors, hence the 0.33. So you can d
 
 while both mm_add_ps and mm_sub_ps takes one instruction, they can be issued together.
 
-So fabien objected that it is meaning less to add all these numbers together.
+So Fabian objected that it is meaning less to add all these numbers together.
 For example, we are not capturing that mm_add_ps and mm_mul_ps can be completed in one cycle.
 
 
 
 3:59
-so Casey said to Fabien that
+so Casey said to Fabian that
 to do this right, you will have to try to simulate the CPU, and we take all the assembly (not intrinsics); that we have,
 and it will figure out exactly what the chip will do to the degree that it is documented. That will tell you when there will be 
 stalls like for reasons that some instructiosn cant be issued in the same cycle. 
 
-Fabien says theres an intel tool that does that for you already.
+Fabian says theres an intel tool that does that for you already.
 
 its called the Intel® Architecture Code Analyzer
 
@@ -161,7 +161,7 @@ So Casey got rid of all the #defines.
 
 
 20:07
-Fabien says our code does not take advantage of some math rearragement as we could.
+Fabian says our code does not take advantage of some math rearragement as we could.
 
 bilinear and squaring, they dont have to be done in floating point if we dont want them to be so
 

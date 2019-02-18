@@ -681,7 +681,7 @@ semaphores is a very conveninent way to manage work queues.
 1:03:46
 what do you plan to maintain cache line coherency between processosors? Can physical CPUs share a cache line 
 
-Fabien was saying that System bus locks dont even happen anymore, everything goes through MESI.
+Fabian was saying that System bus locks dont even happen anymore, everything goes through MESI.
 x64 processosors dont need a lock to do interlocked operations
 
 

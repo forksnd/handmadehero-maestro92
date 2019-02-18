@@ -1,8 +1,8 @@
 Handmade Hero Day 222 - Laying Out Cutscenes
 
 Summary:
-defined the layered_scene struct and the 
-defined the layers 
+defined the layered_scene struct and the scene_layer struct
+defined all the camera movement and depth configurations for every layer of every scene
 
 Keyword:
 cutscene
