@@ -53,6 +53,8 @@ struct world
     // tile entity blocks continue to be stored en masse directly in the tile chunk!
     // NOTE(casey): A the moment, this must be a power of two!
     world_chunk ChunkHash[4096];
+ 
+    memory_arena Arena;
 };
 
 #define HANDMADE_WORLD_H

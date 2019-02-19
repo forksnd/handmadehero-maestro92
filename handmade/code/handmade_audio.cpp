@@ -6,6 +6,7 @@
    $Notice: (C) Copyright 2015 by Molly Rocket, Inc. All Rights Reserved. $
    ======================================================================== */
 
+#if 0
 internal void
 OutputTestSineWave(game_state *GameState, game_sound_output_buffer *SoundBuffer, int ToneHz)
 {
@@ -36,6 +37,7 @@ OutputTestSineWave(game_state *GameState, game_sound_output_buffer *SoundBuffer,
 #endif
     }
 }
+#endif
 
 internal playing_sound *
 PlaySound(audio_state *AudioState, sound_id SoundID)

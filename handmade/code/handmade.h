@@ -87,6 +87,7 @@
 #include "handmade_platform.h"
 #include "handmade_intrinsics.h"
 #include "handmade_math.h"
+#include "handmade_random.h"
 #include "handmade_file_formats.h"
 #include "handmade_meta.h"
 #include "handmade_cutscene.h"
@@ -292,6 +293,12 @@ EndTemporaryMemory(temporary_memory TempMem)
 }
 
 inline void
+Clear(memory_arena *Arena)
+{
+    InitializeArena(Arena, Arena->Size, Arena->Base);
+}
+
+inline void
 CheckArena(memory_arena *Arena)
 {
     Assert(Arena->TempCount == 0);
@@ -332,19 +339,10 @@ Copy(memory_index Size, void *SourceInit, void *DestInit)
 #include "handmade_world.h"
 #include "handmade_sim_region.h"
 #include "handmade_entity.h"
+#include "handmade_world_mode.h"
 #include "handmade_render_group.h"
 #include "handmade_asset.h"
-#include "handmade_random.h"
 #include "handmade_audio.h"
-
-struct low_entity
-{
-    // TODO(casey): It's kind of busted that P's can be invalid here,
-    // AND we store whether they would be invalid in the flags field...
-    // Can we do something better here?
-    world_position P;
-    sim_entity Sim;
-};
 
 struct controlled_hero
 {
@@ -355,18 +353,6 @@ struct controlled_hero
     v2 dSword;
     real32 dZ;
 };
-
-struct pairwise_collision_rule
-{
-    bool32 CanCollide;
-    uint32 StorageIndexA;
-    uint32 StorageIndexB;
-    
-    pairwise_collision_rule *NextInHash;
-};
-struct game_state;
-internal void AddCollisionRule(game_state *GameState, uint32 StorageIndexA, uint32 StorageIndexB, bool32 ShouldCollide);
-internal void ClearCollisionRulesFor(game_state *GameState, uint32 StorageIndex);
 
 struct ground_buffer
 {
@@ -382,73 +368,35 @@ struct hero_bitmap_ids
     bitmap_id Torso;
 };
 
-struct particle_cel
+enum game_mode
 {
-    real32 Density;
-    v3 VelocityTimesDensity;
-};
-struct particle
-{
-    bitmap_id BitmapID;
-    v3 P;
-    v3 dP;
-    v3 ddP;
-    v4 Color;
-    v4 dColor;
+    GameMode_TitleScreen,
+    GameMode_CutScene,
+    GameMode_World,
 };
 
 struct game_state
 {
     bool32 IsInitialized;
 
-    memory_arena MetaArena;
-    memory_arena WorldArena;
-    world *World;
-
-    real32 TypicalFloorHeight;
-    
-    // TODO(casey): Should we allow split-screen?
-    uint32 CameraFollowingEntityIndex;
-    world_position CameraP;
-    world_position LastCameraP;
+    memory_arena ModeArena;
+    memory_arena AudioArena; // TODO(casey): Move this into the audio system proper!
 
     controlled_hero ControlledHeroes[ArrayCount(((game_input *)0)->Controllers)];
-
-    // TODO(casey): Change the name to "stored entity"
-    uint32 LowEntityCount;
-    low_entity LowEntities[100000];
-
-    // TODO(casey): Must be power of two
-    pairwise_collision_rule *CollisionRuleHash[256];
-    pairwise_collision_rule *FirstFreeCollisionRule;
-
-    sim_entity_collision_volume_group *NullCollision;
-    sim_entity_collision_volume_group *SwordCollision;
-    sim_entity_collision_volume_group *StairCollision;
-    sim_entity_collision_volume_group *PlayerCollision;
-    sim_entity_collision_volume_group *MonstarCollision;
-    sim_entity_collision_volume_group *FamiliarCollision;
-    sim_entity_collision_volume_group *WallCollision;
-    sim_entity_collision_volume_group *StandardRoomCollision;
-
-    real32 Time;
 
     loaded_bitmap TestDiffuse; // TODO(casey): Re-fill this guy with gray.
     loaded_bitmap TestNormal;
 
-    random_series EffectsEntropy; // NOTE(casey): This is entropy that doesn't affect the gameplay
-    real32 tSine;
-
     audio_state AudioState;
     playing_sound *Music;
 
-#define PARTICLE_CEL_DIM 32
-    u32 NextParticle;
-    particle Particles[256];
-    
-    particle_cel ParticleCels[PARTICLE_CEL_DIM][PARTICLE_CEL_DIM];
-
-    playing_cutscene CurrentCutscene;
+    game_mode GameMode;
+    union
+    {
+        game_mode_title_screen *TitleScreen;
+        game_mode_cutscene *CutScene;
+        game_mode_world *WorldMode;
+    };
 };
 
 struct task_with_memory
@@ -479,23 +427,15 @@ struct transient_state
     environment_map EnvMaps[3];
 };
 
-inline low_entity *
-GetLowEntity(game_state *GameState, uint32 Index)
-{
-    low_entity *Result = 0;
-    
-    if((Index > 0) && (Index < GameState->LowEntityCount))
-    {
-        Result = GameState->LowEntities + Index;
-    }
-
-    return(Result);
-}
-
 global_variable platform_api Platform;
 
 internal task_with_memory *BeginTaskWithMemory(transient_state *TranState);
 internal void EndTaskWithMemory(task_with_memory *Task);
+internal void SetGameMode(game_state *GameState, game_mode GameMode);
+
+// TODO(casey): Get these into a more reasonable location?
+#define GroundBufferWidth 256
+#define GroundBufferHeight 256
 
 #define HANDMADE_H
 #endif

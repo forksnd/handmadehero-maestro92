@@ -50,10 +50,15 @@ struct layered_scene
 // NOTE(casey): Thank you to Ron Gilbert and friends for
 // introducing the word "cutscene" into the game development
 // vocabulary.
-struct playing_cutscene
+struct game_mode_cutscene
 {
     u32 SceneCount;
     layered_scene *Scenes;
+    r32 t;
+};
+
+struct game_mode_title_screen
+{
     r32 t;
 };
 

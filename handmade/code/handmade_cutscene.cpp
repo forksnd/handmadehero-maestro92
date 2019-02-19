@@ -224,7 +224,7 @@ global_variable layered_scene IntroCutscene[] =
 
 internal b32
 RenderCutsceneAtTime(game_assets *Assets, render_group *RenderGroup, loaded_bitmap *DrawBuffer,
-                     playing_cutscene *Cutscene, r32 tCutScene)
+                     game_mode_cutscene *Cutscene, r32 tCutScene)
 {
     b32 CutsceneComplete = false;
     
@@ -251,9 +251,9 @@ RenderCutsceneAtTime(game_assets *Assets, render_group *RenderGroup, loaded_bitm
     return(CutsceneComplete);
 }
 
-internal b32
-RenderCutscene(game_assets *Assets, render_group *RenderGroup, loaded_bitmap *DrawBuffer,
-               playing_cutscene *CutScene)
+internal void
+UpdateAndRenderCutScene(game_assets *Assets, render_group *RenderGroup,
+                        loaded_bitmap *DrawBuffer, game_input *Input, game_mode_cutscene *CutScene)
 {
     RenderCutsceneAtTime(Assets, 0, DrawBuffer, CutScene, CutScene->t + CUTSCENE_WARMUP_SECONDS);    
     b32 CutsceneComplete = RenderCutsceneAtTime(Assets, RenderGroup, DrawBuffer, CutScene, CutScene->t);
@@ -261,22 +261,38 @@ RenderCutscene(game_assets *Assets, render_group *RenderGroup, loaded_bitmap *Dr
     {
         CutScene->t = 0.0f;
     }
-    return(CutsceneComplete);
+    
+    CutScene->t += Input->dtForFrame;
 }
 
 internal void
-AdvanceCutscene(playing_cutscene *Cutscene, r32 dt)
+UpdateAndRenderTitleScreen(game_assets *Assets, render_group *RenderGroup, loaded_bitmap *DrawBuffer,
+                           game_mode_title_screen *TitleScreen)
 {
-    Cutscene->t += dt;
 }
 
-internal playing_cutscene
-MakeIntroCutscene(void)
+internal void
+PlayIntroCutscene(game_state *GameState)
 {
-    playing_cutscene Result = {};
+    SetGameMode(GameState, GameMode_CutScene);
+    
+    game_mode_cutscene *Result = PushStruct(&GameState->ModeArena, game_mode_cutscene);
 
-    Result.SceneCount = ArrayCount(IntroCutscene);
-    Result.Scenes = IntroCutscene;
+    Result->SceneCount = ArrayCount(IntroCutscene);
+    Result->Scenes = IntroCutscene;
+    Result->t = 0;
 
-    return(Result);
+    GameState->CutScene = Result;
+}
+
+internal void
+PlayTitleScreen(game_state *GameState)
+{
+    SetGameMode(GameState, GameMode_TitleScreen);
+    
+    game_mode_title_screen *Result = PushStruct(&GameState->ModeArena, game_mode_title_screen);
+
+    Result->t = 0;
+
+    GameState->TitleScreen = Result;
 }
