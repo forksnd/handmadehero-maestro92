@@ -541,6 +541,34 @@ Win32DisplayBufferInWindow(win32_offscreen_buffer *Buffer,
 }
 
 internal LRESULT CALLBACK
+Win32FadeWindowCallback(HWND Window,
+                        UINT Message,
+                        WPARAM WParam,
+                        LPARAM LParam)
+{       
+    LRESULT Result = 0;
+
+    switch(Message)
+    {
+        case WM_CLOSE:
+        {
+        } break;
+        
+        case WM_SETCURSOR:
+        {
+            SetCursor(0);
+        } break;
+
+        default:
+        {
+            Result = DefWindowProcA(Window, Message, WParam, LParam);
+        } break;
+    }
+    
+    return(Result);
+}
+
+internal LRESULT CALLBACK
 Win32MainWindowCallback(HWND Window,
                         UINT Message,
                         WPARAM WParam,
@@ -1430,13 +1458,33 @@ debug_table *GlobalDebugTable = &GlobalDebugTable_;
 #endif
 
 internal void
-FadeOut(HINSTANCE Instance)
+SetFadeAlpha(HWND Window, r32 Alpha)
 {
-#if 0
+    BYTE WindowsAlpha = (BYTE)(Alpha*255.0f);
+    if(Alpha == 0)
+    {
+        if(IsWindowVisible(Window))
+        {
+            ShowWindow(Window, SW_HIDE);
+        }
+    }
+    else
+    {
+        SetLayeredWindowAttributes(Window, RGB(0, 0, 0), WindowsAlpha, LWA_ALPHA);
+        if(!IsWindowVisible(Window))
+        {
+            ShowWindow(Window, SW_SHOW);
+        }
+    }
+}
+
+internal void
+InitFader(win32_fader *Fader, HINSTANCE Instance)
+{
     WNDCLASSA WindowClass = {};
 
     WindowClass.style = CS_HREDRAW|CS_VREDRAW;
-    WindowClass.lpfnWndProc = DefWindowProcA;
+    WindowClass.lpfnWndProc = Win32FadeWindowCallback;
     WindowClass.hInstance = Instance;
     WindowClass.hCursor = LoadCursor(0, IDC_ARROW);
     WindowClass.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
@@ -1444,9 +1492,9 @@ FadeOut(HINSTANCE Instance)
 
     if(RegisterClassA(&WindowClass))
     {
-        HWND Window =
+        Fader->Window =
             CreateWindowExA(
-                WS_EX_TOPMOST|WS_EX_LAYERED,
+                WS_EX_LAYERED,//|WS_EX_TOPMOST,
                 WindowClass.lpszClassName,
                 "Handmade Hero",
                 WS_OVERLAPPEDWINDOW,
@@ -1458,41 +1506,105 @@ FadeOut(HINSTANCE Instance)
                 0,
                 Instance,
                 0);
-        if(Window)
+        if(Fader->Window)
         {
-            ToggleFullscreen(Window);
-
-            ShowWindow(Window, SW_SHOW);
-
-            RECT ClientRect;
-            GetClientRect(Window, &ClientRect);
-            int Width = ClientRect.right - ClientRect.left;
-            int Height = ClientRect.bottom - ClientRect.top;
-            
-            win32_offscreen_buffer Buffer;
-            Win32ResizeDIBSection(&Buffer, Width, Height);
-
-            HDC ScreenDC = GetDC(0);
-            HDC CompatDC = CreateCompatibleDC();
-            
-            for(u32 AlphaLevel = 50;
-                AlphaLevel <= 255;
-                ++AlphaLevel)
-            {
-                BLENDFUNCTION Blend = {};
-                Blend.BlendOp = AC_SRC_OVER;
-                Blend.BlendFlags = 0;
-                Blend.SourceConstantAlpha = (BYTE)AlphaLevel;
-                Blend.AlphaFormat = 0;
-                UpdateLayeredWindow(Window, 
-                                    0, 0, 0, 0, 0, RGB(0, 0, 0),
-                                    &Blend, ULW_ALPHA);
-                int Error = GetLastError();
-                Sleep(1000);
-            }
+            ToggleFullscreen(Fader->Window);
         }
     }
-#endif
+}
+
+internal void
+BeginFadeToGame(win32_fader *Fader)
+{
+    Fader->State = Win32Fade_FadingIn;
+    Fader->Alpha = 0.0f;
+}
+
+internal void
+BeginFadeToDesktop(win32_fader *Fader)
+{
+    if(Fader->State == Win32Fade_Inactive)
+    {
+        Fader->State = Win32Fade_FadingGame;
+        Fader->Alpha = 0.0f;
+    }
+}
+
+internal win32_fader_state
+UpdateFade(win32_fader *Fader, r32 dt, HWND GameWindow)
+{
+    switch(Fader->State)
+    {
+        case Win32Fade_FadingIn:
+        {
+            if(Fader->Alpha >= 1.0f)
+            {
+                SetFadeAlpha(Fader->Window, 1.0f);
+                ShowWindow(GameWindow, SW_SHOW);
+                InvalidateRect(GameWindow, 0, TRUE);
+                UpdateWindow(GameWindow);
+                
+                Fader->State = Win32Fade_WaitingForShow;
+            }
+            else
+            {
+                SetFadeAlpha(Fader->Window, Fader->Alpha);
+                Fader->Alpha += dt;
+            }
+        } break;
+
+        case Win32Fade_WaitingForShow:
+        {
+            SetFadeAlpha(Fader->Window, 0.0f);
+            Fader->State = Win32Fade_Inactive;
+        } break;
+
+        case Win32Fade_Inactive:
+        {
+            // NOTE(casey): Nothing to do.
+        } break;
+
+        case Win32Fade_FadingGame:
+        {
+            if(Fader->Alpha >= 1.0f)
+            {
+                SetFadeAlpha(Fader->Window, 1.0f);
+                ShowWindow(GameWindow, SW_HIDE);                
+                Fader->State = Win32Fade_FadingOut;
+            }
+            else
+            {
+                SetFadeAlpha(Fader->Window, Fader->Alpha);
+                Fader->Alpha += dt;
+            }
+        } break;
+        
+        case Win32Fade_FadingOut:
+        {
+            Fader->Alpha -= dt;
+            if(Fader->Alpha <= 0.0f)
+            {
+                SetFadeAlpha(Fader->Window, 0.0f);
+                Fader->State = Win32Fade_WaitingForClose;
+            }
+            else
+            {
+                SetFadeAlpha(Fader->Window, Fader->Alpha);
+            }
+        } break;
+
+        case Win32Fade_WaitingForClose:
+        {
+            // NOTE(casey): Nothing to do.
+        } break;
+
+        default:
+        {
+            Assert(!"Unrecognized fader state!");
+        } break;
+    }
+
+    return(Fader->State);
 }
 
 int CALLBACK
@@ -1501,8 +1613,6 @@ WinMain(HINSTANCE Instance,
         LPSTR CommandLine,
         int ShowCode)
 {
-    FadeOut(Instance);
-    
     win32_state Win32State = {};
 
     platform_work_queue HighPriorityQueue = {};
@@ -1562,6 +1672,9 @@ WinMain(HINSTANCE Instance,
     
     Win32LoadXInput();
 
+    win32_fader Fader;
+    InitFader(&Fader, Instance);
+    
 #if HANDMADE_INTERNAL
     DEBUGGlobalShowCursor = true;
 #endif
@@ -1583,7 +1696,7 @@ WinMain(HINSTANCE Instance,
     WindowClass.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
 //    WindowClass.hIcon;
     WindowClass.lpszClassName = "HandmadeHeroWindowClass";
-
+    
     if(RegisterClassA(&WindowClass))
     {
         HWND Window =
@@ -1603,7 +1716,6 @@ WinMain(HINSTANCE Instance,
         if(Window)
         {
             ToggleFullscreen(Window);
-            ShowWindow(Window, SW_SHOW);
 
             win32_sound_output SoundOutput = {};
 
@@ -1770,6 +1882,11 @@ WinMain(HINSTANCE Instance,
                     BEGIN_BLOCK(ExecutableRefresh);
                     NewInput->dtForFrame = TargetSecondsPerFrame;
 
+                    if(UpdateFade(&Fader, NewInput->dtForFrame, Window) == Win32Fade_WaitingForClose)
+                    {
+                        GlobalRunning = false;
+                    }
+                    
                     GameMemory.ExecutableReloaded = false;                    
                     FILETIME NewDLLWriteTime = Win32GetLastWriteTime(SourceGameCodeDLLFullPath);
                     if(CompareFileTime(&NewDLLWriteTime, &Game.DLLLastWriteTime) != 0)
@@ -1996,7 +2113,7 @@ WinMain(HINSTANCE Instance,
                             Game.UpdateAndRender(&GameMemory, NewInput, &Buffer);
                             if(GameMemory.QuitRequested)
                             {
-                                GlobalRunning = false;
+                                BeginFadeToDesktop(&Fader);
                             }
 //                            HandleDebugCycleCounters(&GameMemory);
                         }
@@ -2163,7 +2280,7 @@ WinMain(HINSTANCE Instance,
                     //
 
                     // TODO(casey): Leave this off until we have actual vblank support?
-#if 0
+#if 1
                     BEGIN_BLOCK(FramerateWait);
 
                     if(!GlobalPause)

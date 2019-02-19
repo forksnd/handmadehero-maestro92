@@ -43,6 +43,8 @@ struct layered_scene
     r32 Duration;
     v3 CameraStart;
     v3 CameraEnd;
+
+    r32 tFadeIn;
 };
 
 // NOTE(casey): Thank you to Ron Gilbert and friends for
