@@ -203,7 +203,7 @@ the flow chart and API that we designed it to be is that:
 
 
 
-we are making a change to the "job description" part. IN the previous two episodes, The only job description informaiton 
+we are making a change to the "job description" part. In the previous two episodes, The only job description informaiton 
 is just a string, therefore platform_add_entry only has void* Data as an argument. 
 
 now we are making job description is to contain 2 things 
@@ -314,7 +314,7 @@ any platform code will define the functions, then platform-independent code will
                 win32 platform
              ________________________________
             |                                |
-            |    game_memory                  |
+            |    game_memory                 |
             |                                |
             |    PlatformAddEntry --------------->  win32_PlatformAddEntry function
             |    PlatformCompleteAllWork -------->  win32_PlatformCompleteAllWork function
@@ -325,13 +325,13 @@ any platform code will define the functions, then platform-independent code will
 
                 handmade.cpp
              __________________________________
-            |                                   |
-            |                                   |
-            |     renderer                       |
+            |                                  |
+            |                                  |
+            |     renderer                     |
             |                                  | 
             |     PlatformAddEntry();          |
             |     PlatformCompleteAllWork();   |
-            |                                   |
+            |                                  |
             |__________________________________|
 
 
@@ -411,8 +411,7 @@ the last 5 lives do so
 full code below:
                 win32_handmade.cpp
 
-                internal void
-                Win32AddEntry(platform_work_queue *Queue, platform_work_queue_callback *Callback, void *Data)
+                internal void Win32AddEntry(platform_work_queue *Queue, platform_work_queue_callback *Callback, void *Data)
                 {
                     // TODO(casey): Switch to InterlockedCompareExchange eventually
                     // so that any thread can add?

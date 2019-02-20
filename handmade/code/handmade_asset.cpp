@@ -281,7 +281,7 @@ LoadBitmap(game_assets *Assets, bitmap_id ID, b32 Immediate)
 
             if(!Immediate)
             {
-                Task = BeginTaskWithMemory(Assets->TranState);
+                Task = BeginTaskWithMemory(Assets->TranState, false);
             }
         
             if(Immediate || Task)        
@@ -317,7 +317,7 @@ LoadBitmap(game_assets *Assets, bitmap_id ID, b32 Immediate)
                 Work.FinalState = AssetState_Loaded;            
                 if(Task)
                 {
-                    load_asset_work *TaskWork = PushStruct(&Task->Arena, load_asset_work);
+                    load_asset_work *TaskWork = PushStruct(&Task->Arena, load_asset_work, NoClear());
                     *TaskWork = Work;
                     Platform.AddEntry(Assets->TranState->LowPriorityQueue, LoadAssetWork, TaskWork);
                 }
@@ -352,7 +352,7 @@ LoadSound(game_assets *Assets, sound_id ID)
        (AtomicCompareExchangeUInt32((uint32 *)&Asset->State, AssetState_Queued, AssetState_Unloaded) ==
         AssetState_Unloaded))
     {    
-        task_with_memory *Task = BeginTaskWithMemory(Assets->TranState);
+        task_with_memory *Task = BeginTaskWithMemory(Assets->TranState, false);
         if(Task)        
         {
             asset *Asset = Assets->Assets + ID.Value;
@@ -415,7 +415,7 @@ LoadFont(game_assets *Assets, font_id ID, b32 Immediate)
 
             if(!Immediate)
             {
-                Task = BeginTaskWithMemory(Assets->TranState);
+                Task = BeginTaskWithMemory(Assets->TranState, false);
             }
         
             if(Immediate || Task)        
@@ -450,7 +450,7 @@ LoadFont(game_assets *Assets, font_id ID, b32 Immediate)
                 Work.FinalState = AssetState_Loaded;            
                 if(Task)
                 {
-                    load_asset_work *TaskWork = PushStruct(&Task->Arena, load_asset_work);
+                    load_asset_work *TaskWork = PushStruct(&Task->Arena, load_asset_work, NoClear());
                     *TaskWork = Work;
                     Platform.AddEntry(Assets->TranState->LowPriorityQueue, LoadAssetWork, TaskWork);
                 }
@@ -618,7 +618,7 @@ AllocateGameAssets(memory_arena *Arena, memory_index Size, transient_state *Tran
     Assets->MemorySentinel.Prev = &Assets->MemorySentinel;
     Assets->MemorySentinel.Next = &Assets->MemorySentinel;
 
-    InsertBlock(&Assets->MemorySentinel, Size, PushSize(Arena, Size));
+    InsertBlock(&Assets->MemorySentinel, Size, PushSize(Arena, Size, NoClear()));
     
     Assets->TranState = TranState;
 

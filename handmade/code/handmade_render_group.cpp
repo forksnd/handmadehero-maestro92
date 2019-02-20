@@ -36,7 +36,7 @@ UnscaleAndBiasNormal(v4 Normal)
 }
 
 internal void
-DrawRectangle(loaded_bitmap *Buffer, v2 vMin, v2 vMax, v4 Color, rectangle2i ClipRect, bool32 Even)
+DrawRectangle(loaded_bitmap *Buffer, v2 vMin, v2 vMax, v4 Color, rectangle2i ClipRect)
 {
     TIMED_FUNCTION();
 
@@ -52,11 +52,6 @@ DrawRectangle(loaded_bitmap *Buffer, v2 vMin, v2 vMax, v4 Color, rectangle2i Cli
     FillRect.MaxY = RoundReal32ToInt32(vMax.y);
 
     FillRect = Intersect(FillRect, ClipRect);
-    if(!Even == (FillRect.MinY & 1))
-    {
-        FillRect.MinY += 1;
-    }
-
     uint32 Color32 = ((RoundReal32ToUInt32(A * 255.0f) << 24) |
                       (RoundReal32ToUInt32(R * 255.0f) << 16) |
                       (RoundReal32ToUInt32(G * 255.0f) << 8) |
@@ -67,7 +62,7 @@ DrawRectangle(loaded_bitmap *Buffer, v2 vMin, v2 vMax, v4 Color, rectangle2i Cli
                   FillRect.MinY*Buffer->Pitch);
     for(int Y = FillRect.MinY;
         Y < FillRect.MaxY;
-        Y += 2)
+        ++Y)
     {
         uint32 *Pixel = (uint32 *)Row;
         for(int X = FillRect.MinX;
@@ -77,7 +72,7 @@ DrawRectangle(loaded_bitmap *Buffer, v2 vMin, v2 vMax, v4 Color, rectangle2i Cli
             *Pixel++ = Color32;
         }
         
-        Row += 2*Buffer->Pitch;
+        Row += Buffer->Pitch;
     }
 }
 
@@ -631,8 +626,7 @@ DrawMatte(loaded_bitmap *Buffer, loaded_bitmap *Bitmap,
 }
 
 internal void
-RenderGroupToOutput(render_group *RenderGroup, loaded_bitmap *OutputTarget,
-                    rectangle2i ClipRect, bool Even)
+RenderGroupToOutput(render_group *RenderGroup, loaded_bitmap *OutputTarget, rectangle2i ClipRect)
 {
     IGNORED_TIMED_FUNCTION();
 
@@ -655,7 +649,7 @@ RenderGroupToOutput(render_group *RenderGroup, loaded_bitmap *OutputTarget,
 
                 DrawRectangle(OutputTarget, V2(0.0f, 0.0f),
                               V2((real32)OutputTarget->Width, (real32)OutputTarget->Height),
-                              Entry->Color, ClipRect, Even);
+                              Entry->Color, ClipRect);
 
                 BaseAddress += sizeof(*Entry);
             } break;
@@ -677,7 +671,7 @@ RenderGroupToOutput(render_group *RenderGroup, loaded_bitmap *OutputTarget,
                 DrawRectangleQuickly(OutputTarget, Entry->P,
                                      Entry->Size.x*XAxis,
                                      Entry->Size.y*YAxis, Entry->Color,
-                                     Entry->Bitmap, NullPixelsToMeters, ClipRect, Even);
+                                     Entry->Bitmap, NullPixelsToMeters, ClipRect);
 #endif
 
                 BaseAddress += sizeof(*Entry);
@@ -686,7 +680,7 @@ RenderGroupToOutput(render_group *RenderGroup, loaded_bitmap *OutputTarget,
             case RenderGroupEntryType_render_entry_rectangle:
             {
                 render_entry_rectangle *Entry = (render_entry_rectangle *)Data;
-                DrawRectangle(OutputTarget, Entry->P, Entry->P + Entry->Dim, Entry->Color, ClipRect, Even);
+                DrawRectangle(OutputTarget, Entry->P, Entry->P + Entry->Dim, Entry->Color, ClipRect);
                 
                 BaseAddress += sizeof(*Entry);
             } break;
@@ -740,11 +734,19 @@ RenderGroupToOutput(render_group *RenderGroup, loaded_bitmap *OutputTarget,
     }
 }
 
+struct tile_sort_entry
+{
+    r32 SortKey;
+    u32 PushBufferOffset;
+};
+
 struct tile_render_work
 {
     render_group *RenderGroup;
     loaded_bitmap *OutputTarget;
     rectangle2i ClipRect;
+
+    tile_sort_entry *SortSpace;
 };
 
 internal PLATFORM_WORK_QUEUE_CALLBACK(DoTiledRenderWork)
@@ -753,14 +755,15 @@ internal PLATFORM_WORK_QUEUE_CALLBACK(DoTiledRenderWork)
 
     tile_render_work *Work = (tile_render_work *)Data;
 
-    RenderGroupToOutput(Work->RenderGroup, Work->OutputTarget, Work->ClipRect, true);
-    RenderGroupToOutput(Work->RenderGroup, Work->OutputTarget, Work->ClipRect, false);
+    RenderGroupToOutput(Work->RenderGroup, Work->OutputTarget, Work->ClipRect);
 }
 
 internal void
-RenderGroupToOutput(render_group *RenderGroup, loaded_bitmap *OutputTarget)
+RenderGroupToOutput(render_group *RenderGroup, loaded_bitmap *OutputTarget, memory_arena *TempArena)
 {
     TIMED_FUNCTION();
+
+    temporary_memory Temp = BeginTemporaryMemory(TempArena);
     
     Assert(RenderGroup->InsideRender);
 
@@ -776,15 +779,21 @@ RenderGroupToOutput(render_group *RenderGroup, loaded_bitmap *OutputTarget)
     Work.RenderGroup = RenderGroup;
     Work.OutputTarget = OutputTarget;
     Work.ClipRect = ClipRect;
+    Work.SortSpace = PushArray(TempArena, RenderGroup->PushBufferElementCount, tile_sort_entry);
 
     DoTiledRenderWork(0, &Work);
+
+    EndTemporaryMemory(Temp);
 }
 
 internal void
 TiledRenderGroupToOutput(platform_work_queue *RenderQueue,
-                         render_group *RenderGroup, loaded_bitmap *OutputTarget)
+                         render_group *RenderGroup, loaded_bitmap *OutputTarget,
+                         memory_arena *TempArena)
 {
     TIMED_FUNCTION();
+
+    temporary_memory Temp = BeginTemporaryMemory(TempArena);
 
     Assert(RenderGroup->InsideRender);
 
@@ -837,6 +846,7 @@ TiledRenderGroupToOutput(platform_work_queue *RenderQueue,
             Work->RenderGroup = RenderGroup;
             Work->OutputTarget = OutputTarget;
             Work->ClipRect = ClipRect;
+            Work->SortSpace = PushArray(TempArena, RenderGroup->PushBufferElementCount, tile_sort_entry);
 #if 1
             // NOTE(casey): This is the multi-threaded path
             Platform.AddEntry(RenderQueue, DoTiledRenderWork, Work);
@@ -848,6 +858,8 @@ TiledRenderGroupToOutput(platform_work_queue *RenderQueue,
     }
 
     Platform.CompleteAllWork(RenderQueue);
+
+    EndTemporaryMemory(Temp);
 }
 
 internal render_group *
@@ -861,10 +873,11 @@ AllocateRenderGroup(game_assets *Assets, memory_arena *Arena, uint32 MaxPushBuff
         // TODO(casey): Safe cast from memory_uint to uint32?
         MaxPushBufferSize = (uint32)GetArenaSizeRemaining(Arena);
     }
-    Result->PushBufferBase = (uint8 *)PushSize(Arena, MaxPushBufferSize);
+    Result->PushBufferBase = (uint8 *)PushSize(Arena, MaxPushBufferSize, NoClear());
 
     Result->MaxPushBufferSize = MaxPushBufferSize;
     Result->PushBufferSize = 0;
+    Result->PushBufferElementCount = 0;
     
     Result->Assets = Assets;
     Result->GlobalAlpha = 1.0f;
@@ -910,7 +923,8 @@ EndRender(render_group *Group)
         EndGeneration(Group->Assets, Group->GenerationID);
         Group->GenerationID = 0;
         Group->PushBufferSize = 0;
-    }
+        Group->PushBufferElementCount = 0;
+   }
 }
 
 
@@ -1013,6 +1027,7 @@ PushRenderElement_(render_group *Group, uint32 Size, render_group_entry_type Typ
         Header->Type = Type;
         Result = (uint8 *)Header + sizeof(*Header);
         Group->PushBufferSize += Size;
+        ++Group->PushBufferElementCount;
     }
     else
     {

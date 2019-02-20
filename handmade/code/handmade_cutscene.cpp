@@ -252,7 +252,7 @@ RenderCutsceneAtTime(game_assets *Assets, render_group *RenderGroup, loaded_bitm
 }
 
 internal b32
-CheckForMetaInput(game_state *GameState, game_input *Input)
+CheckForMetaInput(game_state *GameState, transient_state *TranState, game_input *Input)
 {
     b32 Result = false;
     for(u32 ControllerIndex = 0;
@@ -267,7 +267,7 @@ CheckForMetaInput(game_state *GameState, game_input *Input)
         }
         else if(WasPressed(Controller->Start))
         {
-            PlayWorld(GameState);
+            PlayWorld(GameState, TranState);
             Result = true;
             break;
         }
@@ -277,10 +277,12 @@ CheckForMetaInput(game_state *GameState, game_input *Input)
 }
 
 internal b32
-UpdateAndRenderCutScene(game_state *GameState, game_assets *Assets, render_group *RenderGroup,
+UpdateAndRenderCutScene(game_state *GameState, transient_state *TranState, render_group *RenderGroup,
                         loaded_bitmap *DrawBuffer, game_input *Input, game_mode_cutscene *CutScene)
 {
-    b32 Result = CheckForMetaInput(GameState, Input);
+    game_assets *Assets = TranState->Assets;
+    
+    b32 Result = CheckForMetaInput(GameState, TranState, Input);
     if(!Result)
     {        
         RenderCutsceneAtTime(Assets, 0, DrawBuffer, CutScene, CutScene->t + CUTSCENE_WARMUP_SECONDS);    
@@ -291,7 +293,7 @@ UpdateAndRenderCutScene(game_state *GameState, game_assets *Assets, render_group
         }
         else
         {
-            PlayTitleScreen(GameState);
+            PlayTitleScreen(GameState, TranState);
         }    
     }
 
@@ -299,16 +301,17 @@ UpdateAndRenderCutScene(game_state *GameState, game_assets *Assets, render_group
 }
 
 internal b32
-UpdateAndRenderTitleScreen(game_state *GameState, game_assets *Assets, render_group *RenderGroup, loaded_bitmap *DrawBuffer,
+UpdateAndRenderTitleScreen(game_state *GameState, transient_state *TranState, render_group *RenderGroup, loaded_bitmap *DrawBuffer,
                            game_input *Input, game_mode_title_screen *TitleScreen)
 {
-    b32 Result = CheckForMetaInput(GameState, Input);
+    game_assets *Assets = TranState->Assets;
+    b32 Result = CheckForMetaInput(GameState, TranState, Input);
     if(!Result)
     {
         Clear(RenderGroup, V4(1.0f, 0.25f, 0.25f, 0.0f));
         if(TitleScreen->t > 10.0f)
         {
-            PlayIntroCutscene(GameState);
+            PlayIntroCutscene(GameState, TranState);
         }
         else
         {
@@ -320,9 +323,9 @@ UpdateAndRenderTitleScreen(game_state *GameState, game_assets *Assets, render_gr
 }
 
 internal void
-PlayIntroCutscene(game_state *GameState)
+PlayIntroCutscene(game_state *GameState, transient_state *TranState)
 {
-    SetGameMode(GameState, GameMode_CutScene);
+    SetGameMode(GameState, TranState, GameMode_CutScene);
     
     game_mode_cutscene *Result = PushStruct(&GameState->ModeArena, game_mode_cutscene);
 
@@ -334,9 +337,9 @@ PlayIntroCutscene(game_state *GameState)
 }
 
 internal void
-PlayTitleScreen(game_state *GameState)
+PlayTitleScreen(game_state *GameState, transient_state *TranState)
 {
-    SetGameMode(GameState, GameMode_TitleScreen);
+    SetGameMode(GameState, TranState, GameMode_TitleScreen);
     
     game_mode_title_screen *Result = PushStruct(&GameState->ModeArena, game_mode_title_screen);
 

@@ -209,12 +209,62 @@ GetAlignmentOffset(memory_arena *Arena, memory_index Alignment)
     return(AlignmentOffset);
 }
 
-#define DEFAULT_MEMORY_ALIGNMENT 4
+enum arena_push_flag
+{
+    ArenaFlag_ClearToZero = 0x1,
+};
+struct arena_push_params
+{
+    u32 Flags;
+    u32 Alignment;
+};
+
+inline arena_push_params
+DefaultArenaParams(void)
+{
+    arena_push_params Params;
+    Params.Flags = ArenaFlag_ClearToZero;
+    Params.Alignment = 4;
+    return(Params);
+}
+
+inline arena_push_params
+AlignNoClear(u32 Alignment)
+{
+    arena_push_params Params = DefaultArenaParams();
+    Params.Flags &= ~ArenaFlag_ClearToZero;
+    Params.Alignment = Alignment;
+    return(Params);
+}
+
+inline arena_push_params
+Align(u32 Alignment, b32 Clear)
+{
+    arena_push_params Params = DefaultArenaParams();
+    if(Clear)
+    {
+        Params.Flags |= ArenaFlag_ClearToZero;
+    }
+    else
+    {
+        Params.Flags &= ~ArenaFlag_ClearToZero;
+    }
+    Params.Alignment = Alignment;
+    return(Params);
+}
+
+inline arena_push_params
+NoClear(void)
+{
+    arena_push_params Params = DefaultArenaParams();
+    Params.Flags &= ~ArenaFlag_ClearToZero;
+    return(Params);
+}
 
 inline memory_index
-GetArenaSizeRemaining(memory_arena *Arena, memory_index Alignment = DEFAULT_MEMORY_ALIGNMENT)
+GetArenaSizeRemaining(memory_arena *Arena, arena_push_params Params = DefaultArenaParams())
 {
-    memory_index Result = Arena->Size - (Arena->Used + GetAlignmentOffset(Arena, Alignment));
+    memory_index Result = Arena->Size - (Arena->Used + GetAlignmentOffset(Arena, Params.Alignment));
 
     return(Result);
 }
@@ -225,38 +275,41 @@ GetArenaSizeRemaining(memory_arena *Arena, memory_index Alignment = DEFAULT_MEMO
 #define PushSize(Arena, Size, ...) PushSize_(Arena, Size, ## __VA_ARGS__)
 #define PushCopy(Arena, Size, Source, ...) Copy(Size, Source, PushSize_(Arena, Size, ## __VA_ARGS__))
 inline memory_index
-GetEffectiveSizeFor(memory_arena *Arena, memory_index SizeInit, memory_index Alignment)
+GetEffectiveSizeFor(memory_arena *Arena, memory_index SizeInit, arena_push_params Params = DefaultArenaParams())
 {
     memory_index Size = SizeInit;
         
-    memory_index AlignmentOffset = GetAlignmentOffset(Arena, Alignment);
+    memory_index AlignmentOffset = GetAlignmentOffset(Arena, Params.Alignment);
     Size += AlignmentOffset;
 
     return(Size);
 }
 
 inline b32
-ArenaHasRoomFor(memory_arena *Arena, memory_index SizeInit, memory_index Alignment = DEFAULT_MEMORY_ALIGNMENT)
+ArenaHasRoomFor(memory_arena *Arena, memory_index SizeInit, arena_push_params Params = DefaultArenaParams())
 {
-    memory_index Size = GetEffectiveSizeFor(Arena, SizeInit, Alignment);
+    memory_index Size = GetEffectiveSizeFor(Arena, SizeInit, Params);
     b32 Result = ((Arena->Used + Size) <= Arena->Size);
     return(Result);
 }
 
 inline void *
-PushSize_(memory_arena *Arena, memory_index SizeInit, memory_index Alignment = DEFAULT_MEMORY_ALIGNMENT)
+PushSize_(memory_arena *Arena, memory_index SizeInit, arena_push_params Params = DefaultArenaParams())
 {
-    memory_index Size = GetEffectiveSizeFor(Arena, SizeInit, Alignment);
+    memory_index Size = GetEffectiveSizeFor(Arena, SizeInit, Params);
     
     Assert((Arena->Used + Size) <= Arena->Size);
 
-    memory_index AlignmentOffset = GetAlignmentOffset(Arena, Alignment);
+    memory_index AlignmentOffset = GetAlignmentOffset(Arena, Params.Alignment);
     void *Result = Arena->Base + Arena->Used + AlignmentOffset;
     Arena->Used += Size;
 
     Assert(Size >= SizeInit);
 
-    ZeroSize(SizeInit, Result);
+    if(Params.Flags & ArenaFlag_ClearToZero)
+    {
+        ZeroSize(SizeInit, Result);
+    }
     
     return(Result);
 }
@@ -274,7 +327,7 @@ PushString(memory_arena *Arena, char *Source)
         ++Size;
     }
     
-    char *Dest = (char *)PushSize_(Arena, Size);
+    char *Dest = (char *)PushSize_(Arena, Size, NoClear());
     for(u32 CharIndex = 0;
         CharIndex < Size;
         ++CharIndex)
@@ -321,10 +374,10 @@ CheckArena(memory_arena *Arena)
 }
 
 inline void
-SubArena(memory_arena *Result, memory_arena *Arena, memory_index Size, memory_index Alignment = DEFAULT_MEMORY_ALIGNMENT)
+SubArena(memory_arena *Result, memory_arena *Arena, memory_index Size, arena_push_params Params = DefaultArenaParams())
 {
     Result->Size = Size;
-    Result->Base = (uint8 *)PushSize_(Arena, Size, Alignment);
+    Result->Base = (uint8 *)PushSize_(Arena, Size, Params);
     Result->Used = 0;
     Result->TempCount = 0;
 }
@@ -373,6 +426,8 @@ struct hero_bitmap_ids
 
 enum game_mode
 {
+    GameMode_None,
+    
     GameMode_TitleScreen,
     GameMode_CutScene,
     GameMode_World,
@@ -404,7 +459,8 @@ struct game_state
 
 struct task_with_memory
 {
-    bool32 BeingUsed;
+    b32 BeingUsed;
+    b32 DependsOnGameMode;
     memory_arena Arena;
 
     temporary_memory MemoryFlush;
@@ -432,9 +488,9 @@ struct transient_state
 
 global_variable platform_api Platform;
 
-internal task_with_memory *BeginTaskWithMemory(transient_state *TranState);
+internal task_with_memory *BeginTaskWithMemory(transient_state *TranState, b32 DependsOnGameMode);
 internal void EndTaskWithMemory(task_with_memory *Task);
-internal void SetGameMode(game_state *GameState, game_mode GameMode);
+internal void SetGameMode(game_state *GameState, transient_state *TranState, game_mode GameMode);
 
 // TODO(casey): Get these into a more reasonable location?
 #define GroundBufferWidth 256

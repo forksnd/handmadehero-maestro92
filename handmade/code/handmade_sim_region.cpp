@@ -161,7 +161,6 @@ BeginSim(memory_arena *SimArena, game_mode_world *WorldMode, world *World, world
     // TODO(casey): If entities were stored in the world, we wouldn't need the game state here!
     
     sim_region *SimRegion = PushStruct(SimArena, sim_region);
-    ZeroStruct(SimRegion->Hash);
     
     // TODO(casey): Try to make these get enforced more rigorously
     // TODO(casey): Perhaps try using a dual system here, where we support
