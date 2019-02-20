@@ -2,7 +2,7 @@ Handmade Hero Day 201 - Isolating the Debug Code
 
 Summary:
 separated the game code and debug system
-made it so that the debug system will render DEBUGOverlay(); it self so that game code and debug system are decoupled
+made it so that the debug system will render DEBUGOverlay(); itself so that game code and debug system are decoupled
 
 fixed the problem where after copying a debug_variable hierarchy, the two will still share the same expand/contract state.
 
@@ -42,7 +42,7 @@ so currently our code looks like this
 
                             GlobalDebugTable = &GlobalDebugTable_;
                             Win32UnloadGameCode(&Game);
-                            Game = Win32LoadGameCode(SourceGameCodeDLLFullPath,
+    --------------->        Game = Win32LoadGameCode(SourceGameCodeDLLFullPath,
                                                      TempGameCodeDLLFullPath,
                                                      GameCodeLockFullPath);
                             GameMemory.ExecutableReloaded = true;
@@ -54,7 +54,7 @@ so currently our code looks like this
 
                         if(Game.UpdateAndRender)
                         {
-                            Game.UpdateAndRender(&GameMemory, NewInput, &Buffer);
+    --------------->        Game.UpdateAndRender(&GameMemory, NewInput, &Buffer);
                         }
 
                         ...
@@ -64,7 +64,7 @@ so currently our code looks like this
 
                         if(Game.DEBUGFrameEnd)
                         {
-                            GlobalDebugTable = Game.DEBUGFrameEnd(&GameMemory);
+    --------------->        GlobalDebugTable = Game.DEBUGFrameEnd(&GameMemory);
                         }
                         GlobalDebugTable_.EventArrayIndex_EventIndex = 0;
 
@@ -113,9 +113,9 @@ the windows code can blit the buffer to the screen as well.
 
                         BEGIN_BLOCK(FrameDisplay);
                         
-                        win32_window_dimension Dimension = Win32GetWindowDimension(Window);
+    --------------->    win32_window_dimension Dimension = Win32GetWindowDimension(Window);
                         HDC DeviceContext = GetDC(Window);
-                        Win32DisplayBufferInWindow(&GlobalBackbuffer, DeviceContext, Dimension.Width, Dimension.Height);
+    win32Display        Win32DisplayBufferInWindow(&GlobalBackbuffer, DeviceContext, Dimension.Width, Dimension.Height);
                         ReleaseDC(Window, DeviceContext);
 
                         ...
@@ -125,9 +125,9 @@ the windows code can blit the buffer to the screen as well.
 
 
 
-                        BEGIN_BLOCK(DebugCollation);
+    --------------->    BEGIN_BLOCK(DebugCollation);
 
-                        if(Game.DEBUGFrameEnd)
+    debug logic         if(Game.DEBUGFrameEnd)
                         {
                             GlobalDebugTable = Game.DEBUGFrameEnd(&GameMemory);
                         }

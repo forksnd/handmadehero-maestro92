@@ -408,6 +408,9 @@ typedef struct game_input
 
     game_controller_input Controllers[5];
 
+    // NOTE(casey): Signals back to the platform layer
+    b32 QuitRequested;
+
     // NOTE(casey): For debugging only
     game_button_state MouseButtons[PlatformMouseButton_Count];
     r32 MouseX, MouseY, MouseZ;
@@ -520,9 +523,6 @@ typedef struct game_memory
 
     b32 ExecutableReloaded;
     platform_api PlatformAPI;
-
-    // NOTE(casey): Signals back to the platform layer
-    b32 QuitRequested;
 } game_memory;
 
 #define GAME_UPDATE_AND_RENDER(name) void name(game_memory *Memory, game_input *Input, game_offscreen_buffer *Buffer)

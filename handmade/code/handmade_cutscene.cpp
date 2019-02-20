@@ -121,7 +121,7 @@ global_variable scene_layer IntroLayers1[] =
 
 global_variable scene_layer IntroLayers2[] =
 {
-    {{2.0f, -1.0f, -22.0f}, 32.0f}, // NOTE(casey): Hero and tree
+    {{3.0f, -4.0f, -62.0f}, 102.0f}, // NOTE(casey): Hero and tree
     {{0.0f, 0.0f, -14.0f}, 22.0f}, // NOTE(casey): Wall and window
     {{0.0f, 2.0f, -8.0f}, 10.0f}, // NOTE(casey): Icicles
 };
@@ -210,7 +210,7 @@ global_variable layered_scene IntroCutscene[] =
 {
     {Asset_None, 0, 0, 0, CUTSCENE_WARMUP_SECONDS},
     {INTRO_SHOT(1), 20.0f, {0.0f, 0.0f, 10.0f}, {-4.0f, -2.0f, 5.0f}, 0.5f},
-    {INTRO_SHOT(2), 20.0f, {0.0f, 0.0f, 0.0f}, {0.5f, -0.5f, -1.0f}},
+    {INTRO_SHOT(2), 20.0f, {0.0f, 0.0f, 0.0f}, {2.0f, -2.0f, -4.0f}},
     {INTRO_SHOT(3), 20.0f, {0.0f, 0.5f, 0.0f}, {0.0f, 6.5f, -1.5f}},
     {INTRO_SHOT(4), 20.0f, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, -0.5f}},
     {INTRO_SHOT(5), 20.0f, {0.0f, 0.0f, 0.0f}, {0.0f, 0.5f, -1.0f}},
@@ -226,7 +226,7 @@ internal b32
 RenderCutsceneAtTime(game_assets *Assets, render_group *RenderGroup, loaded_bitmap *DrawBuffer,
                      game_mode_cutscene *Cutscene, r32 tCutScene)
 {
-    b32 CutsceneComplete = false;
+    b32 CutsceneStillRunning = false;
     
     r32 tBase = 0.0f;
     for(u32 ShotIndex = 0;
@@ -242,33 +242,81 @@ RenderCutsceneAtTime(game_assets *Assets, render_group *RenderGroup, loaded_bitm
         {
             r32 tNormal = Clamp01MapToRange(tStart, tCutScene, tEnd);
             RenderLayeredScene(Assets, RenderGroup, DrawBuffer, &IntroCutscene[ShotIndex], tNormal);
-            CutsceneComplete = true;
+            CutsceneStillRunning = true;
         }
 
         tBase = tEnd;
     }
 
-    return(CutsceneComplete);
+    return(CutsceneStillRunning);
 }
 
-internal void
-UpdateAndRenderCutScene(game_assets *Assets, render_group *RenderGroup,
+internal b32
+CheckForMetaInput(game_state *GameState, game_input *Input)
+{
+    b32 Result = false;
+    for(u32 ControllerIndex = 0;
+        ControllerIndex < ArrayCount(Input->Controllers);
+        ++ControllerIndex)
+    {
+        game_controller_input *Controller = GetController(Input, ControllerIndex);
+        if(WasPressed(Controller->Back))
+        {
+            Input->QuitRequested = true;
+            break;
+        }
+        else if(WasPressed(Controller->Start))
+        {
+            PlayWorld(GameState);
+            Result = true;
+            break;
+        }
+    }
+
+    return(Result);
+}
+
+internal b32
+UpdateAndRenderCutScene(game_state *GameState, game_assets *Assets, render_group *RenderGroup,
                         loaded_bitmap *DrawBuffer, game_input *Input, game_mode_cutscene *CutScene)
 {
-    RenderCutsceneAtTime(Assets, 0, DrawBuffer, CutScene, CutScene->t + CUTSCENE_WARMUP_SECONDS);    
-    b32 CutsceneComplete = RenderCutsceneAtTime(Assets, RenderGroup, DrawBuffer, CutScene, CutScene->t);
-    if(!CutsceneComplete)
-    {
-        CutScene->t = 0.0f;
+    b32 Result = CheckForMetaInput(GameState, Input);
+    if(!Result)
+    {        
+        RenderCutsceneAtTime(Assets, 0, DrawBuffer, CutScene, CutScene->t + CUTSCENE_WARMUP_SECONDS);    
+        b32 CutsceneStillRunning = RenderCutsceneAtTime(Assets, RenderGroup, DrawBuffer, CutScene, CutScene->t);
+        if(CutsceneStillRunning)
+        {
+            CutScene->t += Input->dtForFrame;
+        }
+        else
+        {
+            PlayTitleScreen(GameState);
+        }    
     }
-    
-    CutScene->t += Input->dtForFrame;
+
+    return(Result);
 }
 
-internal void
-UpdateAndRenderTitleScreen(game_assets *Assets, render_group *RenderGroup, loaded_bitmap *DrawBuffer,
-                           game_mode_title_screen *TitleScreen)
+internal b32
+UpdateAndRenderTitleScreen(game_state *GameState, game_assets *Assets, render_group *RenderGroup, loaded_bitmap *DrawBuffer,
+                           game_input *Input, game_mode_title_screen *TitleScreen)
 {
+    b32 Result = CheckForMetaInput(GameState, Input);
+    if(!Result)
+    {
+        Clear(RenderGroup, V4(1.0f, 0.25f, 0.25f, 0.0f));
+        if(TitleScreen->t > 10.0f)
+        {
+            PlayIntroCutscene(GameState);
+        }
+        else
+        {
+            TitleScreen->t += Input->dtForFrame;
+        }
+    }
+
+    return(Result);
 }
 
 internal void

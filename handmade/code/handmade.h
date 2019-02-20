@@ -172,6 +172,19 @@ StringsAreEqual(memory_index ALength, char *A, memory_index BLength, char *B)
 //
 //
 
+#define ZeroStruct(Instance) ZeroSize(sizeof(Instance), &(Instance))
+#define ZeroArray(Count, Pointer) ZeroSize(Count*sizeof((Pointer)[0]), Pointer)
+inline void
+ZeroSize(memory_index Size, void *Ptr)
+{
+    // TODO(casey): Check this guy for performance
+    uint8 *Byte = (uint8 *)Ptr;
+    while(Size--)
+    {
+        *Byte++ = 0;
+    }
+}
+
 inline void
 InitializeArena(memory_arena *Arena, memory_index Size, void *Base)
 {
@@ -196,8 +209,10 @@ GetAlignmentOffset(memory_arena *Arena, memory_index Alignment)
     return(AlignmentOffset);
 }
 
+#define DEFAULT_MEMORY_ALIGNMENT 4
+
 inline memory_index
-GetArenaSizeRemaining(memory_arena *Arena, memory_index Alignment = 4)
+GetArenaSizeRemaining(memory_arena *Arena, memory_index Alignment = DEFAULT_MEMORY_ALIGNMENT)
 {
     memory_index Result = Arena->Size - (Arena->Used + GetAlignmentOffset(Arena, Alignment));
 
@@ -205,7 +220,6 @@ GetArenaSizeRemaining(memory_arena *Arena, memory_index Alignment = 4)
 }
 
 // TODO(casey): Optional "clear" parameter!!!!
-#define DEFAULT_MEMORY_ALIGNMENT 4
 #define PushStruct(Arena, type, ...) (type *)PushSize_(Arena, sizeof(type), ## __VA_ARGS__)
 #define PushArray(Arena, Count, type, ...) (type *)PushSize_(Arena, (Count)*sizeof(type), ## __VA_ARGS__)
 #define PushSize(Arena, Size, ...) PushSize_(Arena, Size, ## __VA_ARGS__)
@@ -241,6 +255,8 @@ PushSize_(memory_arena *Arena, memory_index SizeInit, memory_index Alignment = D
     Arena->Used += Size;
 
     Assert(Size >= SizeInit);
+
+    ZeroSize(SizeInit, Result);
     
     return(Result);
 }
@@ -305,25 +321,12 @@ CheckArena(memory_arena *Arena)
 }
 
 inline void
-SubArena(memory_arena *Result, memory_arena *Arena, memory_index Size, memory_index Alignment = 16)
+SubArena(memory_arena *Result, memory_arena *Arena, memory_index Size, memory_index Alignment = DEFAULT_MEMORY_ALIGNMENT)
 {
     Result->Size = Size;
     Result->Base = (uint8 *)PushSize_(Arena, Size, Alignment);
     Result->Used = 0;
     Result->TempCount = 0;
-}
-
-#define ZeroStruct(Instance) ZeroSize(sizeof(Instance), &(Instance))
-#define ZeroArray(Count, Pointer) ZeroSize(Count*sizeof((Pointer)[0]), Pointer)
-inline void
-ZeroSize(memory_index Size, void *Ptr)
-{
-    // TODO(casey): Check this guy for performance
-    uint8 *Byte = (uint8 *)Ptr;
-    while(Size--)
-    {
-        *Byte++ = 0;
-    }
 }
 
 inline void *

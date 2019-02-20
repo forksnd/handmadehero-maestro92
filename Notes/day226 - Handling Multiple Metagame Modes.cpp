@@ -5,7 +5,8 @@ organized the code so that we have different game modes: the game mode, the cuts
 
 organized memory arena for different game modes.
 
-implemented game mode transitions.
+implemented game mode transitions. [not fully completed, will be finished in tomorrow_s episode]
+
 
 Keyword:
 game modes
