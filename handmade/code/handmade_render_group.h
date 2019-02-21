@@ -133,7 +133,9 @@ struct render_group
     u32 MaxPushBufferSize;
     u32 PushBufferSize;
     u8 *PushBufferBase;
+    
     u32 PushBufferElementCount;
+    u32 SortEntryAt;
 
     uint32 MissingResourceCount;
     b32 RendersInBackground;
@@ -144,8 +146,9 @@ struct render_group
 struct entity_basis_p_result
 {
     v2 P;
-    real32 Scale;
-    bool32 Valid;
+    r32 Scale;
+    b32 Valid;
+    r32 SortKey;
 };
 
 struct used_bitmap_dim
@@ -159,6 +162,21 @@ struct used_bitmap_dim
 void DrawRectangleQuickly(loaded_bitmap *Buffer, v2 Origin, v2 XAxis, v2 YAxis, v4 Color,
                           loaded_bitmap *Texture, real32 PixelsToMeters,
                           rectangle2i ClipRect);
+
+struct tile_sort_entry
+{
+    r32 SortKey;
+    u32 PushBufferOffset;
+};
+
+struct tile_render_work
+{
+    render_group *RenderGroup;
+    loaded_bitmap *OutputTarget;
+    rectangle2i ClipRect;
+
+    tile_sort_entry *SortSpace;
+};
 
 #define HANDMADE_RENDER_GROUP_H
 #endif
