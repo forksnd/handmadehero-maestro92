@@ -104,19 +104,24 @@ struct render_entry_coordinate_system
 };
 // }
 
-struct render_transform
+struct object_transform
 {
-    bool32 Orthographic;
-    
-    // NOTE(casey): Camera parameters
-    real32 MetersToPixels; // NOTE(casey): This translates meters _on the monitor_ into pixels _on the monitor_
-    v2 ScreenCenter;
-
-    real32 FocalLength;
-    real32 DistanceAboveTarget;
-
+    // TODO(casey): Move this out to its own thang
+    b32 Upright;
     v3 OffsetP;
     real32 Scale;
+};
+
+struct camera_transform
+{
+    b32 Orthographic;
+    
+    // NOTE(casey): Camera parameters
+    r32 MetersToPixels; // NOTE(casey): This translates meters _on the monitor_ into pixels _on the monitor_
+    v2 ScreenCenter;
+
+    r32 FocalLength;
+    r32 DistanceAboveTarget;
 };
 
 struct render_group
@@ -128,7 +133,7 @@ struct render_group
 
     v2 MonitorHalfDimInMeters;
     
-    render_transform Transform;
+    camera_transform CameraTransform;
 
     u32 MaxPushBufferSize;
     u32 PushBufferSize;
@@ -177,6 +182,27 @@ struct tile_render_work
 
     tile_sort_entry *SortSpace;
 };
+
+inline object_transform
+DefaultUprightTransform(void)
+{
+    object_transform Result = {};
+
+    Result.Upright = true;
+    Result.Scale = 1.0f;
+
+    return(Result);
+}
+
+inline object_transform
+DefaultFlatTransform(void)
+{
+    object_transform Result = {};
+
+    Result.Scale = 1.0f;
+
+    return(Result);
+}
 
 #define HANDMADE_RENDER_GROUP_H
 #endif

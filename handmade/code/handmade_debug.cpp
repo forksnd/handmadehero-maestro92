@@ -172,7 +172,7 @@ DEBUGTextOp(debug_state *DebugState, debug_text_op Op, v2 P, char *String, v4 Co
                     v3 BitmapOffset = V3(AtX, AtY, 0);
                     if(Op == DEBUGTextOp_DrawText)
                     {
-                        PushBitmap(RenderGroup, BitmapID, BitmapScale, BitmapOffset, Color);
+                        PushBitmap(RenderGroup, DefaultFlatTransform(), BitmapID, BitmapScale, BitmapOffset, Color);
                     }
                     else                    
                     {
@@ -181,7 +181,7 @@ DEBUGTextOp(debug_state *DebugState, debug_text_op Op, v2 P, char *String, v4 Co
                         loaded_bitmap *Bitmap = GetBitmap(RenderGroup->Assets, BitmapID, RenderGroup->GenerationID);
                         if(Bitmap)
                         {
-                            used_bitmap_dim Dim = GetBitmapDim(RenderGroup, Bitmap, BitmapScale, BitmapOffset, 1.0f);
+                            used_bitmap_dim Dim = GetBitmapDim(RenderGroup, DefaultFlatTransform(), Bitmap, BitmapScale, BitmapOffset, 1.0f);
                             rectangle2 GlyphDim = RectMinDim(Dim.P.xy, Dim.Size);
                             Result = Union(Result, GlyphDim);
                         }
@@ -500,7 +500,7 @@ WriteHandmadeConfig(debug_state *DebugState)
 internal void
 DrawProfileIn(debug_state *DebugState, rectangle2 ProfileRect, v2 MouseP)
 {
-    PushRect(DebugState->RenderGroup, ProfileRect, 0.0f, V4(0, 0, 0, 0.25f));
+    PushRect(DebugState->RenderGroup, DefaultFlatTransform(), ProfileRect, 0.0f, V4(0, 0, 0, 0.25f));
 
     r32 BarSpacing = 4.0f;
     r32 LaneHeight = 0.0f;
@@ -668,6 +668,8 @@ DefaultInteraction(layout_element *Element, debug_interaction Interaction)
 inline void
 EndElement(layout_element *Element)
 {
+    object_transform NoTransform = DefaultFlatTransform();
+    
     layout *Layout = Element->Layout;
     debug_state *DebugState = Layout->DebugState;
     
@@ -699,16 +701,16 @@ EndElement(layout_element *Element)
 
     if(Element->Size)
     {
-        PushRect(DebugState->RenderGroup, RectMinMax(V2(TotalMinCorner.x, InteriorMinCorner.y),
+        PushRect(DebugState->RenderGroup, NoTransform, RectMinMax(V2(TotalMinCorner.x, InteriorMinCorner.y),
                                                      V2(InteriorMinCorner.x, InteriorMaxCorner.y)), 0.0f,
                  V4(0, 0, 0, 1));
-        PushRect(DebugState->RenderGroup, RectMinMax(V2(InteriorMaxCorner.x, InteriorMinCorner.y),
+        PushRect(DebugState->RenderGroup, NoTransform, RectMinMax(V2(InteriorMaxCorner.x, InteriorMinCorner.y),
                                                      V2(TotalMaxCorner.x, InteriorMaxCorner.y)), 0.0f,
                  V4(0, 0, 0, 1));
-        PushRect(DebugState->RenderGroup, RectMinMax(V2(InteriorMinCorner.x, TotalMinCorner.y),
+        PushRect(DebugState->RenderGroup, NoTransform, RectMinMax(V2(InteriorMinCorner.x, TotalMinCorner.y),
                                                      V2(InteriorMaxCorner.x, InteriorMinCorner.y)), 0.0f,
                  V4(0, 0, 0, 1));
-        PushRect(DebugState->RenderGroup, RectMinMax(V2(InteriorMinCorner.x, InteriorMaxCorner.y),
+        PushRect(DebugState->RenderGroup, NoTransform, RectMinMax(V2(InteriorMinCorner.x, InteriorMaxCorner.y),
                                                      V2(InteriorMaxCorner.x, TotalMaxCorner.y)), 0.0f,
                  V4(0, 0, 0, 1));
 
@@ -718,7 +720,7 @@ EndElement(layout_element *Element)
 
         rectangle2 SizeBox = RectMinMax(V2(InteriorMaxCorner.x, TotalMinCorner.y),
                                         V2(TotalMaxCorner.x, InteriorMinCorner.y));
-        PushRect(DebugState->RenderGroup, SizeBox, 0.0f,
+        PushRect(DebugState->RenderGroup, NoTransform, SizeBox, 0.0f,
                  (InteractionIsHot(DebugState, SizeInteraction) ? V4(1, 1, 0, 1) : V4(1, 1, 1, 1)));
         if(IsInRectangle(SizeBox, Layout->MouseP))
         {
@@ -872,7 +874,9 @@ DEBUG_REQUESTED(debug_id ID)
 
 internal void
 DEBUGDrawEvent(layout *Layout, debug_stored_event *StoredEvent, debug_id DebugID)
-{    
+{
+    object_transform NoTransform = DefaultFlatTransform();
+    
     debug_state *DebugState = Layout->DebugState;
     render_group *RenderGroup = DebugState->RenderGroup;
     
@@ -894,7 +898,7 @@ DEBUGDrawEvent(layout *Layout, debug_stored_event *StoredEvent, debug_id DebugID
                 r32 BitmapScale = View->InlineBlock.Dim.y;
                 if(Bitmap)
                 {
-                    used_bitmap_dim Dim = GetBitmapDim(RenderGroup, Bitmap, BitmapScale, V3(0.0f, 0.0f, 0.0f), 1.0f);
+                    used_bitmap_dim Dim = GetBitmapDim(RenderGroup, NoTransform, Bitmap, BitmapScale, V3(0.0f, 0.0f, 0.0f), 1.0f);
                     View->InlineBlock.Dim.x = Dim.Size.x;
                 }
 
@@ -906,8 +910,8 @@ DEBUGDrawEvent(layout *Layout, debug_stored_event *StoredEvent, debug_id DebugID
                 DefaultInteraction(&Element, TearInteraction);
                 EndElement(&Element);
 
-                PushRect(DebugState->RenderGroup, Element.Bounds, 0.0f, V4(0, 0, 0, 1.0f));
-                PushBitmap(DebugState->RenderGroup, Event->Value_bitmap_id, BitmapScale,
+                PushRect(DebugState->RenderGroup, NoTransform, Element.Bounds, 0.0f, V4(0, 0, 0, 1.0f));
+                PushBitmap(DebugState->RenderGroup, NoTransform, Event->Value_bitmap_id, BitmapScale,
                            V3(GetMinCorner(Element.Bounds), 0.0f), V4(1, 1, 1, 1), 0.0f);
             } break;
                 
@@ -990,6 +994,8 @@ DEBUGDrawElement(layout *Layout, debug_tree *Tree, debug_element *Element, debug
 internal void
 DEBUGDrawMainMenu(debug_state *DebugState, render_group *RenderGroup, v2 MouseP)
 {
+    object_transform NoTransform = DefaultFlatTransform();
+    
     for(debug_tree *Tree = DebugState->TreeSentinel.Next;
         Tree != &DebugState->TreeSentinel;
         Tree = Tree->Next)
@@ -1075,7 +1081,7 @@ DEBUGDrawMainMenu(debug_state *DebugState, render_group *RenderGroup, v2 MouseP)
             MoveInteraction.P = &Tree->UIP;
             
             rectangle2 MoveBox = RectCenterHalfDim(Tree->UIP - V2(4.0f, 4.0f), V2(4.0f, 4.0f));
-            PushRect(DebugState->RenderGroup, MoveBox, 0.0f,
+            PushRect(DebugState->RenderGroup, NoTransform, MoveBox, 0.0f,
                      InteractionIsHot(DebugState, MoveInteraction) ? V4(1, 1, 0, 1) : V4(1, 1, 1, 1));
 
             if(IsInRectangle(MoveBox, MouseP))
@@ -1996,7 +2002,7 @@ DEBUGEnd(debug_state *DebugState, game_input *Input, loaded_bitmap *DrawBuffer)
 
     debug_event *HotEvent = 0;
         
-    v2 MouseP = Unproject(DebugState->RenderGroup, V2(Input->MouseX, Input->MouseY)).xy;
+    v2 MouseP = Unproject(DebugState->RenderGroup, DefaultFlatTransform(), V2(Input->MouseX, Input->MouseY)).xy;
     DEBUGDrawMainMenu(DebugState, RenderGroup, MouseP);
     DEBUGInteract(DebugState, Input, MouseP);
     
