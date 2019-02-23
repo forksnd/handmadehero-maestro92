@@ -86,7 +86,7 @@ actually the case. We cant prove yet, whether ther exists a more clever way, tha
 
 
 40:44
-so this 3sat problem is just an example of a "NP complete" problem. Essentially its a type of problem where nobody has been 
+so this 3sat problem is just an example of a "NP" problem. Essentially its a type of problem where nobody has been 
 able to prove that it takes polynomial time to solve (no one has come up with anyway to solve it); But they have not prove
 that you cant solve it in polynomial time. 
 
@@ -95,25 +95,25 @@ And they have proven that you can verify the answer in polynomial time.
 for example for the 3 sat problem, if you have a list of inputs, I can verify whether that produces makes the original expression
 produce an true value.
 
-so "NP-Complete" problems has a "P verifier". It has the ability to verify the solution with polynomial time. 
+so "NP" problems has a "P verifier". It has the ability to verify the solution with polynomial time. 
 
 
 
 42:30
-so "NP-Complete" are problems that no one knows whether its P or NP. but we do know they can be verified in P time.
+so "NP" are problems that no one knows whether its P or NP. but we do know they can be verified in P time.
 
 So the number of problems that fall into this category are fairly large, and people have done tremendous amount of work proving
 they are equivalent. 
 
 
 44:37
-whats also interesting is that people have done work proving that all "NO-complete" problems are the same. Meaning if you have found 
+whats also interesting is that people have done work proving that all "NP" problems are the same. Meaning if you have found 
 a P solution for one of the problems, you can transform all the other ones and solve it in P  
 
 
 
 45:36
-dont assume a problem is "NP complete" becuz something is hard. For example, the traveling sales man problem
+dont assume a problem is "NP" becuz something is hard. For example, the traveling sales man problem
 
-it is not "NP complete". It is actually harder than that since there is no P verifier for it. There is no way to verify 
+it is not "NP". It is actually harder than that since there is no P verifier for it. There is no way to verify 
 this problem in anything other than a "NP" verifier 
