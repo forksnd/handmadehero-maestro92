@@ -23,7 +23,6 @@
     - FIX CLICKING BUG AT END OF SAMPLES!!!
 
   - Rendering
-    - Get rid of "even" scan line notion?
     - Real projections with solid concept of project/unproject
     - Straighten out all coordinate systems!
       - Screen
@@ -33,6 +32,8 @@
     - Lighting
     - Final Optimization
 
+    ----
+    
   ARCHITECTURE EXPLORATION
   - Z!
     - Need to make a solid concept of ground levels so the camera can

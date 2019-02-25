@@ -8,18 +8,17 @@
 
 /*
   TODO(casey):  THIS IS NOT A FINAL PLATFORM LAYER!!!
-  
+
+  - Hardware acceleration (OpenGL or Direct3D or BOTH??)
+  - Blit speed improvements (BitBlt)
+
   - Make the right calls so Windows doesn't think we're "still loading" for a bit after we actually start
   - Saved game locations
   - Getting a handle to our own executable file
-  - Asset loading path
-  - Threading (launch a thread)
   - Raw Input (support for multiple keyboards)
   - ClipCursor() (for multimonitor support)
   - QueryCancelAutoplay
   - WM_ACTIVATEAPP (for when we are not the active application)
-  - Blit speed improvements (BitBlt)
-  - Hardware acceleration (OpenGL or Direct3D or BOTH??)
   - GetKeyboardLayout (for French keyboards, international WASD support)
   - ChangeDisplaySettings option if we detect slow fullscreen blit??
 
@@ -33,6 +32,7 @@
 #include <malloc.h>
 #include <xinput.h>
 #include <dsound.h>
+#include <gl/gl.h>
 
 #include "win32_handmade.h"
 
@@ -446,6 +446,41 @@ Win32InitDSound(HWND Window, int32 SamplesPerSecond, int32 BufferSize)
     }
 }
 
+internal void
+Win32InitOpenGL(HWND Window)
+{
+    HDC WindowDC = GetDC(Window);
+
+    // TODO(casey): Hey Raymond Chen - what's the deal here?
+    // Is cColorBits ACTUALLY supposed to exclude the alpha bits, like MSDN says, or not?
+    PIXELFORMATDESCRIPTOR DesiredPixelFormat = {};
+    DesiredPixelFormat.nSize = sizeof(DesiredPixelFormat);
+    DesiredPixelFormat.nVersion = 1;
+    DesiredPixelFormat.iPixelType = PFD_TYPE_RGBA;
+    DesiredPixelFormat.dwFlags = PFD_SUPPORT_OPENGL|PFD_DRAW_TO_WINDOW|PFD_DOUBLEBUFFER;
+    DesiredPixelFormat.cColorBits = 32;
+    DesiredPixelFormat.cAlphaBits = 8;
+    DesiredPixelFormat.iLayerType = PFD_MAIN_PLANE;
+
+    int SuggestedPixelFormatIndex = ChoosePixelFormat(WindowDC, &DesiredPixelFormat);
+    PIXELFORMATDESCRIPTOR SuggestedPixelFormat;
+    DescribePixelFormat(WindowDC, SuggestedPixelFormatIndex,
+                        sizeof(SuggestedPixelFormat), &SuggestedPixelFormat);
+    SetPixelFormat(WindowDC, SuggestedPixelFormatIndex, &SuggestedPixelFormat);
+    
+    HGLRC OpenGLRC = wglCreateContext(WindowDC);
+    if(wglMakeCurrent(WindowDC, OpenGLRC))        
+    {
+        // NOTE(casey): Success!!!
+    }
+    else
+    {
+        InvalidCodePath;
+        // TODO(casey): Diagnostic
+    }
+    ReleaseDC(Window, WindowDC);
+}
+
 internal win32_window_dimension
 Win32GetWindowDimension(HWND Window)
 {
@@ -501,6 +536,7 @@ internal void
 Win32DisplayBufferInWindow(win32_offscreen_buffer *Buffer,
                            HDC DeviceContext, int WindowWidth, int WindowHeight)
 {
+#if 0
     // TODO(casey): Centering / black bars?
     
     if((WindowWidth >= Buffer->Width*2) &&
@@ -538,6 +574,11 @@ Win32DisplayBufferInWindow(win32_offscreen_buffer *Buffer,
                       &Buffer->Info,
                       DIB_RGB_COLORS, SRCCOPY);
     }
+#endif
+    glViewport(0, 0, WindowWidth, WindowHeight);
+    glClearColor(1.0f, 0.0f, 1.0f, 0.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    SwapBuffers(DeviceContext);
 }
 
 internal LRESULT CALLBACK
@@ -1716,7 +1757,8 @@ WinMain(HINSTANCE Instance,
         if(Window)
         {
             ToggleFullscreen(Window);
-
+            Win32InitOpenGL(Window);
+            
             win32_sound_output SoundOutput = {};
 
             // TODO(casey): How do we reliably query on this on Windows?
