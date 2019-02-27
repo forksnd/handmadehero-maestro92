@@ -200,13 +200,14 @@ So Casey gave a little lecture on how OpenGL works on Windows
 OpenGL is a Graphics API. It was an attempt to make a public spec out of something called IrisGL (or something something "GL"); 
 made by a compnay called Silicon Graphics.
 
-Silicon Graphics dont really exists anymore. what they were is that way before anyone were even talking about the concept of 
-that a personal computer would have 3D graphics acceleration, Silicon Graphics, a company that specializes in building 
+Silicon Graphics dont really exists anymore. what they were is that, way before anyone were even talking about the concept that 
+a personal computer would have 3D graphics acceleration. ther was Silicon Graphics, a company that specializes in building 
 hard accelerated graphics.
 
 so what they did is that they built high end, very very expensive work stations that had 3D accelerated hardware in them. 
+so this was a dedicated work station that had 3D accelerated hardware, a computer specially made to have this hardware.
 
-in those days, just filling a triangle with a solid color was amzazing.
+in those days, just filling a triangle with a solid color was amazing.
 and as time goes on, they did more and more stuff, such as texture mapping and stuff. 
 
 so then people start to think that the future is gonna be 3D on the PC, so people start to leave Silicon Graphics and start to make 
