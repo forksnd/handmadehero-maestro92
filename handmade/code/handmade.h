@@ -32,6 +32,12 @@
     - Lighting
     - Final Optimization
 
+  - Hardware Rendering
+    - sRGB framebuffer and textures
+    - Vsync
+    - Background texture downloads
+    - Render-to-texture?
+    
     ----
     
   ARCHITECTURE EXPLORATION

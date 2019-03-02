@@ -965,14 +965,17 @@ SortEntries(render_group *RenderGroup, memory_arena *TempArena)
     u32 ResultJ = SortKeyToU32(5.5f);
     
 #if HANDMADE_SLOW
-    for(u32 Index = 0;
-        Index < (Count - 1);
-        ++Index)
+    if(Count)
     {
-        tile_sort_entry *EntryA = Entries + Index;
-        tile_sort_entry *EntryB = EntryA + 1;
+        for(u32 Index = 0;
+            Index < (Count - 1);
+            ++Index)
+        {
+            tile_sort_entry *EntryA = Entries + Index;
+            tile_sort_entry *EntryB = EntryA + 1;
 
-        Assert(EntryA->SortKey <= EntryB->SortKey);
+            Assert(EntryA->SortKey <= EntryB->SortKey);
+        }
     }
 #endif
 
@@ -1011,9 +1014,6 @@ TiledRenderGroupToOutput(platform_work_queue *RenderQueue,
                          memory_arena *TempArena)
 {
     TIMED_FUNCTION();
-
-    // TODO(casey): Don't do this twice?
-    SortEntries(RenderGroup, TempArena);
 
     Assert(RenderGroup->InsideRender);
 
@@ -1454,4 +1454,22 @@ AllResourcesPresent(render_group *Group)
     bool32 Result = (Group->MissingResourceCount == 0);
 
     return(Result);
+}
+
+inline void
+RenderToOutput(platform_work_queue *RenderQueue,
+               render_group *RenderGroup, loaded_bitmap *OutputTarget,
+               memory_arena *TempArena)
+{
+    // TODO(casey): Don't do this twice?
+    SortEntries(RenderGroup, TempArena);
+
+    if(1) // RenderGroup->IsHardware)
+    {
+        Platform.RenderToOpenGL(RenderGroup, OutputTarget);
+    }
+    else
+    {
+        TiledRenderGroupToOutput(RenderQueue, RenderGroup, OutputTarget, TempArena);        
+    }
 }

@@ -218,9 +218,11 @@ of course we will change this later on to the OpenGL programmable path.
 
 
 25:24
-Casey explaining how he set up matrices in the RenderGroupToOutput(); function 
+So we wrote the handmade_opengl file, but we arent currently using it yet.
 
-what we want to do with the projection matrix is to 
+Casey went back to the win32_handmade.cpp file and fix the projection matrix. 
+
+what we want to do with the projection matrix is to accomplish the following
 
      ______________                          __________________
     | screen space | ---------------------> | OpenGL Unit cube |
@@ -435,13 +437,11 @@ Actually in the OpenGL specs, we have
 
                 win32_handmade.cpp
 
-                internal void RenderGroupToOutput(render_group *RenderGroup, loaded_bitmap *OutputTarget, rectangle2i ClipRect)
+                internal void Win32DisplayBufferInWindow(win32_offscreen_buffer *Buffer,
+                           HDC DeviceContext, int WindowWidth, int WindowHeight)
                 {
-                    IGNORED_TIMED_FUNCTION();
-
-                    glEnable(GL_TEXTURE_2D);
-
-                    glViewport(0, 0, OutputTarget->WindowWidth, OutputTarget->WindowHeight);
+                    glClearColor(1.0f, 0.0f, 1.0f, 0.0f);
+                    glClear(GL_COLOR_BUFFER_BIT);
 
                     glMatrixMode(GL_TEXTURE);
                     glLoadIdentity();
@@ -450,8 +450,8 @@ Actually in the OpenGL specs, we have
                     glLoadIdentity();
 
                     glMatrixMode(GL_PROJECTION);
-                    r32 a = SafeRatio1(2.0f, (r32)OutputTarget->WindowWidth);
-                    r32 b = SafeRatio1(2.0f, (r32)OutputTarget->WindowHeight);
+                    r32 a = SafeRatio1(2.0f, (r32)Buffer->Width);
+                    r32 b = SafeRatio1(2.0f, (r32)Buffer->Height);
                     r32 Proj[] =
                     {
                          a,  0,  0,  0,
@@ -473,7 +473,7 @@ will handmade_opengl.cpp be included in the platform specific layer or game laye
 it will be game layer. it wont be in the platform-specific layer becuz it can be shared between multiple
 implementations of openGL. Like OpenGL code for mac vs OpenGL code for linux is 99% the same
 
-so typically you having the handmade_opengl thing as a separate platform clean, you dont want to use any platform 
+so typically you having the handmade_opengl thing as a separate platform tier, you dont want to use any platform 
 stuff there, that way you can reuse it. 
 
 

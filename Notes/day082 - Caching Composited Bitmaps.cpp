@@ -2,13 +2,14 @@ Handmade Hero Day 082 - Caching Composited Bitmaps
   
 Summary:
 
-wrote an api for ourrandom number generator (which is currently essentially a giant array of random numbers)
+wrote an api for our random number generator (which is currently essentially a giant array of random numbers)
 replaced all the places where we directly get the numbers from the array with
 api calls from handmade_random.h
 
 rendered the ground with a bunch of random rocks, stones, turfs.
 
-Optimized rendering ground. Pre-rendered the ground into a bitmap. Then every frame, blit the drawBuffer with this pre-rendered ground bitmap.
+Optimized rendering ground. Pre-rendered the ground into a bitmap. 
+Then every frame, blit the drawBuffer with this pre-rendered ground bitmap.
 
 Talked about pass by reference vs pass by value in Q/A
 
