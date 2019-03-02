@@ -38,6 +38,7 @@
 
 #include "win32_handmade.h"
 #include "handmade_opengl.cpp"
+#include "handmade_render.cpp"
 
 // TODO(casey): This is a global for now.
 global_variable bool32 GlobalRunning;
@@ -543,119 +544,75 @@ Win32ResizeDIBSection(win32_offscreen_buffer *Buffer, int Width, int Height)
 }
 
 internal void
-Win32DisplayBufferInWindow(win32_offscreen_buffer *Buffer,
-                           HDC DeviceContext, int WindowWidth, int WindowHeight)
+Win32DisplayBufferInWindow(platform_work_queue *RenderQueue, game_render_commands *Commands,
+                           HDC DeviceContext, s32 WindowWidth, s32 WindowHeight)
 {
-#if 0
-    // TODO(casey): Centering / black bars?
-    
-    if((WindowWidth >= Buffer->Width*2) &&
-       (WindowHeight >= Buffer->Height*2))
+    SortEntries(Commands);
+
+/*  TODO(casey): Do we want to check for resources like before?  Probably?      
+    if(AllResourcesPresent(RenderGroup))
     {
-        StretchDIBits(DeviceContext,
-                      0, 0, 2*Buffer->Width, 2*Buffer->Height,
-                      0, 0, Buffer->Width, Buffer->Height,
-                      Buffer->Memory,
-                      &Buffer->Info,
-                      DIB_RGB_COLORS, SRCCOPY);
+        RenderToOutput(TranState->HighPriorityQueue, RenderGroup, &DrawBuffer, &TranState->TranArena);
+    }
+*/
+    
+    b32 InHardware = true;
+    b32 DisplayViaHardware = true;
+    if(InHardware)
+    {
+        RenderToOpenGL(Commands, WindowWidth, WindowHeight);        
+        SwapBuffers(DeviceContext);
     }
     else
     {
-#if 0
-        int OffsetX = 10;
-        int OffsetY = 10;
+        TiledRenderGroupToOutput(RenderQueue, Commands, OutputTarget);        
 
-        PatBlt(DeviceContext, 0, 0, WindowWidth, OffsetY, BLACKNESS);
-        PatBlt(DeviceContext, 0, OffsetY + Buffer->Height, WindowWidth, WindowHeight, BLACKNESS);
-        PatBlt(DeviceContext, 0, 0, OffsetX, WindowHeight, BLACKNESS);
-        PatBlt(DeviceContext, OffsetX + Buffer->Width, 0, WindowWidth, WindowHeight, BLACKNESS);
+        if(DisplayViaHardware)
+        {
+            DisplayBitmapViaOpenGL();
+            SwapBuffers(DeviceContext);
+        }
+        else
+        {
+            // TODO(casey): Centering / black bars?
+    
+            if((WindowWidth >= Buffer->Width*2) &&
+               (WindowHeight >= Buffer->Height*2))
+            {
+                StretchDIBits(DeviceContext,
+                              0, 0, 2*Buffer->Width, 2*Buffer->Height,
+                              0, 0, Buffer->Width, Buffer->Height,
+                              Buffer->Memory,
+                              &Buffer->Info,
+                              DIB_RGB_COLORS, SRCCOPY);
+            }
+            else
+            {
+#if 0
+                int OffsetX = 10;
+                int OffsetY = 10;
+
+                PatBlt(DeviceContext, 0, 0, WindowWidth, OffsetY, BLACKNESS);
+                PatBlt(DeviceContext, 0, OffsetY + Buffer->Height, WindowWidth, WindowHeight, BLACKNESS);
+                PatBlt(DeviceContext, 0, 0, OffsetX, WindowHeight, BLACKNESS);
+                PatBlt(DeviceContext, OffsetX + Buffer->Width, 0, WindowWidth, WindowHeight, BLACKNESS);
 #else
-        int OffsetX = 0;
-        int OffsetY = 0;
+                int OffsetX = 0;
+                int OffsetY = 0;
 #endif
     
-        // NOTE(casey): For prototyping purposes, we're going to always blit
-        // 1-to-1 pixels to make sure we don't introduce artifacts with
-        // stretching while we are learning to code the renderer!
-        StretchDIBits(DeviceContext,
-                      OffsetX, OffsetY, Buffer->Width, Buffer->Height,
-                      0, 0, Buffer->Width, Buffer->Height,
-                      Buffer->Memory,
-                      &Buffer->Info,
-                      DIB_RGB_COLORS, SRCCOPY);
+                // NOTE(casey): For prototyping purposes, we're going to always blit
+                // 1-to-1 pixels to make sure we don't introduce artifacts with
+                // stretching while we are learning to code the renderer!
+                StretchDIBits(DeviceContext,
+                              OffsetX, OffsetY, Buffer->Width, Buffer->Height,
+                              0, 0, Buffer->Width, Buffer->Height,
+                              Buffer->Memory,
+                              &Buffer->Info,
+                              DIB_RGB_COLORS, SRCCOPY);
+            }
+        }
     }
-#endif
-
-#if 0
-    glViewport(0, 0, WindowWidth, WindowHeight);
-    
-    glBindTexture(GL_TEXTURE_2D, GlobalBlitTextureHandle);
-
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, Buffer->Width, Buffer->Height, 0,
-                 GL_BGRA_EXT, GL_UNSIGNED_BYTE, Buffer->Memory);
-    
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);    
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);    
-    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-
-    glEnable(GL_TEXTURE_2D);
-    
-    glClearColor(1.0f, 0.0f, 1.0f, 0.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
-
-    glMatrixMode(GL_TEXTURE);
-    glLoadIdentity();
-    
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-
-    glMatrixMode(GL_PROJECTION);
-    r32 a = SafeRatio1(2.0f, (r32)Buffer->Width);
-    r32 b = SafeRatio1(2.0f, (r32)Buffer->Height);
-    r32 Proj[] =
-    {
-         a,  0,  0,  0,
-         0,  b,  0,  0,
-         0,  0,  1,  0,
-        -1, -1,  0,  1,
-    };
-    glLoadMatrixf(Proj);
-
-    // TODO(casey): Decide how we want to handle aspect ratio - black bars or crop?
-    
-    v2 MinP = {0, 0};
-    v2 MaxP = {(r32)Buffer->Width, (r32)Buffer->Height};
-    v4 Color = {1, 1, 1, 1};
-    glBegin(GL_TRIANGLES);
-
-    glColor4f(Color.r, Color.g, Color.b, Color.a);
-    
-    // NOTE(casey): Lower triangle
-    glTexCoord2f(0.0f, 0.0f);
-    glVertex2f(MinP.x, MinP.y);
-
-    glTexCoord2f(1.0f, 0.0f);
-    glVertex2f(MaxP.x, MinP.y);
-    
-    glTexCoord2f(1.0f, 1.0f);
-    glVertex2f(MaxP.x, MaxP.y);
-
-    // NOTE(casey): Upper triangle
-    glTexCoord2f(0.0f, 0.0f);
-    glVertex2f(MinP.x, MinP.y);
-
-    glTexCoord2f(1.0f, 1.0f);
-    glVertex2f(MaxP.x, MaxP.y);
-
-    glTexCoord2f(0.0f, 1.0f);
-    glVertex2f(MinP.x, MaxP.y);
-    
-    glEnd();
-#endif
-    
-    SwapBuffers(DeviceContext);
 }
 
 internal LRESULT CALLBACK
@@ -746,9 +703,11 @@ Win32MainWindowCallback(HWND Window,
         {
             PAINTSTRUCT Paint;
             HDC DeviceContext = BeginPaint(Window, &Paint);
+#if 0
             win32_window_dimension Dimension = Win32GetWindowDimension(Window);
             Win32DisplayBufferInWindow(&GlobalBackbuffer, DeviceContext,
                                        Dimension.Width, Dimension.Height);
+#endif
             EndPaint(Window, &Paint);
         } break;
 
@@ -2203,6 +2162,14 @@ WinMain(HINSTANCE Instance,
 
                     BEGIN_BLOCK(GameUpdate);
 
+                    // TODO(casey): Decide what our pushbuffer size is!
+                    u32 PushBufferSize = Megabytes(4);
+                    void *PushBuffer = VirtualAlloc;
+                    game_render_commands RenderCommands = RenderCommandStruct(
+                        PushBufferSize, PushBuffer,
+                        GlobalBackbuffer.Width,
+                        GlobalBackbuffer.Height);
+                    
                     game_offscreen_buffer Buffer = {};
                     Buffer.Memory = GlobalBackbuffer.Memory;
                     Buffer.Width = GlobalBackbuffer.Width; 
@@ -2231,7 +2198,7 @@ WinMain(HINSTANCE Instance,
                         }
                         if(Game.UpdateAndRender)
                         {
-                            Game.UpdateAndRender(&GameMemory, NewInput, &Buffer);
+                            Game.UpdateAndRender(&GameMemory, NewInput, &RenderCommands);
                             if(NewInput->QuitRequested)
                             {
                                 BeginFadeToDesktop(&Fader);
@@ -2389,7 +2356,7 @@ WinMain(HINSTANCE Instance,
 
                     if(Game.DEBUGFrameEnd)
                     {
-                        GlobalDebugTable = Game.DEBUGFrameEnd(&GameMemory, NewInput, &Buffer);
+                        GlobalDebugTable = Game.DEBUGFrameEnd(&GameMemory, NewInput, &RenderCommands);
                     }
                     GlobalDebugTable_.EventArrayIndex_EventIndex = 0;
 
@@ -2454,7 +2421,7 @@ WinMain(HINSTANCE Instance,
                     
                     win32_window_dimension Dimension = Win32GetWindowDimension(Window);
                     HDC DeviceContext = GetDC(Window);
-                    Win32DisplayBufferInWindow(&GlobalBackbuffer, DeviceContext,
+                    Win32DisplayBufferInWindow(&RenderCommands, DeviceContext,
                                                Dimension.Width, Dimension.Height);
                     ReleaseDC(Window, DeviceContext);
 

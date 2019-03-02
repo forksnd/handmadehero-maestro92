@@ -215,6 +215,21 @@ MakePyramidNormalMap(loaded_bitmap *Bitmap, real32 Roughness)
     }
 }
 
+// TODO(casey): Really want to get rid of main generation ID
+internal u32
+DEBUGGetMainGenerationID(game_memory *Memory)
+{
+    u32 Result = 0;
+    
+    transient_state *TranState = (transient_state *)Memory->TransientStorage;
+    if(TranState->IsInitialized)
+    {
+        Result = TranState->MainGenerationID;
+    }
+
+    return(Result);
+}
+
 internal game_assets *
 DEBUGGetGameAssets(game_memory *Memory)
 {
@@ -343,6 +358,14 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         TranState->IsInitialized = true;
     }
 
+    // TODO(casey): We should probably pull the generation stuff, because
+    // if we don't use ground chunks, it's a huge waste of effort!
+    if(TranState->MainGenerationID)
+    {
+        EndGeneration(TranState->Assets, TranState->MainGenerationID);
+    }
+    TranState->MainGenerationID = BeginGeneration(TranState->Assets);
+
     if(GameState->GameMode == GameMode_None)
     {
         PlayIntroCutscene(GameState, TranState);
@@ -378,25 +401,16 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     // NOTE(casey): Render
     //
     temporary_memory RenderMemory = BeginTemporaryMemory(&TranState->TranArena);
-    
-    loaded_bitmap DrawBuffer_ = {};
-    loaded_bitmap *DrawBuffer = &DrawBuffer_;
-    DrawBuffer->Width = Buffer->Width;
-    DrawBuffer->Height = Buffer->Height;
-    DrawBuffer->Pitch = Buffer->Pitch;
-    DrawBuffer->Memory = Buffer->Memory;
-
-    DEBUG_IF(Renderer_TestWeirdDrawBufferSize)
-    {
-        // NOTE(casey): Enable this to test weird buffer sizes in the renderer!
-        DrawBuffer->Width = 1279;
-        DrawBuffer->Height = 719;
-    }
 
     // TODO(casey): Decide what our pushbuffer size is!
-    render_group *RenderGroup = AllocateRenderGroup(TranState->Assets, &TranState->TranArena, Megabytes(4), false);
-    BeginRender(RenderGroup);
+    render_group RenderGroup_ = BeginRenderGroup(TranState->Assets, RenderCommands, TranState->MainGenerationID, false);
+    render_group *RenderGroup = &RenderGroup_;
 
+    // TODO(casey): Eliminate these entirely
+    loaded_bitmap DrawBuffer = {};
+    DrawBuffer.Width = RenderCommands->Width;
+    DrawBuffer.Height = RenderCommands->Height;
+    
     b32 Rerun = false;
     do
     {
@@ -404,30 +418,26 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         {
             case GameMode_TitleScreen:
             {
-                Rerun = UpdateAndRenderTitleScreen(GameState, TranState, RenderGroup, DrawBuffer,
+                Rerun = UpdateAndRenderTitleScreen(GameState, TranState, RenderGroup, &DrawBuffer,
                                                    Input, GameState->TitleScreen);
             } break;
 
             case GameMode_CutScene:
             {
-                Rerun = UpdateAndRenderCutScene(GameState, TranState, RenderGroup, DrawBuffer,
+                Rerun = UpdateAndRenderCutScene(GameState, TranState, RenderGroup, &DrawBuffer,
                                                 Input, GameState->CutScene);
             } break;
 
             case GameMode_World:
             {
-                Rerun = UpdateAndRenderWorld(GameState, GameState->WorldMode, TranState, Input, RenderGroup, DrawBuffer);
+                Rerun = UpdateAndRenderWorld(GameState, GameState->WorldMode, TranState, Input, RenderGroup, &DrawBuffer);
             } break;
 
             InvalidDefaultCase;
         }
     } while(Rerun);
-    
-    if(AllResourcesPresent(RenderGroup))
-    {
-        RenderToOutput(TranState->HighPriorityQueue, RenderGroup, DrawBuffer, &TranState->TranArena);
-    }
-    EndRender(RenderGroup);
+
+    EndRenderGroup(RenderGroup);
 
     EndTemporaryMemory(RenderMemory);
 

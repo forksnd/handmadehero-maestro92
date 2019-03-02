@@ -760,7 +760,7 @@ the initial value.
 now that rendergroups all have generationIDs, we have to make sure that we dont evict assets that are in flight.
 meaning we dont evict assets that are currently used in this frame
 
-so the simplest way to do this is to keep an list of assets that "in flight". 
+so the simplest way to do this is to keep an list of assets that are "in flight". 
 
 we go to the evict asset logic
 

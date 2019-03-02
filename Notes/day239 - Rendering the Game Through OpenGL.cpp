@@ -641,4 +641,7 @@ so what happens is that when you dont have giant memory controls, with special m
 it is a lot easier for each core to have one tile_s worth of frame buffer memory on the core, where it can just 
 quickly read and write on the framebuffer. 
 
-so on mobile, where there is less wattage, less memory bandwidth
+so on mobile, where there is less wattage, less memory bandwidth.
+
+
+on regular GPU, they are typically non-tiled, they are more random accessed based.
