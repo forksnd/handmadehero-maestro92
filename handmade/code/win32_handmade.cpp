@@ -37,18 +37,25 @@
 #include <gl/gl.h>
 
 #include "win32_handmade.h"
-#include "handmade_opengl.cpp"
-#include "handmade_render.cpp"
+
+global_variable platform_api Platform;
 
 // TODO(casey): This is a global for now.
 global_variable bool32 GlobalRunning;
 global_variable bool32 GlobalPause;
+global_variable b32 GlobalUseSoftwareRendering;
 global_variable win32_offscreen_buffer GlobalBackbuffer;
 global_variable LPDIRECTSOUNDBUFFER GlobalSecondaryBuffer;
 global_variable int64 GlobalPerfCountFrequency;
 global_variable bool32 DEBUGGlobalShowCursor;
 global_variable WINDOWPLACEMENT GlobalWindowPosition = {sizeof(GlobalWindowPosition)};
 global_variable GLuint GlobalBlitTextureHandle;
+
+global_variable GLuint OpenGLDefaultInternalTextureFormat;
+
+#include "handmade_opengl.cpp"
+#include "handmade_render.cpp"
+
 
 // NOTE(casey): XInputGetState
 #define X_INPUT_GET_STATE(name) DWORD WINAPI name(DWORD dwUserIndex, XINPUT_STATE *pState)
@@ -72,6 +79,9 @@ global_variable x_input_set_state *XInputSetState_ = XInputSetStateStub;
 
 #define DIRECT_SOUND_CREATE(name) HRESULT WINAPI name(LPCGUID pcGuidDevice, LPDIRECTSOUND *ppDS, LPUNKNOWN pUnkOuter)
 typedef DIRECT_SOUND_CREATE(direct_sound_create);
+
+typedef BOOL WINAPI wgl_swap_interval_ext(int interval);
+global_variable wgl_swap_interval_ext *wglSwapInterval;
 
 internal void
 CatStrings(size_t SourceACount, char *SourceA,
@@ -479,10 +489,28 @@ Win32InitOpenGL(HWND Window)
     SetPixelFormat(WindowDC, SuggestedPixelFormatIndex, &SuggestedPixelFormat);
     
     HGLRC OpenGLRC = wglCreateContext(WindowDC);
+    HGLRC OpenGLRC = wglCreateContext(WindowDC);
     if(wglMakeCurrent(WindowDC, OpenGLRC))        
     {
-        // NOTE(casey): Success!!!
-        glGenTextures(1, &GlobalBlitTextureHandle);
+#define GL_FRAMEBUFFER_SRGB               0x8DB9
+#define GL_SRGB8_ALPHA8                   0x8C43
+        OpenGLDefaultInternalTextureFormat = GL_RGBA8;
+        // TODO(casey): Actually check for extensions!
+//        if(OpenGLExtensionIsAvailable())
+        {
+            OpenGLDefaultInternalTextureFormat = GL_SRGB8_ALPHA8;
+        }
+
+//        if(OpenGLExtensionIsAvailable())
+        {
+            glEnable(GL_FRAMEBUFFER_SRGB);
+        }
+
+        wglSwapInterval = (wgl_swap_interval_ext *)wglGetProcAddress("wglSwapIntervalEXT");
+        if(wglSwapInterval)
+        {
+            wglSwapInterval(1);
+        }
     }
     else
     {
@@ -545,9 +573,9 @@ Win32ResizeDIBSection(win32_offscreen_buffer *Buffer, int Width, int Height)
 
 internal void
 Win32DisplayBufferInWindow(platform_work_queue *RenderQueue, game_render_commands *Commands,
-                           HDC DeviceContext, s32 WindowWidth, s32 WindowHeight)
+                           HDC DeviceContext, s32 WindowWidth, s32 WindowHeight, void *SortMemory)
 {
-    SortEntries(Commands);
+    SortEntries(Commands, SortMemory);
 
 /*  TODO(casey): Do we want to check for resources like before?  Probably?      
     if(AllResourcesPresent(RenderGroup))
@@ -555,35 +583,36 @@ Win32DisplayBufferInWindow(platform_work_queue *RenderQueue, game_render_command
         RenderToOutput(TranState->HighPriorityQueue, RenderGroup, &DrawBuffer, &TranState->TranArena);
     }
 */
-    
-    b32 InHardware = true;
-    b32 DisplayViaHardware = true;
-    if(InHardware)
-    {
-        RenderToOpenGL(Commands, WindowWidth, WindowHeight);        
-        SwapBuffers(DeviceContext);
-    }
-    else
-    {
-        TiledRenderGroupToOutput(RenderQueue, Commands, OutputTarget);        
 
+    DEBUG_IF(Renderer_UseSoftware)
+    {
+        loaded_bitmap OutputTarget;
+        OutputTarget.Memory = GlobalBackbuffer.Memory;
+        OutputTarget.Width = GlobalBackbuffer.Width;
+        OutputTarget.Height = GlobalBackbuffer.Height;
+        OutputTarget.Pitch = GlobalBackbuffer.Pitch;
+
+        SoftwareRenderCommands(RenderQueue, Commands, &OutputTarget);        
+
+        b32 DisplayViaHardware = true;        
         if(DisplayViaHardware)
         {
-            DisplayBitmapViaOpenGL();
+            OpenGLDisplayBitmap(GlobalBackbuffer.Width, GlobalBackbuffer.Height, GlobalBackbuffer.Memory,
+                                GlobalBackbuffer.Pitch, WindowWidth, WindowHeight);
             SwapBuffers(DeviceContext);
         }
         else
         {
             // TODO(casey): Centering / black bars?
     
-            if((WindowWidth >= Buffer->Width*2) &&
-               (WindowHeight >= Buffer->Height*2))
+            if((WindowWidth >= GlobalBackbuffer.Width*2) &&
+               (WindowHeight >= GlobalBackbuffer.Height*2))
             {
                 StretchDIBits(DeviceContext,
-                              0, 0, 2*Buffer->Width, 2*Buffer->Height,
-                              0, 0, Buffer->Width, Buffer->Height,
-                              Buffer->Memory,
-                              &Buffer->Info,
+                              0, 0, 2*GlobalBackbuffer.Width, 2*GlobalBackbuffer.Height,
+                              0, 0, GlobalBackbuffer.Width, GlobalBackbuffer.Height,
+                              GlobalBackbuffer.Memory,
+                              &GlobalBackbuffer.Info,
                               DIB_RGB_COLORS, SRCCOPY);
             }
             else
@@ -593,9 +622,9 @@ Win32DisplayBufferInWindow(platform_work_queue *RenderQueue, game_render_command
                 int OffsetY = 10;
 
                 PatBlt(DeviceContext, 0, 0, WindowWidth, OffsetY, BLACKNESS);
-                PatBlt(DeviceContext, 0, OffsetY + Buffer->Height, WindowWidth, WindowHeight, BLACKNESS);
+                PatBlt(DeviceContext, 0, OffsetY + GlobalBackbuffer.Height, WindowWidth, WindowHeight, BLACKNESS);
                 PatBlt(DeviceContext, 0, 0, OffsetX, WindowHeight, BLACKNESS);
-                PatBlt(DeviceContext, OffsetX + Buffer->Width, 0, WindowWidth, WindowHeight, BLACKNESS);
+                PatBlt(DeviceContext, OffsetX + GlobalBackbuffer.Width, 0, WindowWidth, WindowHeight, BLACKNESS);
 #else
                 int OffsetX = 0;
                 int OffsetY = 0;
@@ -605,13 +634,18 @@ Win32DisplayBufferInWindow(platform_work_queue *RenderQueue, game_render_command
                 // 1-to-1 pixels to make sure we don't introduce artifacts with
                 // stretching while we are learning to code the renderer!
                 StretchDIBits(DeviceContext,
-                              OffsetX, OffsetY, Buffer->Width, Buffer->Height,
-                              0, 0, Buffer->Width, Buffer->Height,
-                              Buffer->Memory,
-                              &Buffer->Info,
+                              OffsetX, OffsetY, GlobalBackbuffer.Width, GlobalBackbuffer.Height,
+                              0, 0, GlobalBackbuffer.Width, GlobalBackbuffer.Height,
+                              GlobalBackbuffer.Memory,
+                              &GlobalBackbuffer.Info,
                               DIB_RGB_COLORS, SRCCOPY);
             }
         }
+    }
+    else
+    {
+        OpenGLRenderCommands(Commands, WindowWidth, WindowHeight);        
+        SwapBuffers(DeviceContext);
     }
 }
 
@@ -1822,6 +1856,13 @@ WinMain(HINSTANCE Instance,
 
             GlobalRunning = true;
 
+            umm CurrentSortMemorySize = Megabytes(1);
+            void *SortMemory = Win32AllocateMemory(CurrentSortMemorySize);
+
+            // TODO(casey): Decide what our pushbuffer size is!
+            u32 PushBufferSize = Megabytes(4);
+            void *PushBuffer = Win32AllocateMemory(PushBufferSize);
+
 #if 0
             // NOTE(casey): This tests the PlayCursor/WriteCursor update frequency
             // On the Handmade Hero machine, it was 480 samples.
@@ -1869,8 +1910,6 @@ WinMain(HINSTANCE Instance,
             GameMemory.PlatformAPI.AllocateMemory = Win32AllocateMemory;
             GameMemory.PlatformAPI.DeallocateMemory = Win32DeallocateMemory;
 
-            GameMemory.PlatformAPI.RenderToOpenGL = OpenGLRenderGroupToOutput;
-
 #if HANDMADE_INTERNAL
             GameMemory.PlatformAPI.DEBUGFreeFileMemory = DEBUGPlatformFreeFileMemory;
             GameMemory.PlatformAPI.DEBUGReadEntireFile = DEBUGPlatformReadEntireFile;
@@ -1879,6 +1918,8 @@ WinMain(HINSTANCE Instance,
             GameMemory.PlatformAPI.DEBUGGetProcessState = DEBUGGetProcessState;
 #endif
 
+            Platform = GameMemory.PlatformAPI;
+    
             // TODO(casey): Handle various memory footprints (USING
             // SYSTEM METRICS)
 
@@ -2162,9 +2203,6 @@ WinMain(HINSTANCE Instance,
 
                     BEGIN_BLOCK(GameUpdate);
 
-                    // TODO(casey): Decide what our pushbuffer size is!
-                    u32 PushBufferSize = Megabytes(4);
-                    void *PushBuffer = VirtualAlloc;
                     game_render_commands RenderCommands = RenderCommandStruct(
                         PushBufferSize, PushBuffer,
                         GlobalBackbuffer.Width,
@@ -2419,10 +2457,19 @@ WinMain(HINSTANCE Instance,
 
                     BEGIN_BLOCK(FrameDisplay);
                     
+                    umm NeededSortMemorySize = RenderCommands.PushBufferElementCount * sizeof(tile_sort_entry);
+                    if(CurrentSortMemorySize < NeededSortMemorySize)
+                    {
+                        Win32DeallocateMemory(SortMemory);
+                        CurrentSortMemorySize = NeededSortMemorySize;
+                        SortMemory = Win32AllocateMemory(CurrentSortMemorySize);
+                    }
+                    
                     win32_window_dimension Dimension = Win32GetWindowDimension(Window);
                     HDC DeviceContext = GetDC(Window);
-                    Win32DisplayBufferInWindow(&RenderCommands, DeviceContext,
-                                               Dimension.Width, Dimension.Height);
+                    Win32DisplayBufferInWindow(&HighPriorityQueue, &RenderCommands, DeviceContext,
+                                               Dimension.Width, Dimension.Height,
+                                               SortMemory);
                     ReleaseDC(Window, DeviceContext);
 
                     FlipWallClock = Win32GetWallClock();

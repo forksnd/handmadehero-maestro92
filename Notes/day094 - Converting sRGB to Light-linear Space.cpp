@@ -31,14 +31,48 @@ gamma corrected rendering ensures that colors are blended "correctly"
 
 
 
-
-
 4:54
 shows a graph of 
 
 
 GrayLevel on the x axis, that is from 0 ~ 255, essentially the pixel value
 Brightness on the y axis 
+
+so the GrayLevel is the pixel value that we are giving to the monitor
+the brightness is the brightness level that the monitor is displaying in
+
+
+
+essentially, this means every image u send to your monitor, it applies a gamma of 2.2
+
+                         
+     RGB  
+     ___________                 ___________   Monitor applies      ___________
+    |           |               | Monitor   |  gamma of 2.2        |  Monitor  | 
+    |   Image   |   --------->  |           |   --------------->   |   Display | 
+    |___________|               |___________|                      |___________|
+
+
+
+
+
+
+
+[ so my understanding is that 
+lets say if you have an image at pixel value of 0, it will be a black image 
+if you have an image at pixel value of 1, it will be a white image
+so if you want to display a perfectly gray image, we want the monitor to display an intensity of 0.5
+            
+            x^(2.2) = 0.5
+
+that means we have to give the monitor, an rgb value of 0.729 (or 187 in 0 ~ 1 range)
+
+if you give a value of 0.5 (or 127), the monitor will have an intensity of 0.217, which is too dark]
+
+
+
+
+
 
 5:13
 the brightness is in units of cd/m^2. That is the brightness that the monitor is showing
@@ -69,13 +103,13 @@ https://poynton.ca/notes/colour_and_gamma/GammaFAQ.html
 
 
 
+
+
 7:46 
 casey says that it might be becuz
 your eyes are more sensitive to contrast in darker areas, than it is in bright areas
 
 this is just an aspect of human vision
-
-
 
 
 
@@ -94,7 +128,7 @@ even in our bilinear filtering, we are not really blending our colors properly
 for example, if you blend RGB (0,0,0) and RGB (1,1,1), where the two represents the darkest and brightest color 
 that the monitor can output, we actualloy get dark gray on our gamma graph (See graph at 11:37);
 
-it is no where near of the 50% brightness spot
+it is no where near of the 50% brightness spot (the half value on the y axis);
 
 
 essentially all the "Lerp" we are doing is incorrect becuz we are doing in RGB space
@@ -103,7 +137,7 @@ essentially all the "Lerp" we are doing is incorrect becuz we are doing in RGB s
 
 
 13:27
-the artists are actaully making the image in Gamma space
+Casey mentioned that when artists draw images on their computer, they are actually making the images in Gamma space
 assuming the artsits are using photoshop on the default settings, it is called "sRGB"
 which sort of like the gamma curve with a slight tweak
 
@@ -112,17 +146,70 @@ it actually looks correct. But if you do any lerp or filtering, it is no longer 
 
 
 
+
+
+
+[so the idea is that, the artist will work in the following mode 
+                         
+     RGB  
+     ___________                 ___________   Monitor applies      ___________
+    |           |               | Monitor   |  gamma of 2.2        |  Monitor  | 
+    |   Image   |   --------->  |           |   --------------->   |   Display | 
+    |___________|               |___________|                      |___________|
+
+
+when they are in photoshop, they are editing the rgb values of the image based on what they see on the monitor,
+which already applies a gamma of 2.2. whatever rgb values image they output from photoshop is tuned to their liking based 
+on what they see on the monitor. it already looks good on the monitor
+
+so if we just blit it, it will be correct, it will look good on the monitor,
+this is what we mean by the images made by the artists are already in sRGB space]
+
+
+
+
 15:05
 so the key is 
-whenever we want to do math, we convert image from sRGB space into gamma-linear space, do our math
+whenever we want to do math (like lerping or filtering);, we convert image from sRGB space into gamma-linear space, do our math
 then convert them back to sRGB space
 
-	artists 					Marts 						Monitor
-	sRGB  -------------------->	Linear ------------------->	sRGB
-	 ___________				 ___________				 ___________
-	|			|				|			| 				|			| 
-	|	Image 	|	--------->	|			| 	---------> 	|	output	| 
-	|___________|				|___________| 				|___________|
+[essentially, we are converting image sRGB space to monitor space, do our math, then converting it back to sRGB space,
+    monitor space is one gamma-linear space.
+
+
+monitor space is linear becuz if you increase x (x is what we give to the monitor); 2 times,
+the output brightness is 2 times brighter
+
+    |     /
+    |    /
+y   |   /
+    |  /
+    | /
+    |/________________
+
+            x    
+]            
+
+
+
+so the full pipeline is below:
+
+
+    artists sRGB                    Maths Linear                     sRGB                                         
+     ___________                    ___________                    ___________                ___________                _________
+    |           |    pow(2.2);     |           |  pow(1/2.2);     |           |              |  monitor  |   pow(2.2)   | monitor |
+    |   Image   | ---------------> |           | -------------->  |  Image    |  ----------> |           | -----------> | display |
+    |___________|                  |___________|                  |___________|              |___________|              |_________|
+
+
+1.  artists make images in sRGB space (meaning these are already corrected for the monitor);
+2.  we convert it to math linear space (i think of it as monitor space);
+3.  we do our math 
+4.  we convert it back to sRGB space 
+5.  we give it to the monitor
+6.  monitor applies a gamma correction of pow(2.2);
+7.  display
+
 
 this is what Triple A games do, what a competent engine do 
 
@@ -147,7 +234,7 @@ apparently these are the slides from the uncharted presentation from one of the 
 
 from the wikipedia the general formula is 
 
-				Vout = A * (Vin ^ Gamma)
+                Vout = A * (Vin ^ Gamma)
 
 
 
@@ -155,7 +242,7 @@ at 18:58
 you can see that in the powerpoint slide, the formula is approximately
 
 
-				F(x) = pow(x, 2.2);
+                F(x) = pow(x, 2.2);
 
 A is 1
 Gamma is 2.2
@@ -172,31 +259,31 @@ gamma value
 
 
 
-	artists 							Linear Gamma Space 							Monitor
-	sRGB  																			sRGB
-	 
-				F(x) = pow(sRGB, 2.2);					sRGB = pow(F(x), 0.45);	
+    artists                             Linear Gamma Space                          Monitor
+    sRGB                                                                            sRGB
+     
+                F(x) = pow(sRGB, 2.2);                  sRGB = pow(F(x), 0.45); 
 
-				-------------------->					------------------->
-	 ___________						 ___________								 ___________
-	|			|						|			| 								|			| 
-	|	Image 	|						|			| 				 				|	output	| 
-	|___________|						|___________| 								|___________|
+                -------------------->                   ------------------->
+     ___________                         ___________                                 ___________
+    |           |                       |           |                               |           | 
+    |   Image   |                       |           |                               |   output  | 
+    |___________|                       |___________|                               |___________|
 
-				<--------------------					<--------------------
+                <--------------------                   <--------------------
 
-				sRGB = pow(F(x), 0.45); 				F(x) = pow(sRGB, 2.2); 
+                sRGB = pow(F(x), 0.45);                 F(x) = pow(sRGB, 2.2); 
 
 
 
 20:43
 the orignal formula is 
 
-	F(x) = pow(sRGB, 2.2);	
+    F(x) = pow(sRGB, 2.2);  
 
 we will approximate it using 
 
-	F(x) = pow(sRGB, 2.0);
+    F(x) = pow(sRGB, 2.0);
 
 
 proceeds to show the graphs of the two in google and you can see they are not too far off
@@ -216,22 +303,22 @@ that are mostly finished art, maybe doing a little re-lighting on them, we proba
 if you have a linear framebuffer, we do can possibly save multiple transformation of the Linear to sRGB 
 
 so we have our sRGB images, we convert to liearn then we blit it to the screen
-	 ___________						
-	|			|						
-	|	Image 	|						 
-	|___________|
+     ___________                        
+    |           |                       
+    |   Image   |                        
+    |___________|
 
 
-	 _______________________					
-	|						|				
-	|						|				
-	|						|	
-	|						|			
-	|		frameBuffer		|			
-	|						|				
-	|						|				
-	|						|			 
-	|_______________________|
+     _______________________                    
+    |                       |               
+    |                       |               
+    |                       |   
+    |                       |           
+    |       frameBuffer     |           
+    |                       |               
+    |                       |               
+    |                       |            
+    |_______________________|
 
 then only at the very end, when we go from this phrameBuffer to monitor, we do a global linear to sRGB transformation.
 if we do not have a linear framebuffer, you will have to do the transformation from linear to sRGB when you blit each 
@@ -268,16 +355,16 @@ essentially we want to mimic what the monitor is doing to make uniform brigthnes
 so what we want to do is instead of 2.2, we do it with gamma of 2
 
 
-	SRGB 							Linear Gamma Space 								Monitor
-	  																				sRGB
-	 
-				F(x) = pow(sRGB, 2.0);					sRGB = sqrt(F(x));	
+    SRGB                            Linear Gamma Space                              Monitor
+                                                                                    sRGB
+     
+                F(x) = pow(sRGB, 2.0);                  sRGB = sqrt(F(x));  
 
-				-------------------->					------------------->
-	 ___________						 ___________								 ___________
-	|			|						|			| 								|			| 
-	|	Image 	|						|			| 				 				|	output	| 
-	|___________|						|___________| 								|___________|
+                -------------------->                   ------------------->
+     ___________                         ___________                                 ___________
+    |           |                       |           |                               |           | 
+    |   Image   |                       |           |                               |   output  | 
+    |___________|                       |___________|                               |___________|
 
 
 
@@ -294,96 +381,96 @@ after lerping, we call Linear1ToSRGB255();
 
 then we blend
 
-				internal void
-				DrawRectangleSlowly(loaded_bitmap *Buffer, v2 Origin, v2 XAxis, v2 YAxis, v4 Color,
-				                    loaded_bitmap *Texture)
-				{
-					...
-					...
+                internal void
+                DrawRectangleSlowly(loaded_bitmap *Buffer, v2 Origin, v2 XAxis, v2 YAxis, v4 Color,
+                                    loaded_bitmap *Texture)
+                {
+                    ...
+                    ...
 
-				    for(int Y = YMin; Y <= YMax; ++Y)
-				    {
-				        uint32 *Pixel = (uint32 *)Row;
-				        for(int X = XMin; X <= XMax; ++X)
-				        {
-				                
-				                // TODO(casey): Formalize texture boundaries!!!
-								...
-								...
-				                
-				                uint8 *TexelPtr = ((uint8 *)Texture->Memory) + Y*Texture->Pitch + X*sizeof(uint32);
-				                uint32 TexelPtrA = *(uint32 *)(TexelPtr);
-				                uint32 TexelPtrB = *(uint32 *)(TexelPtr + sizeof(uint32));
-				                uint32 TexelPtrC = *(uint32 *)(TexelPtr + Texture->Pitch);
-				                uint32 TexelPtrD = *(uint32 *)(TexelPtr + Texture->Pitch + sizeof(uint32));
+                    for(int Y = YMin; Y <= YMax; ++Y)
+                    {
+                        uint32 *Pixel = (uint32 *)Row;
+                        for(int X = XMin; X <= XMax; ++X)
+                        {
+                                
+                                // TODO(casey): Formalize texture boundaries!!!
+                                ...
+                                ...
+                                
+                                uint8 *TexelPtr = ((uint8 *)Texture->Memory) + Y*Texture->Pitch + X*sizeof(uint32);
+                                uint32 TexelPtrA = *(uint32 *)(TexelPtr);
+                                uint32 TexelPtrB = *(uint32 *)(TexelPtr + sizeof(uint32));
+                                uint32 TexelPtrC = *(uint32 *)(TexelPtr + Texture->Pitch);
+                                uint32 TexelPtrD = *(uint32 *)(TexelPtr + Texture->Pitch + sizeof(uint32));
 
-				                // TODO(casey): Color.a!!
-				                v4 TexelA = {(real32)((TexelPtrA >> 16) & 0xFF),
-				                             (real32)((TexelPtrA >> 8) & 0xFF),
-				                             (real32)((TexelPtrA >> 0) & 0xFF),
-				                             (real32)((TexelPtrA >> 24) & 0xFF)};
-				                v4 TexelB = {(real32)((TexelPtrB >> 16) & 0xFF),
-				                             (real32)((TexelPtrB >> 8) & 0xFF),
-				                             (real32)((TexelPtrB >> 0) & 0xFF),
-				                             (real32)((TexelPtrB >> 24) & 0xFF)};
-				                v4 TexelC = {(real32)((TexelPtrC >> 16) & 0xFF),
-				                             (real32)((TexelPtrC >> 8) & 0xFF),
-				                             (real32)((TexelPtrC >> 0) & 0xFF),
-				                             (real32)((TexelPtrC >> 24) & 0xFF)};
-				                v4 TexelD = {(real32)((TexelPtrD >> 16) & 0xFF),
-				                             (real32)((TexelPtrD >> 8) & 0xFF),
-				                             (real32)((TexelPtrD >> 0) & 0xFF),
-				                             (real32)((TexelPtrD >> 24) & 0xFF)};
+                                // TODO(casey): Color.a!!
+                                v4 TexelA = {(real32)((TexelPtrA >> 16) & 0xFF),
+                                             (real32)((TexelPtrA >> 8) & 0xFF),
+                                             (real32)((TexelPtrA >> 0) & 0xFF),
+                                             (real32)((TexelPtrA >> 24) & 0xFF)};
+                                v4 TexelB = {(real32)((TexelPtrB >> 16) & 0xFF),
+                                             (real32)((TexelPtrB >> 8) & 0xFF),
+                                             (real32)((TexelPtrB >> 0) & 0xFF),
+                                             (real32)((TexelPtrB >> 24) & 0xFF)};
+                                v4 TexelC = {(real32)((TexelPtrC >> 16) & 0xFF),
+                                             (real32)((TexelPtrC >> 8) & 0xFF),
+                                             (real32)((TexelPtrC >> 0) & 0xFF),
+                                             (real32)((TexelPtrC >> 24) & 0xFF)};
+                                v4 TexelD = {(real32)((TexelPtrD >> 16) & 0xFF),
+                                             (real32)((TexelPtrD >> 8) & 0xFF),
+                                             (real32)((TexelPtrD >> 0) & 0xFF),
+                                             (real32)((TexelPtrD >> 24) & 0xFF)};
 
-				                // NOTE(casey): Go from sRGB to "linear" brightness space
-				                TexelA = SRGB255ToLinear1(TexelA);
-				                TexelB = SRGB255ToLinear1(TexelB);
-				                TexelC = SRGB255ToLinear1(TexelC);
-				                TexelD = SRGB255ToLinear1(TexelD);
-				                
-		
-				                v4 Texel = Lerp(Lerp(TexelA, fX, TexelB),
-				                                fY,
-				                                Lerp(TexelC, fX, TexelD));
-		
+                                // NOTE(casey): Go from sRGB to "linear" brightness space
+                                TexelA = SRGB255ToLinear1(TexelA);
+                                TexelB = SRGB255ToLinear1(TexelB);
+                                TexelC = SRGB255ToLinear1(TexelC);
+                                TexelD = SRGB255ToLinear1(TexelD);
+                                
+        
+                                v4 Texel = Lerp(Lerp(TexelA, fX, TexelB),
+                                                fY,
+                                                Lerp(TexelC, fX, TexelD));
+        
 
-				                real32 RSA = Texel.a; 
-				                
-				                v4 Dest = {(real32)((*Pixel >> 16) & 0xFF),
-				                           (real32)((*Pixel >> 8) & 0xFF),
-				                           (real32)((*Pixel >> 0) & 0xFF),
-				                           (real32)((*Pixel >> 24) & 0xFF)};
-				                
-				                // NOTE(casey): Go from sRGB to "linear" brightness space
-				                Dest = SRGB255ToLinear1(Dest);
-				                
-				                real32 RDA = Dest.a;
-				            
-				                real32 InvRSA = (1.0f-RSA);
-				                
-				                v4 Blended = {InvRSA*Dest.r + Texel.r,
-				                              InvRSA*Dest.g + Texel.g,
-				                              InvRSA*Dest.b + Texel.b,
-				                              (RSA + RDA - RSA*RDA)};
+                                real32 RSA = Texel.a; 
+                                
+                                v4 Dest = {(real32)((*Pixel >> 16) & 0xFF),
+                                           (real32)((*Pixel >> 8) & 0xFF),
+                                           (real32)((*Pixel >> 0) & 0xFF),
+                                           (real32)((*Pixel >> 24) & 0xFF)};
+                                
+                                // NOTE(casey): Go from sRGB to "linear" brightness space
+                                Dest = SRGB255ToLinear1(Dest);
+                                
+                                real32 RDA = Dest.a;
+                            
+                                real32 InvRSA = (1.0f-RSA);
+                                
+                                v4 Blended = {InvRSA*Dest.r + Texel.r,
+                                              InvRSA*Dest.g + Texel.g,
+                                              InvRSA*Dest.b + Texel.b,
+                                              (RSA + RDA - RSA*RDA)};
 
-				                // NOTE(casey): Go from "linear" brightness space to sRGB
-				                v4 Blended255 = Linear1ToSRGB255(Blended);
+                                // NOTE(casey): Go from "linear" brightness space to sRGB
+                                v4 Blended255 = Linear1ToSRGB255(Blended);
 
-				                *Pixel = (((uint32)(Blended255.a + 0.5f) << 24) |
-				                          ((uint32)(Blended255.r + 0.5f) << 16) |
-				                          ((uint32)(Blended255.g + 0.5f) << 8) |
-				                          ((uint32)(Blended255.b + 0.5f) << 0));
-				            }
-				#else
-				            *Pixel = Color32;
-				#endif
-				            
-				            ++Pixel;
-				        }
-				        
-				        Row += Buffer->Pitch;
-				    }
-				}
+                                *Pixel = (((uint32)(Blended255.a + 0.5f) << 24) |
+                                          ((uint32)(Blended255.r + 0.5f) << 16) |
+                                          ((uint32)(Blended255.g + 0.5f) << 8) |
+                                          ((uint32)(Blended255.b + 0.5f) << 0));
+                            }
+                #else
+                            *Pixel = Color32;
+                #endif
+                            
+                            ++Pixel;
+                        }
+                        
+                        Row += Buffer->Pitch;
+                    }
+                }
 
 
 
@@ -393,11 +480,11 @@ then we blend
 
 Note the function names 
 
-				SRGB255ToLinear1();
-				Linear1ToSRGB255();
+                SRGB255ToLinear1();
+                Linear1ToSRGB255();
 
 notice that we have the words SRGB255 and Linear1, that is to indicate we are going from [0 ~ 255] to [0 ~ 1] ranges
-				    
+                    
 
 
 32:56
@@ -417,37 +504,37 @@ writes the two functions SRGB255ToLinear1(); and Linear1ToSRGB255();
 we do not square the alpha value. The alpha value is strictly a value that tells us how much do we want to blend 
 
 
-				handmade_render_group.cpp
+                handmade_render_group.cpp
 
-				inline v4
-				SRGB255ToLinear1(v4 C)
-				{
-				    v4 Result;
+                inline v4
+                SRGB255ToLinear1(v4 C)
+                {
+                    v4 Result;
 
-				    real32 Inv255 = 1.0f / 255.0f;
-				    
-				    Result.r = Square(Inv255*C.r);
-				    Result.g = Square(Inv255*C.g);
-				    Result.b = Square(Inv255*C.b);
-				    Result.a = Inv255*C.a;
+                    real32 Inv255 = 1.0f / 255.0f;
+                    
+                    Result.r = Square(Inv255*C.r);
+                    Result.g = Square(Inv255*C.g);
+                    Result.b = Square(Inv255*C.b);
+                    Result.a = Inv255*C.a;
 
-				    return(Result);
-				}
+                    return(Result);
+                }
 
-				inline v4
-				Linear1ToSRGB255(v4 C)
-				{
-				    v4 Result;
+                inline v4
+                Linear1ToSRGB255(v4 C)
+                {
+                    v4 Result;
 
-				    real32 One255 = 255.0f;
+                    real32 One255 = 255.0f;
 
-				    Result.r = One255*SquareRoot(C.r);
-				    Result.g = One255*SquareRoot(C.g);
-				    Result.b = One255*SquareRoot(C.b);
-				    Result.a = 255.0f*C.a;
+                    Result.r = One255*SquareRoot(C.r);
+                    Result.g = One255*SquareRoot(C.g);
+                    Result.b = One255*SquareRoot(C.b);
+                    Result.a = 255.0f*C.a;
 
-				    return(Result);
-				}
+                    return(Result);
+                }
 
 
 
@@ -465,8 +552,8 @@ so the we have the formula = (1-source alpha) * dest_r + premultipled_alpha_sour
                                 fY,
                                 Lerp(TexelC, fX, TexelD));
 
-                real32 RSA = Texel.a; 			           
-				                
+                real32 RSA = Texel.a;                      
+                                
                 v4 Dest = {(real32)((*Pixel >> 16) & 0xFF),
                            (real32)((*Pixel >> 8) & 0xFF),
                            (real32)((*Pixel >> 0) & 0xFF),
@@ -491,8 +578,8 @@ Casey mentions that he wants to start utilizing the Color argument that is passe
 
 
 so assuming we have our texel r, g, b. And if we want to tint this, we can add coefficients
-				
-				cr * r, cg * g, cb * b
+                
+                cr * r, cg * g, cb * b
 
 we essentially control how much red, green and blue we read out of our texture map
 
@@ -500,14 +587,14 @@ also we want the color that is passed in to be premultiplied with alpha as well,
 
 two major changes 
 
-                real32 RSA = Texel.a * Color.a;		
+                real32 RSA = Texel.a * Color.a;     
 and 
                 InvRSA*Dest.r + (Color.a * Color.r) * Texel.r
 
 
 so the full code is:
 
-				Color.a * Color.r
+                Color.a * Color.r
 
 
                 TexelA = SRGB255ToLinear1(TexelA);
@@ -519,8 +606,8 @@ so the full code is:
                                 fY,
                                 Lerp(TexelC, fX, TexelD));
 
-                real32 RSA = Texel.a * Color.a;		           
-				                
+                real32 RSA = Texel.a * Color.a;                
+                                
                 v4 Dest = {(real32)((*Pixel >> 16) & 0xFF),
                            (real32)((*Pixel >> 8) & 0xFF),
                            (real32)((*Pixel >> 0) & 0xFF),

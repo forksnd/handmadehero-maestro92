@@ -594,9 +594,9 @@ Casey says that its not a big deal, but its a cleaner separation of code.
 
 Q/A
 1:05:49
-how is V-sync controlled?
+how is Vsync controlled?
 
-In OpenGL, V-Sync is controlled through extension calls, we will conver this later. 
+In OpenGL, VSync is controlled through extension calls, we will conver this later. 
 
 
 1:10:16

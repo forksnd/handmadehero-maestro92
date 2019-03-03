@@ -14,9 +14,8 @@ the win32 platform side allocates memory for the game_render_commands, which wil
 
 the RenderGroup in the game code no longer allocates memory.
 
-
 Keyword:
-renderer, game architecture, openGL
+renderer, game architecture, openGL, memory
 
 
 0:51
@@ -248,7 +247,10 @@ taking a picture from day 88
 
 
 the RenderGroup needs some memory for all of its render elements.
-now all the responsibilities all goes to game_render_commands, so we now just create a render_group from the program stack memory.]
+now all the responsibilities all goes to game_render_commands, so we now just create a render_group from the program stack memory.
+
+again, our memory_arena is meant to replace the "new" allocator from the C runtime library. 
+we intially had to allocate memory for the array of render elements, now that memory will come from the win32 layer.]
 
 
 

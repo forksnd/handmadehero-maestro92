@@ -221,7 +221,7 @@ For example:
 
                 handmade_platform.h
     
-                #define PLATFORM_OPEN_FILE(name) platform_file_handle *name(platform_file_group *FileGroup)
+                #define PLATFORM_OPEN_FILE(name) platform_file_handle *name(platform_file_group *FileGroup)                 ;(this is added for syntax highlighting);
                 typedef PLATFORM_OPEN_FILE(platform_open_next_file);
 
 
@@ -243,7 +243,7 @@ platform_api is like a dispatch table.
 
 
 the #define and typedef are for 2 different things 
-we are doing the typedef for the pointer reason 
+we are doing the typedef for the function pointer reason 
 
 the #define is strictly for convenience.
 consider the case 
@@ -291,8 +291,8 @@ then you can have the following
                 typedef float (*pt2Func) (float, float);
 
 this typedef can be used to point to this doMulitplication function. 
-It is simply defining a pointer to a function which returns a float and takes two parameters, 
-each of type float. This definition has the friendly name pt2Func. 
+It is simply defining a pointer to a function which returns a float and takes two parameters, each of type float. 
+This definition has the friendly name pt2Func. 
 Note that pt2Func can point to ANY function which returns a float and takes in 2 floats.
 
 
@@ -329,7 +329,7 @@ back to Caseys code. if we dont have the #define, the translates to
 
 
 
-
+so thats how typedef works, now regarding why the #define makes this code convenient
 if casey wants to make a change, lets say we want to change platform_file_handle to platform_file_handle2
 with this #define, we only need to change one place.
 

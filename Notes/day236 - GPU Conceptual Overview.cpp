@@ -589,6 +589,11 @@ higher, that doesnt have much priviledge); to Ring 0.
 
 inside the ring 0 code, it will run code to kickoff our push buffer. 
 
+[for more details, read my "OpenGL Extension, Drivers and Glew" google doc, which contains annotations
+from Fabian the ryg blog, which explains how the Graphics pipeline work]
+
+
+
 50:45
 In summary, the mental model we should have is that, CPU has stuff in his memory space that he is building up with calls 
 to OpenGL. We will call the OpenGL, which will execute driver code to do this. 

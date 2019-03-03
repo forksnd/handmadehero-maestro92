@@ -119,29 +119,38 @@ So we can potentially interpret Alpha as "Coverage" values
 
 so if you can imagine an alpha-blended sprite with an opaque interior and transparent edge.
 the interior will have alpha values of 1. The outside will have alpha values of 0. The edges
-will have a varying alpha values. You can interpret the alpha as a percentage of the texel covered by the opaque 
-part of the sprite.
+will have a varying alpha values. see the pictures below:
 
-                 _____________
-                |# # # # # # #|
-                |# # # # # # #|
-                |# # # # # # #|
-                |# # # # # # #|
-                |# # # # # # #|
-                |#_#_#_#_#_#_#|
+You can interpret the alpha as a percentage of the texel covered by the opaque part of the sprite.
 
-so if a sprite has 0.5 alpha, it will only have 50% coverage. So you can understand alpha blending operation 
-as replacing all the covered parts with the new texel color, where as the non-covered parts (1 - alpha) to keep the 
-original color. Then you average the result.
+the alpha thing is the concept of converage, density, or population. Like for a particular texel, what percentage of this texel
+is populated by your RGB color. that is what the concept of alpha is
 
+its kind of like, within a province or region, how many of your population is asians, or caucasians 
+
+      _____________   _____________   _____________   _____________   _____________      
+     |             | |#   #   #   #| |# # # # # # #| |### ### ### #| |#############| 
+     |             | |  #   #   #  | |# # # # # # #| |# # # # # # #| |#############| 
+     |             | |#   #   #   #| |# # # # # # #| |### ### ### #| |#############| 
+     |             | |  #   #   #  | |# # # # # # #| |# # # # # # #| |#############| 
+     |             | |#   #   #   #| |# # # # # # #| |### ### ### #| |#############| 
+     |_____________| |__#___#___#__| |#_#_#_#_#_#_#| |#_#_#_#_#_#_#| |#############| 
+
+
+so if we take the middle texle, which has an alpha value of 0.5, it will only have 50% coverage. 
+
+So you can understand alpha blending operation as filing the empty coverage with the new texel color, 
+which is (1 - src alpha) * dst color;
+            
+then we add the original population which is alpha * src color             
+
+we add the two, and you get your alpha blending result.
 
 (if non-premultiplied);
                 src color * src alpha + (1 - src alpha) * dst color
 
 (if premultiplied);
                 src color + (1 - src alpha) * dst color
-
-
 
 
 

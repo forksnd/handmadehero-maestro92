@@ -8,7 +8,7 @@ in C when you want to declare a struct, you need to add the "struct" in front
 struct foo
 {
 	int x;
-}
+};
 
 struct foo Foo;
 
@@ -44,7 +44,7 @@ Windows typically keeps a few DCs
 
 when ppl need one, windows give them one, and they get one. When they are finished, they return it to Windows
 
-if you use CS_OWNDC, you won't have to deal with the overhead of request and releasing DC. 
+if you use CS_OWNDC, you wont have to deal with the overhead of request and releasing DC. 
 
 
 

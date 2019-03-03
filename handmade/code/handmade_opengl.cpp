@@ -97,7 +97,7 @@ OpenGLDisplayBitmap(s32 Width, s32 Height, void *Memory, int Pitch,
 // TODO(casey): Get rid of this
 global_variable u32 TextureBindCount = 0;
 internal void
-OpenGLRenderGroupToOutput(game_render_commands *Commands, s32 WindowWidth, s32 WindowHeight)
+OpenGLRenderCommands(game_render_commands *Commands, s32 WindowWidth, s32 WindowHeight)
 {    
     glViewport(0, 0, Commands->Width, Commands->Height);
 
@@ -151,7 +151,7 @@ OpenGLRenderGroupToOutput(game_render_commands *Commands, s32 WindowWidth, s32 W
                     Entry->Bitmap->Handle = ++TextureBindCount;
                     glBindTexture(GL_TEXTURE_2D, Entry->Bitmap->Handle);
 
-                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, Entry->Bitmap->Width, Entry->Bitmap->Height, 0,
+                    glTexImage2D(GL_TEXTURE_2D, 0, OpenGLDefaultInternalTextureFormat, Entry->Bitmap->Width, Entry->Bitmap->Height, 0,
                                  GL_BGRA_EXT, GL_UNSIGNED_BYTE, Entry->Bitmap->Memory);
     
                     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
