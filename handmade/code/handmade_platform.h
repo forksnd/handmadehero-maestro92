@@ -103,7 +103,7 @@ typedef uint64 u64;
 typedef real32 r32;
 typedef real64 r64;
 
-typedef u64 umm;
+typedef uintptr_t umm;
 
 #define PointerToU32(Pointer) ((u32)(memory_index)(Pointer))
     
@@ -623,7 +623,7 @@ inline u32 GetThreadID(void)
 #else
 // TODO(casey): Other compilers/platforms??
 #endif
-
+    
 #include "handmade_debug_interface.h"
 
 #define HANDMADE_PLATFORM_H
