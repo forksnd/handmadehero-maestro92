@@ -560,6 +560,8 @@ so the model of execution what you have to think of is:
 let say we have handmade hero in our memory, and we have OpenGL32.dll, system drivers code mapped to our address space.
 The CPU is executing instructions from our handmade hero executable. 
 
+[for the confusion of OpenGL32.dll vs openGL32.lib, refer to my OpenGL drivers google doc]
+
 
                 Memory
              ___________________
