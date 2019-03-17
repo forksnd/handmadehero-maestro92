@@ -274,16 +274,16 @@ for example you may see the bottom half moving ahead of the upper half
 
          _______________________
         |                       |
-        |      ######           |
-        |      ######           |
+        |      111111           |
+        |      111111           |
         |-----------------------|
-        |       ######          |
-        |       ######          |
-        |       ######          |
+        |       222222          |
+        |       222222          |
+        |       222222          |
         |                       |
         |_______________________|
 
-the bottom half is from the current frame and the upper half is from the next frame
+the bottom half is from the new frame and the upper half is from the old frame
 
 so this is what vsync means. We certainly want our game to prevent tearing, and we also want our game to have steady timing,
 so our timing is synced with the video properly.
