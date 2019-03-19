@@ -1,4 +1,4 @@
-Handmade Hero Chat 006
+Handmade Hero Chat 006 - Error-based Drawing Algorithms
 
 1:05
 talks about what Bresenham is 
