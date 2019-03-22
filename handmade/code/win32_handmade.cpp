@@ -47,6 +47,14 @@ global_variable b32 DEBUGGlobalShowCursor;
 global_variable WINDOWPLACEMENT GlobalWindowPosition = {sizeof(GlobalWindowPosition)};
 global_variable GLuint GlobalBlitTextureHandle;
 
+
+typedef HGLRC WINAPI wgl_create_context_attribts_arb(HDC hDC, HGLRC hShareContext,
+    const int *attribList);
+
+global_variable HGLRC GlobalOpenGLRC;
+global_variable HDC GlobalDC;
+global_variable wgl_create_context_attribts_arb *wglCreateContextAttribsARB;
+
 global_variable GLuint OpenGLDefaultInternalTextureFormat;
 
 #include "handmade_opengl.cpp"
@@ -79,16 +87,13 @@ typedef DIRECT_SOUND_CREATE(direct_sound_create);
 typedef BOOL WINAPI wgl_swap_interval_ext(int interval);
 global_variable wgl_swap_interval_ext *wglSwapInterval;
 
-typedef HGLRC WINAPI wgl_create_context_attribts_arb(HDC hDC, HGLRC hShareContext,
-                                                     const int *attribList);
-
 internal void
 CatStrings(size_t SourceACount, char *SourceA,
            size_t SourceBCount, char *SourceB,
            size_t DestCount, char *Dest)
 {
     // TODO(casey): Dest bounds checking!
-    
+
     for(int Index = 0;
         Index < SourceACount;
         ++Index)
@@ -145,7 +150,7 @@ DEBUG_PLATFORM_FREE_FILE_MEMORY(DEBUGPlatformFreeFileMemory)
 DEBUG_PLATFORM_READ_ENTIRE_FILE(DEBUGPlatformReadEntireFile)
 {
     debug_read_file_result Result = {};
-    
+
     HANDLE FileHandle = CreateFileA(Filename, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
     if(FileHandle != INVALID_HANDLE_VALUE)
     {
@@ -193,7 +198,7 @@ DEBUG_PLATFORM_READ_ENTIRE_FILE(DEBUGPlatformReadEntireFile)
 DEBUG_PLATFORM_WRITE_ENTIRE_FILE(DEBUGPlatformWriteEntireFile)
 {
     bool32 Result = false;
-    
+
     HANDLE FileHandle = CreateFileA(Filename, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0, 0);
     if(FileHandle != INVALID_HANDLE_VALUE)
     {
@@ -221,12 +226,12 @@ DEBUG_PLATFORM_WRITE_ENTIRE_FILE(DEBUGPlatformWriteEntireFile)
 DEBUG_PLATFORM_EXECUTE_SYSTEM_COMMAND(DEBUGExecuteSystemCommand)
 {
     debug_executing_process Result = {};
-    
+
     STARTUPINFO StartupInfo = {};
     StartupInfo.cb = sizeof(StartupInfo);
     StartupInfo.dwFlags = STARTF_USESHOWWINDOW;
     StartupInfo.wShowWindow = SW_HIDE;
-    
+
     PROCESS_INFORMATION ProcessInfo = {};    
     if(CreateProcess(Command,
                      CommandLine,
@@ -302,16 +307,16 @@ Win32LoadGameCode(char *SourceDLLName, char *TempDLLName, char *LockFileName)
         Result.DLLLastWriteTime = Win32GetLastWriteTime(SourceDLLName);
 
         CopyFile(SourceDLLName, TempDLLName, FALSE);
-    
+
         Result.GameCodeDLL = LoadLibraryA(TempDLLName);
         if(Result.GameCodeDLL)
         {
             Result.UpdateAndRender = (game_update_and_render *)
                 GetProcAddress(Result.GameCodeDLL, "GameUpdateAndRender");
-        
+
             Result.GetSoundSamples = (game_get_sound_samples *)
                 GetProcAddress(Result.GameCodeDLL, "GameGetSoundSamples");
-        
+
             Result.DEBUGFrameEnd = (debug_game_frame_end *)
                 GetProcAddress(Result.GameCodeDLL, "DEBUGGameFrameEnd");
 
@@ -353,13 +358,13 @@ Win32LoadXInput(void)
         // TODO(casey): Diagnostic
         XInputLibrary = LoadLibraryA("xinput9_1_0.dll");
     }
-    
+
     if(!XInputLibrary)
     {
         // TODO(casey): Diagnostic
         XInputLibrary = LoadLibraryA("xinput1_3.dll");
     }
-    
+
     if(XInputLibrary)
     {
         XInputGetState = (x_input_get_state *)GetProcAddress(XInputLibrary, "XInputGetState");
@@ -460,6 +465,36 @@ Win32InitDSound(HWND Window, int32 SamplesPerSecond, int32 BufferSize)
     }
 }
 
+int Win32OpenGLAttribs[] =
+{
+    WGL_CONTEXT_MAJOR_VERSION_ARB, 3,
+    WGL_CONTEXT_MINOR_VERSION_ARB, 0,
+    WGL_CONTEXT_FLAGS_ARB, 0 // NOTE(casey): Enable for testing WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB
+#if HANDMADE_INTERNAL
+    |WGL_CONTEXT_DEBUG_BIT_ARB
+#endif
+    ,
+    WGL_CONTEXT_PROFILE_MASK_ARB, WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB,
+    0,
+};
+internal void
+Win32CreateOpenGLContextForWorkerThread(void)
+{
+    if(wglCreateContextAttribsARB)
+    {
+        HDC WindowDC = GlobalDC;
+        HGLRC ShareContext = GlobalOpenGLRC;
+        HGLRC ModernGLRC = wglCreateContextAttribsARB(WindowDC, ShareContext, Win32OpenGLAttribs);
+        if(ModernGLRC)
+        {
+            if(wglMakeCurrent(WindowDC, ModernGLRC))
+            {
+                // TODO(casey): Fatal error?
+            }
+        }
+    }
+}
+
 internal void
 Win32InitOpenGL(HWND Window)
 {
@@ -486,32 +521,19 @@ Win32InitOpenGL(HWND Window)
     DescribePixelFormat(WindowDC, SuggestedPixelFormatIndex,
                         sizeof(SuggestedPixelFormat), &SuggestedPixelFormat);
     SetPixelFormat(WindowDC, SuggestedPixelFormatIndex, &SuggestedPixelFormat);
-    
+
     HGLRC OpenGLRC = wglCreateContext(WindowDC);
     if(wglMakeCurrent(WindowDC, OpenGLRC))        
     {
         b32 ModernContext = false;
-        
-        wgl_create_context_attribts_arb *wglCreateContextAttribsARB =
+
+        wglCreateContextAttribsARB =
             (wgl_create_context_attribts_arb *)wglGetProcAddress("wglCreateContextAttribsARB");
         if(wglCreateContextAttribsARB)
         {
             // NOTE(casey): This is a modern version of OpenGL
-            int Attribs[] =
-            {
-                WGL_CONTEXT_MAJOR_VERSION_ARB, 3,
-                WGL_CONTEXT_MINOR_VERSION_ARB, 0,
-                WGL_CONTEXT_FLAGS_ARB, 0 // NOTE(casey): Enable for testing WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB
-#if HANDMADE_INTERNAL
-                |WGL_CONTEXT_DEBUG_BIT_ARB
-#endif
-                ,
-                WGL_CONTEXT_PROFILE_MASK_ARB, WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB,
-                0,
-            };
-                
             HGLRC ShareContext = 0;
-            HGLRC ModernGLRC = wglCreateContextAttribsARB(WindowDC, ShareContext, Attribs);
+            HGLRC ModernGLRC = wglCreateContextAttribsARB(WindowDC, ShareContext, Win32OpenGLAttribs);
             if(ModernGLRC)
             {
                 if(wglMakeCurrent(WindowDC, ModernGLRC))
@@ -519,6 +541,7 @@ Win32InitOpenGL(HWND Window)
                     ModernContext = true;
                     wglDeleteContext(OpenGLRC);
                     OpenGLRC = ModernGLRC;
+                    GlobalOpenGLRC = OpenGLRC;
                 }
             }
         }
@@ -528,7 +551,7 @@ Win32InitOpenGL(HWND Window)
         }
 
         OpenGLInit(ModernContext);
-        
+
         wglSwapInterval = (wgl_swap_interval_ext *)wglGetProcAddress("wglSwapIntervalEXT");
         if(wglSwapInterval)
         {
@@ -540,14 +563,15 @@ Win32InitOpenGL(HWND Window)
         InvalidCodePath;
         // TODO(casey): Diagnostic
     }
-    ReleaseDC(Window, WindowDC);
+
+    GlobalDC = WindowDC;
 }
 
 internal win32_window_dimension
 Win32GetWindowDimension(HWND Window)
 {
     win32_window_dimension Result;
-    
+
     RECT ClientRect;
     GetClientRect(Window, &ClientRect);
     Result.Width = ClientRect.right - ClientRect.left;
@@ -627,7 +651,7 @@ Win32DisplayBufferInWindow(platform_work_queue *RenderQueue, game_render_command
         else
         {
             // TODO(casey): Centering / black bars?
-    
+
             if((WindowWidth >= GlobalBackbuffer.Width*2) &&
                (WindowHeight >= GlobalBackbuffer.Height*2))
             {
@@ -652,7 +676,7 @@ Win32DisplayBufferInWindow(platform_work_queue *RenderQueue, game_render_command
                 int OffsetX = 0;
                 int OffsetY = 0;
 #endif
-    
+
                 // NOTE(casey): For prototyping purposes, we're going to always blit
                 // 1-to-1 pixels to make sure we don't introduce artifacts with
                 // stretching while we are learning to code the renderer!
@@ -685,7 +709,7 @@ Win32FadeWindowCallback(HWND Window,
         case WM_CLOSE:
         {
         } break;
-        
+
         case WM_SETCURSOR:
         {
             SetCursor(0);
@@ -696,7 +720,7 @@ Win32FadeWindowCallback(HWND Window,
             Result = DefWindowProcA(Window, Message, WParam, LParam);
         } break;
     }
-    
+
     return(Result);
 }
 
@@ -727,7 +751,7 @@ Win32MainWindowCallback(HWND Window,
                 SetCursor(0);
             }
         } break;
-        
+
         case WM_ACTIVATEAPP:
         {
 #if 0
@@ -755,7 +779,7 @@ Win32MainWindowCallback(HWND Window,
         {
             Assert(!"Keyboard input came in through a non-dispatch message!");
         } break;
-        
+
         case WM_PAINT:
         {
             PAINTSTRUCT Paint;
@@ -774,7 +798,7 @@ Win32MainWindowCallback(HWND Window,
             Result = DefWindowProcA(Window, Message, WParam, LParam);
         } break;
     }
-    
+
     return(Result);
 }
 
@@ -798,7 +822,7 @@ Win32ClearBuffer(win32_sound_output *SoundOutput)
         {
             *DestSample++ = 0;
         }
-        
+
         DestSample = (uint8 *)Region2;
         for(DWORD ByteIndex = 0;
             ByteIndex < Region2Size;
@@ -926,7 +950,7 @@ Win32BeginRecordingInput(win32_state *State, int InputRecordingIndex)
         FilePosition.QuadPart = State->TotalSize;
         SetFilePointerEx(State->RecordingHandle, FilePosition, 0, FILE_BEGIN);
 #endif
-        
+
         CopyMemory(ReplayBuffer->MemoryBlock, State->GameMemoryBlock, State->TotalSize);
     }
 }
@@ -955,7 +979,7 @@ Win32BeginInputPlayBack(win32_state *State, int InputPlayingIndex)
         FilePosition.QuadPart = State->TotalSize;
         SetFilePointerEx(State->PlaybackHandle, FilePosition, 0, FILE_BEGIN);
 #endif
-        
+
         CopyMemory(State->GameMemoryBlock, ReplayBuffer->MemoryBlock, State->TotalSize);
     }
 }
@@ -997,7 +1021,7 @@ ToggleFullscreen(HWND Window)
     // NOTE(casey): This follows Raymond Chen's prescription
     // for fullscreen toggling, see:
     // http://blogs.msdn.com/b/oldnewthing/archive/2010/04/12/9994016.aspx
-    
+
     DWORD Style = GetWindowLong(Window, GWL_STYLE);
     if(Style & WS_OVERLAPPEDWINDOW)
     {
@@ -1035,7 +1059,7 @@ Win32ProcessPendingMessages(win32_state *State, game_controller_input *KeyboardC
             {
                 GlobalRunning = false;
             } break;
-            
+
             case WM_SYSKEYDOWN:
             case WM_SYSKEYUP:
             case WM_KEYDOWN:
@@ -1218,7 +1242,7 @@ Win32DebugDrawVertical(win32_offscreen_buffer *Backbuffer,
     {
         Bottom = Backbuffer->Height;
     }
-    
+
     if((X >= 0) && (X < Backbuffer->Width))
     {
         uint8 *Pixel = ((uint8 *)Backbuffer->Memory +
@@ -1255,7 +1279,7 @@ Win32DebugSyncDisplay(win32_offscreen_buffer *Backbuffer,
     int PadY = 16;
 
     int LineHeight = 64;
-    
+
     real32 C = (real32)(Backbuffer->Width - 2*PadX) / (real32)SoundOutput->SecondaryBufferSize;
     for(int MarkerIndex = 0;
         MarkerIndex < MarkerCount;
@@ -1282,7 +1306,7 @@ Win32DebugSyncDisplay(win32_offscreen_buffer *Backbuffer,
             Bottom += LineHeight+PadY;
 
             int FirstTop = Top;
-            
+
             Win32DrawSoundBufferMarker(Backbuffer, SoundOutput, C, PadX, Top, Bottom, ThisMarker->OutputPlayCursor, PlayColor);
             Win32DrawSoundBufferMarker(Backbuffer, SoundOutput, C, PadX, Top, Bottom, ThisMarker->OutputWriteCursor, WriteColor);
 
@@ -1297,7 +1321,7 @@ Win32DebugSyncDisplay(win32_offscreen_buffer *Backbuffer,
 
             Win32DrawSoundBufferMarker(Backbuffer, SoundOutput, C, PadX, FirstTop, Bottom, ThisMarker->ExpectedFlipPlayCursor, ExpectedFlipColor);
         }        
-        
+
         Win32DrawSoundBufferMarker(Backbuffer, SoundOutput, C, PadX, Top, Bottom, ThisMarker->FlipPlayCursor, PlayColor);
         Win32DrawSoundBufferMarker(Backbuffer, SoundOutput, C, PadX, Top, Bottom, ThisMarker->FlipPlayCursor + 480*SoundOutput->BytesPerSample, PlayWindowColor);
         Win32DrawSoundBufferMarker(Backbuffer, SoundOutput, C, PadX, Top, Bottom, ThisMarker->FlipWriteCursor, WriteColor);
@@ -1316,12 +1340,14 @@ struct platform_work_queue
 {
     uint32 volatile CompletionGoal;
     uint32 volatile CompletionCount;
-    
+
     uint32 volatile NextEntryToWrite;
     uint32 volatile NextEntryToRead;
     HANDLE SemaphoreHandle;
 
     platform_work_queue_entry Entries[256];
+
+    bool32 NeedsOpenGL;
 };
 
 internal void
@@ -1386,7 +1412,12 @@ ThreadProc(LPVOID lpParameter)
 
     u32 TestThreadID = GetThreadID();
     Assert(TestThreadID == GetCurrentThreadId());
-    
+
+    if(Queue->NeedsOpenGL)
+    {
+        Win32CreateOpenGLContextForWorkerThread();
+    }
+
     for(;;)
     {
         if(Win32DoNextWorkQueueEntry(Queue))
@@ -1410,7 +1441,7 @@ Win32MakeQueue(platform_work_queue *Queue, uint32 ThreadCount)
 {
     Queue->CompletionGoal = 0;
     Queue->CompletionCount = 0;
-    
+
     Queue->NextEntryToWrite = 0;
     Queue->NextEntryToRead = 0;
 
@@ -1443,7 +1474,7 @@ struct win32_platform_file_group
 internal PLATFORM_GET_ALL_FILE_OF_TYPE_BEGIN(Win32GetAllFilesOfTypeBegin)
 {
     platform_file_group Result = {};
-    
+
     // TODO(casey): If we want, someday, make an actual arena used by Win32
     win32_platform_file_group *Win32FileGroup = (win32_platform_file_group *)VirtualAlloc(
         0, sizeof(win32_platform_file_group),
@@ -1465,7 +1496,7 @@ internal PLATFORM_GET_ALL_FILE_OF_TYPE_BEGIN(Win32GetAllFilesOfTypeBegin)
 
         InvalidDefaultCase;
     }
-    
+
     Result.FileCount = 0;
 
     WIN32_FIND_DATAW FindData;
@@ -1473,7 +1504,7 @@ internal PLATFORM_GET_ALL_FILE_OF_TYPE_BEGIN(Win32GetAllFilesOfTypeBegin)
     while(FindHandle != INVALID_HANDLE_VALUE)
     {
         ++Result.FileCount;
-        
+
         if(!FindNextFileW(FindHandle, &FindData))
         {
             break;
@@ -1482,7 +1513,7 @@ internal PLATFORM_GET_ALL_FILE_OF_TYPE_BEGIN(Win32GetAllFilesOfTypeBegin)
     FindClose(FindHandle);
 
     Win32FileGroup->FindHandle = FindFirstFileW(WildCard, &Win32FileGroup->FindData);
-    
+
     return(Result);
 }
 
@@ -1516,14 +1547,14 @@ internal PLATFORM_OPEN_FILE(Win32OpenNextFile)
             Win32Handle->Win32Handle = CreateFileW(FileName, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
             Result.NoErrors = (Win32Handle->Win32Handle != INVALID_HANDLE_VALUE);
         }
-        
+
         if(!FindNextFileW(Win32FileGroup->FindHandle, &Win32FileGroup->FindData))
         {
             FindClose(Win32FileGroup->FindHandle);
             Win32FileGroup->FindHandle = INVALID_HANDLE_VALUE;
         }
     }
-    
+
     return(Result);
 }
 
@@ -1534,7 +1565,7 @@ internal PLATFORM_FILE_ERROR(Win32FileError)
     OutputDebugString(Message);
     OutputDebugString("\n");
 #endif
-    
+
     Handle->NoErrors = false;
 }
 
@@ -1546,9 +1577,9 @@ internal PLATFORM_READ_DATA_FROM_FILE(Win32ReadDataFromFile)
         OVERLAPPED Overlapped = {};
         Overlapped.Offset = (u32)((Offset >> 0) & 0xFFFFFFFF);
         Overlapped.OffsetHigh = (u32)((Offset >> 32) & 0xFFFFFFFF);
-    
+
         uint32 FileSize32 = SafeTruncateUInt64(Size);
-    
+
         DWORD BytesRead;
         if(ReadFile(Handle->Win32Handle, Dest, FileSize32, &BytesRead, &Overlapped) &&
            (FileSize32 == BytesRead))
@@ -1677,7 +1708,7 @@ UpdateFade(win32_fader *Fader, r32 dt, HWND GameWindow)
                 ShowWindow(GameWindow, SW_SHOW);
                 InvalidateRect(GameWindow, 0, TRUE);
                 UpdateWindow(GameWindow);
-                
+
                 Fader->State = Win32Fade_WaitingForShow;
             }
             else
@@ -1712,7 +1743,7 @@ UpdateFade(win32_fader *Fader, r32 dt, HWND GameWindow)
                 Fader->Alpha += dt;
             }
         } break;
-        
+
         case Win32Fade_FadingOut:
         {
             Fader->Alpha -= dt;
@@ -1749,38 +1780,6 @@ WinMain(HINSTANCE Instance,
 {
     win32_state Win32State = {};
 
-    platform_work_queue HighPriorityQueue = {};
-    Win32MakeQueue(&HighPriorityQueue, 6);
-    
-    platform_work_queue LowPriorityQueue = {};
-    Win32MakeQueue(&LowPriorityQueue, 2);
-
-#if 0
-    Win32AddEntry(&Queue, DoWorkerWork, "String A0");
-    Win32AddEntry(&Queue, DoWorkerWork, "String A1");
-    Win32AddEntry(&Queue, DoWorkerWork, "String A2");
-    Win32AddEntry(&Queue, DoWorkerWork, "String A3");
-    Win32AddEntry(&Queue, DoWorkerWork, "String A4");
-    Win32AddEntry(&Queue, DoWorkerWork, "String A5");
-    Win32AddEntry(&Queue, DoWorkerWork, "String A6");
-    Win32AddEntry(&Queue, DoWorkerWork, "String A7");
-    Win32AddEntry(&Queue, DoWorkerWork, "String A8");
-    Win32AddEntry(&Queue, DoWorkerWork, "String A9");
-    
-    Win32AddEntry(&Queue, DoWorkerWork, "String B0");
-    Win32AddEntry(&Queue, DoWorkerWork, "String B1");
-    Win32AddEntry(&Queue, DoWorkerWork, "String B2");
-    Win32AddEntry(&Queue, DoWorkerWork, "String B3");
-    Win32AddEntry(&Queue, DoWorkerWork, "String B4");
-    Win32AddEntry(&Queue, DoWorkerWork, "String B5");
-    Win32AddEntry(&Queue, DoWorkerWork, "String B6");
-    Win32AddEntry(&Queue, DoWorkerWork, "String B7");
-    Win32AddEntry(&Queue, DoWorkerWork, "String B8");
-    Win32AddEntry(&Queue, DoWorkerWork, "String B9");
-
-    Win32CompleteAllWork(&Queue);
-#endif
-    
     LARGE_INTEGER PerfCountFrequencyResult;
     QueryPerformanceFrequency(&PerfCountFrequencyResult);
     GlobalPerfCountFrequency = PerfCountFrequencyResult.QuadPart;
@@ -1803,17 +1802,17 @@ WinMain(HINSTANCE Instance,
     // so that our Sleep() can be more granular.
     UINT DesiredSchedulerMS = 1;
     bool32 SleepIsGranular = (timeBeginPeriod(DesiredSchedulerMS) == TIMERR_NOERROR);
-    
+
     Win32LoadXInput();
 
     win32_fader Fader;
     InitFader(&Fader, Instance);
-    
+
 #if HANDMADE_INTERNAL
     DEBUGGlobalShowCursor = true;
 #endif
     WNDCLASSA WindowClass = {};
-        
+
     /* NOTE(casey): 1080p display mode is 1920x1080 -> Half of that is 960x540
        1920 -> 2048 = 2048-1920 -> 128 pixels
        1080 -> 2048 = 2048-1080 -> pixels 968
@@ -1822,7 +1821,7 @@ WinMain(HINSTANCE Instance,
 //    Win32ResizeDIBSection(&GlobalBackbuffer, 960, 540);
     Win32ResizeDIBSection(&GlobalBackbuffer, 1920, 1080);
 //    Win32ResizeDIBSection(&GlobalBackbuffer, 1279, 719);
-    
+
     WindowClass.style = CS_HREDRAW|CS_VREDRAW;
     WindowClass.lpfnWndProc = Win32MainWindowCallback;
     WindowClass.hInstance = Instance;
@@ -1830,7 +1829,7 @@ WinMain(HINSTANCE Instance,
     WindowClass.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
 //    WindowClass.hIcon;
     WindowClass.lpszClassName = "HandmadeHeroWindowClass";
-    
+
     if(RegisterClassA(&WindowClass))
     {
         HWND Window =
@@ -1851,7 +1850,14 @@ WinMain(HINSTANCE Instance,
         {
             ToggleFullscreen(Window);
             Win32InitOpenGL(Window);
-            
+
+            platform_work_queue HighPriorityQueue = {};
+            Win32MakeQueue(&HighPriorityQueue, 6);
+
+            platform_work_queue LowPriorityQueue = {};
+            LowPriorityQueue.NeedsOpenGL = true;
+            Win32MakeQueue(&LowPriorityQueue, 2);
+
             win32_sound_output SoundOutput = {};
 
             // TODO(casey): How do we reliably query on this on Windows?
@@ -1901,20 +1907,20 @@ WinMain(HINSTANCE Instance,
                 OutputDebugStringA(TextBuffer);
             }
 #endif
-            
+
             // TODO(casey): Pool with bitmap VirtualAlloc
             // TODO(casey): Remove MaxPossibleOverrun?
             u32 MaxPossibleOverrun = 2*8*sizeof(u16);
             int16 *Samples = (int16 *)VirtualAlloc(0, SoundOutput.SecondaryBufferSize + MaxPossibleOverrun,
                                                    MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
 
-            
+
 #if HANDMADE_INTERNAL
             LPVOID BaseAddress = (LPVOID)Terabytes(2);
 #else
             LPVOID BaseAddress = 0;
 #endif
-            
+
             game_memory GameMemory = {};
             GameMemory.PermanentStorageSize = Megabytes(256);
             GameMemory.TransientStorageSize = Gigabytes(1);
@@ -1923,7 +1929,7 @@ WinMain(HINSTANCE Instance,
             GameMemory.LowPriorityQueue = &LowPriorityQueue;
             GameMemory.PlatformAPI.AddEntry = Win32AddEntry;
             GameMemory.PlatformAPI.CompleteAllWork = Win32CompleteAllWork;
-            
+
             GameMemory.PlatformAPI.GetAllFilesOfTypeBegin = Win32GetAllFilesOfTypeBegin;
             GameMemory.PlatformAPI.GetAllFilesOfTypeEnd = Win32GetAllFilesOfTypeEnd;
             GameMemory.PlatformAPI.OpenNextFile = Win32OpenNextFile;
@@ -1942,7 +1948,7 @@ WinMain(HINSTANCE Instance,
 #endif
 
             Platform = GameMemory.PlatformAPI;
-    
+
             // TODO(casey): Handle various memory footprints (USING
             // SYSTEM METRICS)
 
@@ -1973,7 +1979,7 @@ WinMain(HINSTANCE Instance,
                 // TODO(casey): Recording system still seems to take too long
                 // on record start - find out what Windows is doing and if
                 // we can speed up / defer some of that processing.
-                
+
                 Win32GetInputFileLocation(&Win32State, false, ReplayIndex,
                                           sizeof(ReplayBuffer->FileName), ReplayBuffer->FileName);
 
@@ -2003,7 +2009,7 @@ WinMain(HINSTANCE Instance,
                 game_input Input[2] = {};
                 game_input *NewInput = &Input[0];
                 game_input *OldInput = &Input[1];
-    
+
                 LARGE_INTEGER LastCounter = Win32GetWallClock();
                 LARGE_INTEGER FlipWallClock = Win32GetWallClock();
 
@@ -2022,7 +2028,7 @@ WinMain(HINSTANCE Instance,
                     //
                     //
                     //
-                    
+
                     BEGIN_BLOCK(ExecutableRefresh);
                     NewInput->dtForFrame = TargetSecondsPerFrame;
 
@@ -2030,7 +2036,7 @@ WinMain(HINSTANCE Instance,
                     {
                         GlobalRunning = false;
                     }
-                    
+
                     GameMemory.ExecutableReloaded = false;                    
                     FILETIME NewDLLWriteTime = Win32GetLastWriteTime(SourceGameCodeDLLFullPath);
                     if(CompareFileTime(&NewDLLWriteTime, &Game.DLLLastWriteTime) != 0)
@@ -2054,7 +2060,7 @@ WinMain(HINSTANCE Instance,
                     //
 
                     BEGIN_BLOCK(InputProcessing);
-                    
+
                     // TODO(casey): Zeroing macro
                     // TODO(casey): We can't zero everything because the up/down state will
                     // be wrong!!!
@@ -2102,7 +2108,7 @@ WinMain(HINSTANCE Instance,
                             Win32ProcessKeyboardMessage(&NewInput->MouseButtons[ButtonIndex],
                                                         GetKeyState(WinButtonID[ButtonIndex]) & (1 << 15));
                         }
-                        
+
                         // TODO(casey): Need to not poll disconnected controllers to avoid
                         // xinput frame rate hit on older libraries...
                         // TODO(casey): Should we poll this more frequently
@@ -2111,7 +2117,7 @@ WinMain(HINSTANCE Instance,
                         {
                             MaxControllerCount = (ArrayCount(NewInput->Controllers) - 1);
                         }
-                
+
                         for (DWORD ControllerIndex = 0;
                              ControllerIndex < MaxControllerCount;
                              ++ControllerIndex)
@@ -2119,13 +2125,13 @@ WinMain(HINSTANCE Instance,
                             DWORD OurControllerIndex = ControllerIndex + 1;
                             game_controller_input *OldController = GetController(OldInput, OurControllerIndex);
                             game_controller_input *NewController = GetController(NewInput, OurControllerIndex);
-                    
+
                             XINPUT_STATE ControllerState;
                             if(XInputGetState(ControllerIndex, &ControllerState) == ERROR_SUCCESS)
                             {
                                 NewController->IsConnected = true;
                                 NewController->IsAnalog = OldController->IsAnalog;
-                           
+
                                 // NOTE(casey): This controller is plugged in
                                 // TODO(casey): See if ControllerState.dwPacketNumber increments too rapidly
                                 XINPUT_GAMEPAD *Pad = &ControllerState.Gamepad;
@@ -2148,19 +2154,19 @@ WinMain(HINSTANCE Instance,
                                     NewController->StickAverageY = 1.0f;
                                     NewController->IsAnalog = false;
                                 }
-                            
+
                                 if(Pad->wButtons & XINPUT_GAMEPAD_DPAD_DOWN)
                                 {
                                     NewController->StickAverageY = -1.0f;
                                     NewController->IsAnalog = false;
                                 }
-                            
+
                                 if(Pad->wButtons & XINPUT_GAMEPAD_DPAD_LEFT)
                                 {
                                     NewController->StickAverageX = -1.0f;
                                     NewController->IsAnalog = false;
                                 }
-                            
+
                                 if(Pad->wButtons & XINPUT_GAMEPAD_DPAD_RIGHT)
                                 {
                                     NewController->StickAverageX = 1.0f;
@@ -2230,7 +2236,7 @@ WinMain(HINSTANCE Instance,
                         PushBufferSize, PushBuffer,
                         GlobalBackbuffer.Width,
                         GlobalBackbuffer.Height);
-                    
+
                     game_offscreen_buffer Buffer = {};
                     Buffer.Memory = GlobalBackbuffer.Memory;
                     Buffer.Width = GlobalBackbuffer.Width; 
@@ -2275,7 +2281,7 @@ WinMain(HINSTANCE Instance,
                     //
 
                     BEGIN_BLOCK(AudioUpdate);
-                    
+
                     if(!GlobalPause)
                     {
                         LARGE_INTEGER AudioWallClock = Win32GetWallClock();
@@ -2292,7 +2298,7 @@ WinMain(HINSTANCE Instance,
                                We define a safety value that is the number
                                of samples we think our game update loop
                                may vary by (let's say up to 2ms)
-                       
+
                                When we wake up to write audio, we will look
                                and see what the play cursor position is and we
                                will forecast ahead where we think the play
@@ -2327,7 +2333,7 @@ WinMain(HINSTANCE Instance,
                             DWORD ExpectedBytesUntilFlip = (DWORD)((SecondsLeftUntilFlip/TargetSecondsPerFrame)*(real32)ExpectedSoundBytesPerFrame);
 
                             DWORD ExpectedFrameBoundaryByte = PlayCursor + ExpectedBytesUntilFlip;
-                        
+
                             DWORD SafeWriteCursor = WriteCursor;
                             if(SafeWriteCursor < PlayCursor)
                             {
@@ -2335,7 +2341,7 @@ WinMain(HINSTANCE Instance,
                             }
                             Assert(SafeWriteCursor >= PlayCursor);
                             SafeWriteCursor += SoundOutput.SafetyBytes;
-                        
+
                             bool32 AudioCardIsLowLatency = (SafeWriteCursor < ExpectedFrameBoundaryByte);                        
 
                             DWORD TargetCursor = 0;
@@ -2349,7 +2355,7 @@ WinMain(HINSTANCE Instance,
                                                 SoundOutput.SafetyBytes);
                             }
                             TargetCursor = (TargetCursor % SoundOutput.SecondaryBufferSize);
-                        
+
                             DWORD BytesToWrite = 0;
                             if(ByteToLock > TargetCursor)
                             {
@@ -2411,7 +2417,7 @@ WinMain(HINSTANCE Instance,
                     //
                     //
                     //
-                    
+
 #if HANDMADE_INTERNAL
                     BEGIN_BLOCK(DebugCollation);
 
@@ -2423,7 +2429,7 @@ WinMain(HINSTANCE Instance,
 
                     END_BLOCK(DebugCollation);
 #endif
-                    
+
                     //
                     //
                     //
@@ -2450,14 +2456,14 @@ WinMain(HINSTANCE Instance,
                                     Sleep(SleepMS);
                                 }
                             }
-                        
+
                             real32 TestSecondsElapsedForFrame = Win32GetSecondsElapsed(LastCounter,
                                                                                        Win32GetWallClock());
                             if(TestSecondsElapsedForFrame < TargetSecondsPerFrame)
                             {
                                 // TODO(casey): LOG MISSED SLEEP HERE
                             }
-                        
+
                             while(SecondsElapsedForFrame < TargetSecondsPerFrame)
                             {                            
                                 SecondsElapsedForFrame = Win32GetSecondsElapsed(LastCounter,
@@ -2473,13 +2479,13 @@ WinMain(HINSTANCE Instance,
 
                     END_BLOCK(FramerateWait);
 #endif
-                    
+
                     //
                     //
                     //
 
                     BEGIN_BLOCK(FrameDisplay);
-                    
+
                     umm NeededSortMemorySize = RenderCommands.PushBufferElementCount * sizeof(tile_sort_entry);
                     if(CurrentSortMemorySize < NeededSortMemorySize)
                     {
@@ -2487,7 +2493,7 @@ WinMain(HINSTANCE Instance,
                         CurrentSortMemorySize = NeededSortMemorySize;
                         SortMemory = Win32AllocateMemory(CurrentSortMemorySize);
                     }
-                    
+
                     win32_window_dimension Dimension = Win32GetWindowDimension(Window);
                     HDC DeviceContext = GetDC(Window);
                     Win32DisplayBufferInWindow(&HighPriorityQueue, &RenderCommands, DeviceContext,
@@ -2523,6 +2529,6 @@ WinMain(HINSTANCE Instance,
     {
         // TODO(casey): Logging
     }
-    
+
     return(0);
 }

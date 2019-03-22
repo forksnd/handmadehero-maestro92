@@ -43,7 +43,7 @@ struct win32_debug_time_marker
     DWORD OutputLocation;
     DWORD OutputByteCount;
     DWORD ExpectedFlipPlayCursor;
-    
+
     DWORD FlipPlayCursor;
     DWORD FlipWriteCursor;
 };
@@ -58,7 +58,7 @@ struct win32_game_code
     game_update_and_render *UpdateAndRender;
     game_get_sound_samples *GetSoundSamples;
     debug_game_frame_end *DEBUGFrameEnd;
-    
+
     bool32 IsValid;
 };
 
@@ -91,15 +91,22 @@ struct win32_state
     uint64 TotalSize;
     void *GameMemoryBlock;
     win32_replay_buffer ReplayBuffers[4];
-    
+
     HANDLE RecordingHandle;
     int InputRecordingIndex;
 
     HANDLE PlaybackHandle;
     int InputPlayingIndex;
-    
+
     char EXEFileName[WIN32_STATE_FILE_NAME_COUNT];
     char *OnePastLastEXEFileNameSlash;
+};
+
+struct win32_thread_startup
+{
+    HWND Window;
+    HGLRC OpenGLRC;
+    platform_work_queue *Queue;
 };
 
 #define WIN32_HANDMADE_H
