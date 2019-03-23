@@ -47,13 +47,42 @@ global_variable b32 DEBUGGlobalShowCursor;
 global_variable WINDOWPLACEMENT GlobalWindowPosition = {sizeof(GlobalWindowPosition)};
 global_variable GLuint GlobalBlitTextureHandle;
 
+#define WGL_DRAW_TO_WINDOW_ARB                  0x2001
+#define WGL_ACCELERATION_ARB                    0x2003
+#define WGL_SUPPORT_OPENGL_ARB                  0x2010
+#define WGL_DOUBLE_BUFFER_ARB                   0x2011
+#define WGL_PIXEL_TYPE_ARB                      0x2013
 
-typedef HGLRC WINAPI wgl_create_context_attribts_arb(HDC hDC, HGLRC hShareContext,
+#define WGL_TYPE_RGBA_ARB                       0x202B
+#define WGL_FULL_ACCELERATION_ARB               0x2027
+
+typedef HGLRC WINAPI wgl_create_context_attribs_arb(HDC hDC, HGLRC hShareContext,
     const int *attribList);
+
+typedef BOOL WINAPI wgl_get_pixel_format_attrib_iv_arb(HDC hdc,
+    int iPixelFormat,
+    int iLayerPlane,
+    UINT nAttributes,
+    const int *piAttributes,
+    int *piValues);
+
+typedef BOOL WINAPI wgl_get_pixel_format_attrib_fv_arb(HDC hdc,
+    int iPixelFormat,
+    int iLayerPlane,
+    UINT nAttributes,
+    const int *piAttributes,
+    FLOAT *pfValues);
+
+typedef BOOL WINAPI wgl_choose_pixel_format_arb(HDC hdc,
+    const int *piAttribIList,
+    const FLOAT *pfAttribFList,
+    UINT nMaxFormats,
+    int *piFormats,
+    UINT *nNumFormats);
 
 global_variable HGLRC GlobalOpenGLRC;
 global_variable HDC GlobalDC;
-global_variable wgl_create_context_attribts_arb *wglCreateContextAttribsARB;
+global_variable wgl_create_context_attribs_arb *wglCreateContextAttribsARB;
 
 global_variable GLuint OpenGLDefaultInternalTextureFormat;
 
@@ -491,35 +520,66 @@ Win32CreateOpenGLContextForWorkerThread(void)
             {
                 // TODO(casey): Fatal error?
             }
+            else
+            {
+                Assert(!"Unable to create texture download context");
+            }
         }
     }
 }
 
-internal void
-Win32InitOpenGL(HWND Window)
+internal HGLRC
+Win32InitOpenGL(HDC WindowDC)
 {
-    HDC WindowDC = GetDC(Window);
+    int SuggestedPixelFormatIndex = 0;
+    GLuint ExtendedPick = 0;
 
-    // TODO(casey): Hey Raymond Chen - what's the deal here?
-    // Is cColorBits ACTUALLY supposed to exclude the alpha bits, like MSDN says, or not?
-    PIXELFORMATDESCRIPTOR DesiredPixelFormat = {};
-    DesiredPixelFormat.nSize = sizeof(DesiredPixelFormat);
-    DesiredPixelFormat.nVersion = 1;
-    DesiredPixelFormat.iPixelType = PFD_TYPE_RGBA;
+    // TODO(casey): This needs to happen after we create the initial OpenGL context,
+    // BUT how do we do that given that the DC needs to be in the correct format
+    // first?  Do we just wglMakeCurrent back to zero and _then_ re set the pixel format?
+    // Or what???
+    wgl_choose_pixel_format_arb *wglChoosePixelFormatARB = 
+        (wgl_choose_pixel_format_arb *)wglGetProcAddress("wglChoosePixelFormatARB");
+    if(wglChoosePixelFormatARB)
+    {
+        int IntAttribList[] =
+        {
+            WGL_DRAW_TO_WINDOW_ARB, GL_TRUE,
+            WGL_ACCELERATION_ARB, WGL_FULL_ACCELERATION_ARB,
+            WGL_SUPPORT_OPENGL_ARB, GL_TRUE,
+            WGL_DOUBLE_BUFFER_ARB, GL_TRUE,
+            WGL_PIXEL_TYPE_ARB, WGL_TYPE_RGBA_ARB,
+            0,
+        };
+        float FloatAttribList[] = {0};
+        wglChoosePixelFormatARB(WindowDC, IntAttribList, FloatAttribList, 1, 
+            &SuggestedPixelFormatIndex, &ExtendedPick);
+    }
+
+    if(ExtendedPick == 0)
+    {
+        // TODO(casey): Hey Raymond Chen - what's the deal here?
+        // Is cColorBits ACTUALLY supposed to exclude the alpha bits, like MSDN says, or not?
+        PIXELFORMATDESCRIPTOR DesiredPixelFormat = {};
+        DesiredPixelFormat.nSize = sizeof(DesiredPixelFormat);
+        DesiredPixelFormat.nVersion = 1;
+        DesiredPixelFormat.iPixelType = PFD_TYPE_RGBA;
 #if HANDMADE_STREAMING
-    // NOTE(casey): PFD_DOUBLEBUFFER appears to prevent OBS from reliably streaming the window
-    DesiredPixelFormat.dwFlags = PFD_SUPPORT_OPENGL|PFD_DRAW_TO_WINDOW;
+        // NOTE(casey): PFD_DOUBLEBUFFER appears to prevent OBS from reliably streaming the window
+        DesiredPixelFormat.dwFlags = PFD_SUPPORT_OPENGL|PFD_DRAW_TO_WINDOW;
 #else
-    DesiredPixelFormat.dwFlags = PFD_SUPPORT_OPENGL|PFD_DRAW_TO_WINDOW|PFD_DOUBLEBUFFER;
+        DesiredPixelFormat.dwFlags = PFD_SUPPORT_OPENGL|PFD_DRAW_TO_WINDOW|PFD_DOUBLEBUFFER;
 #endif
-    DesiredPixelFormat.cColorBits = 32;
-    DesiredPixelFormat.cAlphaBits = 8;
-    DesiredPixelFormat.iLayerType = PFD_MAIN_PLANE;
+        DesiredPixelFormat.cColorBits = 32;
+        DesiredPixelFormat.cAlphaBits = 8;
+        DesiredPixelFormat.iLayerType = PFD_MAIN_PLANE;
 
-    int SuggestedPixelFormatIndex = ChoosePixelFormat(WindowDC, &DesiredPixelFormat);
+        SuggestedPixelFormatIndex = ChoosePixelFormat(WindowDC, &DesiredPixelFormat);
+    }
+
     PIXELFORMATDESCRIPTOR SuggestedPixelFormat;
     DescribePixelFormat(WindowDC, SuggestedPixelFormatIndex,
-                        sizeof(SuggestedPixelFormat), &SuggestedPixelFormat);
+        sizeof(SuggestedPixelFormat), &SuggestedPixelFormat);
     SetPixelFormat(WindowDC, SuggestedPixelFormatIndex, &SuggestedPixelFormat);
 
     HGLRC OpenGLRC = wglCreateContext(WindowDC);
@@ -528,7 +588,7 @@ Win32InitOpenGL(HWND Window)
         b32 ModernContext = false;
 
         wglCreateContextAttribsARB =
-            (wgl_create_context_attribts_arb *)wglGetProcAddress("wglCreateContextAttribsARB");
+            (wgl_create_context_attribs_arb *)wglGetProcAddress("wglCreateContextAttribsARB");
         if(wglCreateContextAttribsARB)
         {
             // NOTE(casey): This is a modern version of OpenGL
@@ -541,7 +601,6 @@ Win32InitOpenGL(HWND Window)
                     ModernContext = true;
                     wglDeleteContext(OpenGLRC);
                     OpenGLRC = ModernGLRC;
-                    GlobalOpenGLRC = OpenGLRC;
                 }
             }
         }
@@ -564,7 +623,7 @@ Win32InitOpenGL(HWND Window)
         // TODO(casey): Diagnostic
     }
 
-    GlobalDC = WindowDC;
+    return(OpenGLRC);
 }
 
 internal win32_window_dimension
@@ -1822,7 +1881,7 @@ WinMain(HINSTANCE Instance,
     Win32ResizeDIBSection(&GlobalBackbuffer, 1920, 1080);
 //    Win32ResizeDIBSection(&GlobalBackbuffer, 1279, 719);
 
-    WindowClass.style = CS_HREDRAW|CS_VREDRAW;
+    WindowClass.style = CS_HREDRAW|CS_VREDRAW|CS_OWNDC;
     WindowClass.lpfnWndProc = Win32MainWindowCallback;
     WindowClass.hInstance = Instance;
     WindowClass.hCursor = LoadCursor(0, IDC_ARROW);
@@ -1849,7 +1908,8 @@ WinMain(HINSTANCE Instance,
         if(Window)
         {
             ToggleFullscreen(Window);
-            Win32InitOpenGL(Window);
+            GlobalDC = GetDC(Window);
+            GlobalOpenGLRC = Win32InitOpenGL(GlobalDC);
 
             platform_work_queue HighPriorityQueue = {};
             Win32MakeQueue(&HighPriorityQueue, 6);
@@ -1936,6 +1996,8 @@ WinMain(HINSTANCE Instance,
             GameMemory.PlatformAPI.ReadDataFromFile = Win32ReadDataFromFile;
             GameMemory.PlatformAPI.FileError = Win32FileError;
 
+            GameMemory.PlatformAPI.AllocateTexture = Win32AllocateTexture;
+            GameMemory.PlatformAPI.DeallocateTexture = Win32DeallocateTexture;
             GameMemory.PlatformAPI.AllocateMemory = Win32AllocateMemory;
             GameMemory.PlatformAPI.DeallocateMemory = Win32DeallocateMemory;
 
