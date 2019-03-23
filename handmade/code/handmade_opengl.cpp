@@ -30,13 +30,13 @@
 struct opengl_info
 {
     b32 ModernContext;
-    
+
     char *Vendor;
     char *Renderer;
     char *Version;
     char *ShadingLanguageVersion;
     char *Extensions;
-    
+
     b32 GL_EXT_texture_sRGB;
     b32 GL_EXT_framebuffer_sRGB;
 };
@@ -58,7 +58,7 @@ OpenGLGetInfo(b32 ModernContext)
     {
         Result.ShadingLanguageVersion = "(none)";
     }
-    
+
     Result.Extensions = (char *)glGetString(GL_EXTENSIONS);
 
     char *At = Result.Extensions;
@@ -69,14 +69,14 @@ OpenGLGetInfo(b32 ModernContext)
         while(*End && !IsWhitespace(*End)) {++End;}
 
         umm Count = End - At;        
-        
+
         if(0) {}
         else if(StringsAreEqual(Count, At, "GL_EXT_texture_sRGB")) {Result.GL_EXT_texture_sRGB=true;}
         else if(StringsAreEqual(Count, At, "GL_EXT_framebuffer_sRGB")) {Result.GL_EXT_framebuffer_sRGB=true;}
 
         At = End;
     }
-    
+
     return(Result);
 }
 
@@ -84,7 +84,7 @@ internal void
 OpenGLInit(b32 ModernContext)
 {
     opengl_info Info = OpenGLGetInfo(ModernContext);
-        
+
     OpenGLDefaultInternalTextureFormat = GL_RGBA8;
     if(Info.GL_EXT_texture_sRGB)
     {
@@ -124,14 +124,14 @@ OpenGLRectangle(v2 MinP, v2 MaxP, v4 Color)
     glBegin(GL_TRIANGLES);
 
     glColor4f(Color.r, Color.g, Color.b, Color.a);
-    
+
     // NOTE(casey): Lower triangle
     glTexCoord2f(0.0f, 0.0f);
     glVertex2f(MinP.x, MinP.y);
 
     glTexCoord2f(1.0f, 0.0f);
     glVertex2f(MaxP.x, MinP.y);
-    
+
     glTexCoord2f(1.0f, 1.0f);
     glVertex2f(MaxP.x, MaxP.y);
 
@@ -144,7 +144,7 @@ OpenGLRectangle(v2 MinP, v2 MaxP, v4 Color)
 
     glTexCoord2f(0.0f, 1.0f);
     glVertex2f(MinP.x, MaxP.y);
-    
+
     glEnd();
 }
 
@@ -154,12 +154,12 @@ OpenGLDisplayBitmap(s32 Width, s32 Height, void *Memory, int Pitch,
 {
     Assert(Pitch == (Width*4));
     glViewport(0, 0, Width, Height);
-    
+
     glBindTexture(GL_TEXTURE_2D, 1);
 
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, Width, Height, 0,
                  GL_BGRA_EXT, GL_UNSIGNED_BYTE, Memory);
-    
+
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);    
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
@@ -167,7 +167,7 @@ OpenGLDisplayBitmap(s32 Width, s32 Height, void *Memory, int Pitch,
     glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 
     glEnable(GL_TEXTURE_2D);
-    
+
     glClearColor(1.0f, 0.0f, 1.0f, 0.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
@@ -177,7 +177,7 @@ OpenGLDisplayBitmap(s32 Width, s32 Height, void *Memory, int Pitch,
     OpenGLSetScreenspace(Width, Height);
 
     // TODO(casey): Decide how we want to handle aspect ratio - black bars or crop?
-    
+
     v2 MinP = {0, 0};
     v2 MaxP = {(r32)Width, (r32)Height};
     v4 Color = {1, 1, 1, 1};
@@ -195,12 +195,12 @@ OpenGLRenderCommands(game_render_commands *Commands, s32 WindowWidth, s32 Window
     glEnable(GL_TEXTURE_2D);
     glEnable(GL_BLEND);
     glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-    
+
     glMatrixMode(GL_TEXTURE);
     glLoadIdentity();
 
     OpenGLSetScreenspace(Commands->Width, Commands->Height);
-    
+
     u32 SortEntryCount = Commands->PushBufferElementCount;
     tile_sort_entry *SortEntries = (tile_sort_entry *)(Commands->PushBufferBase + Commands->SortEntryAt);
 
@@ -211,14 +211,14 @@ OpenGLRenderCommands(game_render_commands *Commands, s32 WindowWidth, s32 Window
     {
         render_group_entry_header *Header = (render_group_entry_header *)
             (Commands->PushBufferBase + Entry->PushBufferOffset);
-        
+
         void *Data = (uint8 *)Header + sizeof(*Header);
         switch(Header->Type)
         {
             case RenderGroupEntryType_render_entry_clear:
             {
                 render_entry_clear *Entry = (render_entry_clear *)Data;
-    
+
                 glClearColor(Entry->Color.r, Entry->Color.g, Entry->Color.b, Entry->Color.a);
                 glClear(GL_COLOR_BUFFER_BIT);
             } break;
@@ -271,9 +271,9 @@ PLATFORM_ALLOCATE_TEXTURE(Win32AllocateTexture)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);    
     glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-    
+
     glBindTexture(GL_TEXTURE_2D, 0);
-    
+
     Assert(sizeof(Handle) <= sizeof(void *));
     return((void *)Handle);
 }

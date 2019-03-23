@@ -9,7 +9,7 @@ between the background thread and the main thread. Casey argues that we are fine
 went through initilization code to set up sRGB for the framebuffer.
 
 Keyword:
-debugging OpenGL. OpenGL 
+debugging OpenGL. OpenGL initalization
 
 
 1:37
