@@ -9,6 +9,8 @@
 #define IGNORED_TIMED_FUNCTION TIMED_FUNCTION
 #define IGNORED_TIMED_BLOCK TIMED_BLOCK
 
+global_variable b32 Global_Renderer_ShowLightingSamples = false;
+
 struct tile_render_work
 {
     game_render_commands *Commands;
@@ -174,7 +176,7 @@ SampleEnvironmentMap(v2 ScreenSpaceUV, v3 SampleDirection, real32 Roughness, env
     Assert((X >= 0) && (X < LOD->Width));
     Assert((Y >= 0) && (Y < LOD->Height));
 
-    DEBUG_IF(Renderer_ShowLightingSamples)
+    if(Global_Renderer_ShowLightingSamples)
     {
         // NOTE(casey): Turn this on to see where in the map you're sampling!
         uint8 *TexelPtr = ((uint8 *)LOD->Memory) + Y*LOD->Pitch + X*sizeof(uint32);

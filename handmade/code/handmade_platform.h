@@ -11,8 +11,6 @@
 #define introspect(IGNORED)
 #define counted_pointer(IGNORED)
 
-#include "handmade_config.h"
-
 /*
   NOTE(casey):
 

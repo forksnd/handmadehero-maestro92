@@ -37,9 +37,15 @@
 global_variable platform_api Platform;
 
 // TODO(casey): This is a global for now.
+enum win32_rendering_type
+{
+    Win32RenderType_RenderOpenGL_DisplayOpenGL,
+    Win32RenderType_RenderSoftware_DisplayOpenGL,
+    Win32RenderType_RenderSoftware_DisplayGDI,
+};
+global_variable win32_rendering_type GlobalRenderingType;
 global_variable b32 GlobalRunning;
 global_variable b32 GlobalPause;
-global_variable b32 GlobalUseSoftwareRendering;
 global_variable win32_offscreen_buffer GlobalBackbuffer;
 global_variable LPDIRECTSOUNDBUFFER GlobalSecondaryBuffer;
 global_variable s64 GlobalPerfCountFrequency;
@@ -515,13 +521,13 @@ internal win32_thread_startup
 Win32GetThreadStartupForGL(HDC OpenGLDC, HGLRC ShareContext)
 {
     win32_thread_startup Result = {};
-    
+
     Result.OpenGLDC = OpenGLDC;
     if(wglCreateContextAttribsARB)
     {
         Result.OpenGLRC = wglCreateContextAttribsARB(OpenGLDC, ShareContext, Win32OpenGLAttribs);
     }
-    
+
     return(Result);
 }
 
@@ -546,16 +552,16 @@ Win32SetPixelFormat(HDC WindowDC)
             WGL_FRAMEBUFFER_SRGB_CAPABLE_ARB, GL_TRUE,
             0,
         };
-        
+
         if(!OpenGLDefaultInternalTextureFormat)
         {
             IntAttribList[10] = 0;
         }
-                
+
         wglChoosePixelFormatARB(WindowDC, IntAttribList, 0, 1, 
             &SuggestedPixelFormatIndex, &ExtendedPick);
     }
-    
+
     if(!ExtendedPick)
     {
         // TODO(casey): Hey Raymond Chen - what's the deal here?
@@ -573,7 +579,7 @@ Win32SetPixelFormat(HDC WindowDC)
         DesiredPixelFormat.cColorBits = 32;
         DesiredPixelFormat.cAlphaBits = 8;
         DesiredPixelFormat.iLayerType = PFD_MAIN_PLANE;
-        
+
         SuggestedPixelFormatIndex = ChoosePixelFormat(WindowDC, &DesiredPixelFormat);
     }
 
@@ -607,7 +613,7 @@ Win32LoadWGLExtensions(void)
             0,
             WindowClass.hInstance,
             0);
-        
+
         HDC WindowDC = GetDC(Window);
         Win32SetPixelFormat(WindowDC);
         HGLRC OpenGLRC = wglCreateContext(WindowDC);
@@ -619,7 +625,7 @@ Win32LoadWGLExtensions(void)
                (wgl_create_context_attribs_arb *)wglGetProcAddress("wglCreateContextAttribsARB");
             wglSwapIntervalEXT = (wgl_swap_interval_ext *)wglGetProcAddress("wglSwapIntervalEXT");
             wglGetExtensionsStringEXT = (wgl_get_extensions_string_ext *)wglGetProcAddress("wglGetExtensionsStringEXT");
-        
+
             if(wglGetExtensionsStringEXT)
             {
                 char *Extensions = (char *)wglGetExtensionsStringEXT();
@@ -660,7 +666,7 @@ Win32InitOpenGL(HDC WindowDC)
         Win32SetPixelFormat(WindowDC);
         OpenGLRC = wglCreateContextAttribsARB(WindowDC, 0, Win32OpenGLAttribs);
     }
-    
+
     if(!OpenGLRC)
     {
         ModernContext = false;
@@ -675,7 +681,7 @@ Win32InitOpenGL(HDC WindowDC)
             wglSwapIntervalEXT(1);
         }
     }
-    
+
     return(OpenGLRC);
 }
 
@@ -743,7 +749,12 @@ Win32DisplayBufferInWindow(platform_work_queue *RenderQueue, game_render_command
     }
 */
 
-    DEBUG_IF(Renderer_UseSoftware)
+    if(GlobalRenderingType == Win32RenderType_RenderOpenGL_DisplayOpenGL)
+    {
+        OpenGLRenderCommands(Commands, WindowWidth, WindowHeight);        
+        SwapBuffers(DeviceContext);
+    }
+    else
     {
         loaded_bitmap OutputTarget;
         OutputTarget.Memory = GlobalBackbuffer.Memory;
@@ -753,8 +764,7 @@ Win32DisplayBufferInWindow(platform_work_queue *RenderQueue, game_render_command
 
         SoftwareRenderCommands(RenderQueue, Commands, &OutputTarget);        
 
-        b32 DisplayViaHardware = true;        
-        if(DisplayViaHardware)
+        if(GlobalRenderingType == Win32RenderType_RenderSoftware_DisplayOpenGL)
         {
             OpenGLDisplayBitmap(GlobalBackbuffer.Width, GlobalBackbuffer.Height, GlobalBackbuffer.Memory,
                                 GlobalBackbuffer.Pitch, WindowWidth, WindowHeight);
@@ -762,6 +772,8 @@ Win32DisplayBufferInWindow(platform_work_queue *RenderQueue, game_render_command
         }
         else
         {
+            Assert(GlobalRenderingType == Win32RenderType_RenderSoftware_DisplayGDI);
+
             // TODO(casey): Centering / black bars?
 
             if((WindowWidth >= GlobalBackbuffer.Width*2) &&
@@ -800,11 +812,6 @@ Win32DisplayBufferInWindow(platform_work_queue *RenderQueue, game_render_command
                               DIB_RGB_COLORS, SRCCOPY);
             }
         }
-    }
-    else
-    {
-        OpenGLRenderCommands(Commands, WindowWidth, WindowHeight);        
-        SwapBuffers(DeviceContext);
     }
 }
 
@@ -1549,7 +1556,7 @@ Win32MakeQueue(platform_work_queue *Queue, uint32 ThreadCount, win32_thread_star
     {
         win32_thread_startup *Startup = Startups + ThreadIndex;
         Startup->Queue = Queue;
-        
+
         DWORD ThreadID;
         HANDLE ThreadHandle = CreateThread(0, 0, ThreadProc, Startup, 0, &ThreadID);
         CloseHandle(ThreadHandle);
@@ -2127,6 +2134,11 @@ WinMain(HINSTANCE Instance,
                                                          GameCodeLockFullPath);
                 while(GlobalRunning)
                 {
+                    DEBUG_BEGIN_DATA_BLOCK(Platform_Controls, DEBUG_POINTER_ID(&DebugTimeMarkerIndex));
+                    DEBUG_VALUE(GlobalPause);
+                    DEBUG_VALUE(GlobalRenderingType);
+                    DEBUG_END_DATA_BLOCK();
+
                     //
                     //
                     //
