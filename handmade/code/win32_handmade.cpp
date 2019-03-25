@@ -83,12 +83,13 @@ typedef BOOL WINAPI wgl_choose_pixel_format_arb(HDC hdc,
     UINT *nNumFormats);
 
 typedef BOOL WINAPI wgl_swap_interval_ext(int interval);
+typedef const char * WINAPI wgl_get_extensions_string_ext(void);
 
-global_variable HGLRC GlobalOpenGLRC;
-global_variable HDC GlobalDC;
 global_variable wgl_create_context_attribs_arb *wglCreateContextAttribsARB;
 global_variable wgl_choose_pixel_format_arb *wglChoosePixelFormatARB;
-global_variable wgl_swap_interval_ext *wglSwapInterval;
+global_variable wgl_swap_interval_ext *wglSwapIntervalEXT;
+global_variable wgl_get_extensions_string_ext *wglGetExtensionsStringEXT;
+global_variable b32 OpenGLSupportsSRGBFramebuffer;
 global_variable GLuint OpenGLDefaultInternalTextureFormat;
 
 #include "handmade_opengl.cpp"
@@ -509,26 +510,19 @@ int Win32OpenGLAttribs[] =
     WGL_CONTEXT_PROFILE_MASK_ARB, WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB,
     0,
 };
-internal void
-Win32CreateOpenGLContextForWorkerThread(void)
+
+internal win32_thread_startup
+Win32GetThreadStartupForGL(HDC OpenGLDC, HGLRC ShareContext)
 {
+    win32_thread_startup Result = {};
+    
+    Result.OpenGLDC = OpenGLDC;
     if(wglCreateContextAttribsARB)
     {
-        HDC WindowDC = GlobalDC;
-        HGLRC ShareContext = GlobalOpenGLRC;
-        HGLRC ModernGLRC = wglCreateContextAttribsARB(WindowDC, ShareContext, Win32OpenGLAttribs);
-        if(ModernGLRC)
-        {
-            if(wglMakeCurrent(WindowDC, ModernGLRC))
-            {
-                // TODO(casey): Fatal error?
-            }
-            else
-            {
-                Assert(!"Unable to create texture download context");
-            }
-        }
+        Result.OpenGLRC = wglCreateContextAttribsARB(OpenGLDC, ShareContext, Win32OpenGLAttribs);
     }
+    
+    return(Result);
 }
 
 internal void
@@ -553,9 +547,12 @@ Win32SetPixelFormat(HDC WindowDC)
             0,
         };
         
-        float FloatAttribList[] = {0};
-        
-        wglChoosePixelFormatARB(WindowDC, IntAttribList, FloatAttribList, 1, 
+        if(!OpenGLDefaultInternalTextureFormat)
+        {
+            IntAttribList[10] = 0;
+        }
+                
+        wglChoosePixelFormatARB(WindowDC, IntAttribList, 0, 1, 
             &SuggestedPixelFormatIndex, &ExtendedPick);
     }
     
@@ -620,8 +617,28 @@ Win32LoadWGLExtensions(void)
                 (wgl_choose_pixel_format_arb *)wglGetProcAddress("wglChoosePixelFormatARB");
             wglCreateContextAttribsARB =
                (wgl_create_context_attribs_arb *)wglGetProcAddress("wglCreateContextAttribsARB");
-            wglSwapInterval = (wgl_swap_interval_ext *)wglGetProcAddress("wglSwapIntervalEXT");
+            wglSwapIntervalEXT = (wgl_swap_interval_ext *)wglGetProcAddress("wglSwapIntervalEXT");
+            wglGetExtensionsStringEXT = (wgl_get_extensions_string_ext *)wglGetProcAddress("wglGetExtensionsStringEXT");
         
+            if(wglGetExtensionsStringEXT)
+            {
+                char *Extensions = (char *)wglGetExtensionsStringEXT();
+                char *At = Extensions;
+                while(*At)
+                {
+                    while(IsWhitespace(*At)) {++At;}
+                    char *End = At;
+                    while(*End && !IsWhitespace(*End)) {++End;}
+
+                    umm Count = End - At;        
+
+                    if(0) {}
+                    else if(StringsAreEqual(Count, At, "WGL_EXT_framebuffer_sRGB")) {OpenGLSupportsSRGBFramebuffer = true;}
+
+                    At = End;
+                }
+            }
+
             wglMakeCurrent(0, 0);
         }
 
@@ -653,9 +670,9 @@ Win32InitOpenGL(HDC WindowDC)
     if(wglMakeCurrent(WindowDC, OpenGLRC))
     {
         OpenGLInit(ModernContext);
-        if(wglSwapInterval)
+        if(wglSwapIntervalEXT)
         {
-            wglSwapInterval(1);
+            wglSwapIntervalEXT(1);
         }
     }
     
@@ -1425,26 +1442,6 @@ Win32DebugSyncDisplay(win32_offscreen_buffer *Backbuffer,
 
 #endif
 
-struct platform_work_queue_entry
-{
-    platform_work_queue_callback *Callback;
-    void *Data;
-};
-
-struct platform_work_queue
-{
-    uint32 volatile CompletionGoal;
-    uint32 volatile CompletionCount;
-
-    uint32 volatile NextEntryToWrite;
-    uint32 volatile NextEntryToRead;
-    HANDLE SemaphoreHandle;
-
-    platform_work_queue_entry Entries[256];
-
-    bool32 NeedsOpenGL;
-};
-
 internal void
 Win32AddEntry(platform_work_queue *Queue, platform_work_queue_callback *Callback, void *Data)
 {
@@ -1503,14 +1500,15 @@ Win32CompleteAllWork(platform_work_queue *Queue)
 DWORD WINAPI
 ThreadProc(LPVOID lpParameter)
 {
-    platform_work_queue *Queue = (platform_work_queue *)lpParameter;
+    win32_thread_startup *Thread = (win32_thread_startup *)lpParameter;
+    platform_work_queue *Queue = Thread->Queue;
 
     u32 TestThreadID = GetThreadID();
     Assert(TestThreadID == GetCurrentThreadId());
 
-    if(Queue->NeedsOpenGL)
+    if(Thread->OpenGLRC)
     {
-        Win32CreateOpenGLContextForWorkerThread();
+        wglMakeCurrent(Thread->OpenGLDC, Thread->OpenGLRC);
     }
 
     for(;;)
@@ -1532,7 +1530,7 @@ internal PLATFORM_WORK_QUEUE_CALLBACK(DoWorkerWork)
 }
 
 internal void
-Win32MakeQueue(platform_work_queue *Queue, uint32 ThreadCount)
+Win32MakeQueue(platform_work_queue *Queue, uint32 ThreadCount, win32_thread_startup *Startups)
 {
     Queue->CompletionGoal = 0;
     Queue->CompletionCount = 0;
@@ -1549,8 +1547,11 @@ Win32MakeQueue(platform_work_queue *Queue, uint32 ThreadCount)
         ThreadIndex < ThreadCount;
         ++ThreadIndex)
     {
+        win32_thread_startup *Startup = Startups + ThreadIndex;
+        Startup->Queue = Queue;
+        
         DWORD ThreadID;
-        HANDLE ThreadHandle = CreateThread(0, 0, ThreadProc, Queue, 0, &ThreadID);
+        HANDLE ThreadHandle = CreateThread(0, 0, ThreadProc, Startup, 0, &ThreadID);
         CloseHandle(ThreadHandle);
     }
 }
@@ -1944,15 +1945,18 @@ WinMain(HINSTANCE Instance,
         if(Window)
         {
             ToggleFullscreen(Window);
-            GlobalDC = GetDC(Window);
-            GlobalOpenGLRC = Win32InitOpenGL(GlobalDC);
+            HDC OpenGLDC = GetDC(Window);
+            HGLRC OpenGLRC = Win32InitOpenGL(OpenGLDC);
 
+            win32_thread_startup HighPriStartups[6] = {};
             platform_work_queue HighPriorityQueue = {};
-            Win32MakeQueue(&HighPriorityQueue, 6);
+            Win32MakeQueue(&HighPriorityQueue, ArrayCount(HighPriStartups), HighPriStartups);
 
+            win32_thread_startup LowPriStartups[2] = {};
+            LowPriStartups[0] = Win32GetThreadStartupForGL(OpenGLDC, OpenGLRC);
+            LowPriStartups[1] = Win32GetThreadStartupForGL(OpenGLDC, OpenGLRC);
             platform_work_queue LowPriorityQueue = {};
-            LowPriorityQueue.NeedsOpenGL = true;
-            Win32MakeQueue(&LowPriorityQueue, 2);
+            Win32MakeQueue(&LowPriorityQueue, ArrayCount(LowPriStartups), LowPriStartups);
 
             win32_sound_output SoundOutput = {};
 
