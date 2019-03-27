@@ -18,6 +18,8 @@ enum debug_variable_to_text_flag
     DEBUGVarToText_NullTerminator = 0x10,
     DEBUGVarToText_Colon = 0x20,
     DEBUGVarToText_PrettyBools = 0x40,
+    DEBUGVarToText_StartAtLastUnderscore = 0x80,
+    DEBUGVarToText_AddValue = 0x100,
 };
 
 struct debug_tree;
@@ -36,7 +38,7 @@ struct debug_view_collapsible
 enum debug_view_type
 {
     DebugViewType_Unknown,
-    
+
     DebugViewType_Basic,
     DebugViewType_InlineBlock,
     DebugViewType_Collapsible,
@@ -46,7 +48,7 @@ struct debug_view
 {
     debug_id ID;
     debug_view *NextInHash;
-    
+
     debug_view_type Type;
     union
     {
@@ -71,7 +73,7 @@ struct debug_element
 {
     char *GUID;
     debug_element *NextInHash;
-    
+
     debug_stored_event *OldestEvent;
     debug_stored_event *MostRecentEvent;
 };
@@ -124,7 +126,7 @@ struct debug_counter_state
 {
     char *FileName;
     char *BlockName;
-    
+
     u32 LineNumber;
 };
 
@@ -143,7 +145,7 @@ struct debug_frame_region
 struct debug_frame
 {
     // IMPORTANT(casey): This actually gets freed as a set in FreeFrame!
-    
+
     union
     {
         debug_frame *Next;
@@ -196,7 +198,7 @@ enum debug_interaction_type
     DebugInteraction_NOP,
 
     DebugInteraction_AutoModifyVariable,
-    
+
     DebugInteraction_ToggleValue,
     DebugInteraction_DragValue,
     DebugInteraction_TearValue,
@@ -227,7 +229,7 @@ struct debug_state
     b32 Initialized;
 
     platform_work_queue *HighPriorityQueue;
-    
+
     memory_arena DebugArena;
     memory_arena PerFrameArena;
 
@@ -237,7 +239,7 @@ struct debug_state
 
     b32 Compiling;
     debug_executing_process Compiler;
-    
+
     v2 MenuP;
     b32 MenuActive;
 
@@ -248,7 +250,7 @@ struct debug_state
     debug_view *ViewHash[4096];
     debug_variable_group *RootGroup;
     debug_tree TreeSentinel;
-    
+
     v2 LastMouseP;
     debug_interaction Interaction;
     debug_interaction HotInteraction;

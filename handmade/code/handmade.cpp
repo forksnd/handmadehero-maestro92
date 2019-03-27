@@ -273,6 +273,22 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     
 #if HANDMADE_INTERNAL
     DebugGlobalMemory = Memory;
+    
+    DEBUG_BEGIN_DATA_BLOCK(Game, DEBUG_POINTER_ID(Memory));
+    DEBUG_VALUE(Global_Renderer_Camera_UseDebug);
+    DEBUG_VALUE(Global_Renderer_Camera_DebugDistance);
+    DEBUG_VALUE(Global_Renderer_Camera_RoomBased);
+    DEBUG_VALUE(Global_GroundChunks_Checkerboards);
+    DEBUG_VALUE(Global_GroundChunks_RecomputeOnEXEChange);
+    DEBUG_VALUE(Global_Renderer_TestWeirdDrawBufferSize);
+    DEBUG_VALUE(Global_GroundChunks_Outlines);
+    DEBUG_VALUE(Global_AI_Familiar_FollowsHero); 
+    DEBUG_VALUE(Global_Particles_Test); 
+    DEBUG_VALUE(Global_Particles_ShowGrid);
+    DEBUG_VALUE(Global_Simulation_UseSpaceOutlines);
+    // TODO(casey): DEBUG_PROFILE(some_function_name)
+    DEBUG_END_DATA_BLOCK();
+
 #endif
     TIMED_FUNCTION();
 
