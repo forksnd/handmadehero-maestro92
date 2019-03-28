@@ -20,7 +20,7 @@ struct debug_id
 enum debug_type
 {
     DebugType_Unknown,
-    
+
     DebugType_FrameMarker,
     DebugType_BeginBlock,
     DebugType_EndBlock,
@@ -28,8 +28,8 @@ enum debug_type
     DebugType_OpenDataBlock,
     DebugType_CloseDataBlock,
 
-    DebugType_MarkDebugValue,
- 
+//    DebugType_MarkDebugValue,
+
     DebugType_b32,
     DebugType_r32,
     DebugType_u32,
@@ -44,13 +44,12 @@ enum debug_type
     DebugType_font_id,    
 
     DebugType_CounterThreadList,
-//    DebugVariableType_CounterFunctionList,
+    DebugType_CounterFunctionList,
 };
 struct debug_event
 {
     u64 Clock;
     char *GUID;
-    char *BlockName; // TODO(casey): Should we remove BlockName altogether?
     u16 ThreadID;
     u16 CoreIndex;
     u8 Type;
@@ -58,7 +57,7 @@ struct debug_event
     {
         debug_id DebugID;
         debug_event *Value_debug_event;
-        
+
         b32 Value_b32;
         s32 Value_s32;
         u32 Value_u32;
@@ -88,12 +87,12 @@ struct debug_table
 
 extern debug_table *GlobalDebugTable;
 
-#define UniqueFileCounterString__(A, B, C) A "(" #B ")." #C
-#define UniqueFileCounterString_(A, B, C) UniqueFileCounterString__(A, B, C)
-#define UniqueFileCounterString() UniqueFileCounterString_(__FILE__, __LINE__, __COUNTER__)
+#define UniqueFileCounterString__(A, B, C, D) A "(" #B ")." #C ": " D
+#define UniqueFileCounterString_(A, B, C, D) UniqueFileCounterString__(A, B, C, D)
+#define DEBUG_NAME(Name) UniqueFileCounterString_(__FILE__, __LINE__, __COUNTER__, Name)
 
-#define RecordDebugEvent(EventType, Block)           \
-        u64 ArrayIndex_EventIndex = AtomicAddU64(&GlobalDebugTable->EventArrayIndex_EventIndex, 1); \
+#define RecordDebugEvent(EventType, GUIDInit)           \
+u64 ArrayIndex_EventIndex = AtomicAddU64(&GlobalDebugTable->EventArrayIndex_EventIndex, 1); \
         u32 EventIndex = ArrayIndex_EventIndex & 0xFFFFFFFF;            \
         Assert(EventIndex < ArrayCount(GlobalDebugTable->Events[0]));   \
         debug_event *Event = GlobalDebugTable->Events[ArrayIndex_EventIndex >> 32] + EventIndex; \
@@ -101,49 +100,34 @@ extern debug_table *GlobalDebugTable;
         Event->Type = (u8)EventType;                                    \
         Event->CoreIndex = 0;                                           \
         Event->ThreadID = (u16)GetThreadID();                         \
-        Event->GUID = UniqueFileCounterString(); \
-        Event->BlockName = Block;                              \
-    
+        Event->GUID = GUIDInit;
+
 #define FRAME_MARKER(SecondsElapsedInit) \
-     { \
-     int Counter = __COUNTER__; \
-     RecordDebugEvent(DebugType_FrameMarker, "Frame Marker"); \
-     Event->Value_r32 = SecondsElapsedInit; \
-} 
+{RecordDebugEvent(DebugType_FrameMarker, DEBUG_NAME("Frame Marker")); \
+    Event->Value_r32 = SecondsElapsedInit;}  
 
-#define TIMED_BLOCK__(BlockName, Number, ...) timed_block TimedBlock_##Number(__COUNTER__, __FILE__, __LINE__, BlockName, ## __VA_ARGS__)
-#define TIMED_BLOCK_(BlockName, Number, ...) TIMED_BLOCK__(BlockName, Number, ## __VA_ARGS__)
-#define TIMED_BLOCK(BlockName, ...) TIMED_BLOCK_(#BlockName, __LINE__, ## __VA_ARGS__)
-#define TIMED_FUNCTION(...) TIMED_BLOCK_((char *)__FUNCTION__, __LINE__, ## __VA_ARGS__)
+#define TIMED_BLOCK__(GUID, Number, ...) timed_block TimedBlock_##Number(GUID, ## __VA_ARGS__)
+#define TIMED_BLOCK_(GUID, Number, ...) TIMED_BLOCK__(GUID, Number, ## __VA_ARGS__)
+#define TIMED_BLOCK(Name, ...) TIMED_BLOCK_(DEBUG_NAME(Name), ## __VA_ARGS__)
+#define TIMED_FUNCTION(...) TIMED_BLOCK_(DEBUG_NAME(__FUNCTION__), ## __VA_ARGS__)
 
-#define BEGIN_BLOCK_(Counter, FileNameInit, LineNumberInit, BlockNameInit)          \
-    {RecordDebugEvent(DebugType_BeginBlock, BlockNameInit);}
-#define END_BLOCK_(Counter) \
-    { \
-        RecordDebugEvent(DebugType_EndBlock, "End Block"); \
-    }
-    
-#define BEGIN_BLOCK(Name) \
-    int Counter_##Name = __COUNTER__;                       \
-    BEGIN_BLOCK_(Counter_##Name, __FILE__, __LINE__, #Name);
+#define BEGIN_BLOCK_(GUID) {RecordDebugEvent(DebugType_BeginBlock, GUID);}
+#define END_BLOCK_(GUID) {RecordDebugEvent(DebugType_EndBlock, GUID);}
 
-#define END_BLOCK(Name) \
-    END_BLOCK_(Counter_##Name);
-    
+#define BEGIN_BLOCK(Name) BEGIN_BLOCK_(DEBUG_NAME(Name))
+#define END_BLOCK() END_BLOCK_(DEBUG_NAME("END_BLOCK_"))
+
 struct timed_block
 {
-    int Counter;
-    
-    timed_block(int CounterInit, char *FileName, int LineNumber, char *BlockName, u32 HitCountInit = 1)
+    timed_block(char *GUID, u32 HitCountInit = 1)
     {
+        BEGIN_BLOCK_(GUID);
         // TODO(casey): Record the hit count value here?
-        Counter = CounterInit;
-        BEGIN_BLOCK_(Counter, FileName, LineNumber, BlockName);
     }
     
     ~timed_block()
     {
-        END_BLOCK_(Counter);
+        END_BLOCK();
     }
 };
 
@@ -255,21 +239,31 @@ DEBUGValueSetEventData(debug_event *Event, font_id Value)
     Event->Value_font_id = Value;
 }
 
-#define DEBUG_BEGIN_DATA_BLOCK(Name, ID)    \
-     { \
-         RecordDebugEvent(DebugType_OpenDataBlock, #Name);                   \
-         Event->DebugID = ID;                                      \
-     } 
+struct debug_data_block 
+{
+    debug_data_block(char *Name)
+    {
+        RecordDebugEvent(DebugType_OpenDataBlock, Name);
+        //Event->DebugID = ID;                                      
+    }
+    
+    ~debug_data_block(void)
+    {
+        RecordDebugEvent(DebugType_CloseDataBlock, "End Data Block");
+    }
+};
 
-#define DEBUG_END_DATA_BLOCK()    \
-     { \
-         RecordDebugEvent(DebugType_CloseDataBlock, "End Data Block");                   \
-     } 
+#define DEBUG_DATA_BLOCK(Name) debug_data_block DataBlock__(Name)
 
 #define DEBUG_VALUE(Value)  \
      { \
          RecordDebugEvent(DebugType_Unknown, #Value);                              \
          DEBUGValueSetEventData(Event, Value);                          \
+     } 
+
+#define DEBUG_PROFILE(FunctionName) \
+     { \
+         RecordDebugEvent(DebugType_CounterFunctionList, #FunctionName);                   \
      } 
 
 #define DEBUG_BEGIN_ARRAY(...)
@@ -278,7 +272,7 @@ DEBUGValueSetEventData(debug_event *Event, font_id Value)
 inline debug_id DEBUG_POINTER_ID(void *Pointer)
 {
     debug_id ID = {Pointer};
-    
+
     return(ID);
 }
 
@@ -292,8 +286,7 @@ internal b32 DEBUG_REQUESTED(debug_id ID);
 
 inline debug_id DEBUG_POINTER_ID(void *Pointer) {debug_id NullID = {}; return(NullID);}
 
-#define DEBUG_BEGIN_DATA_BLOCK(...)
-#define DEBUG_END_DATA_BLOCK(...)
+#define DEBUG_DATA_BLOCK(...)
 #define DEBUG_VALUE(...)
 #define DEBUG_BEGIN_ARRAY(...)
 #define DEBUG_END_ARRAY(...)
