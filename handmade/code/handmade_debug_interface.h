@@ -87,7 +87,7 @@ struct debug_table
 
 extern debug_table *GlobalDebugTable;
 
-#define UniqueFileCounterString__(A, B, C, D) A "(" #B ")." #C ": " D
+#define UniqueFileCounterString__(A, B, C, D) A "|" #B "|" #C "|" D
 #define UniqueFileCounterString_(A, B, C, D) UniqueFileCounterString__(A, B, C, D)
 #define DEBUG_NAME(Name) UniqueFileCounterString_(__FILE__, __LINE__, __COUNTER__, Name)
 
@@ -108,7 +108,7 @@ u64 ArrayIndex_EventIndex = AtomicAddU64(&GlobalDebugTable->EventArrayIndex_Even
 
 #define TIMED_BLOCK__(GUID, Number, ...) timed_block TimedBlock_##Number(GUID, ## __VA_ARGS__)
 #define TIMED_BLOCK_(GUID, Number, ...) TIMED_BLOCK__(GUID, Number, ## __VA_ARGS__)
-#define TIMED_BLOCK(Name, ...) TIMED_BLOCK_(DEBUG_NAME(Name), ## __VA_ARGS__)
+#define TIMED_BLOCK(Name, ...) TIMED_BLOCK_(DEBUG_NAME(Name), __COUNTER__, ## __VA_ARGS__)
 #define TIMED_FUNCTION(...) TIMED_BLOCK_(DEBUG_NAME(__FUNCTION__), ## __VA_ARGS__)
 
 #define BEGIN_BLOCK_(GUID) {RecordDebugEvent(DebugType_BeginBlock, GUID);}
@@ -249,21 +249,21 @@ struct debug_data_block
     
     ~debug_data_block(void)
     {
-        RecordDebugEvent(DebugType_CloseDataBlock, "End Data Block");
+        RecordDebugEvent(DebugType_CloseDataBlock, DEBUG_NAME("End Data Block"));
     }
 };
 
-#define DEBUG_DATA_BLOCK(Name) debug_data_block DataBlock__(Name)
+#define DEBUG_DATA_BLOCK(Name) debug_data_block DataBlock__(DEBUG_NAME(Name))
 
 #define DEBUG_VALUE(Value)  \
      { \
-         RecordDebugEvent(DebugType_Unknown, #Value);                              \
+         RecordDebugEvent(DebugType_Unknown, DEBUG_NAME(#Value));                              \
          DEBUGValueSetEventData(Event, Value);                          \
      } 
 
 #define DEBUG_PROFILE(FunctionName) \
      { \
-         RecordDebugEvent(DebugType_CounterFunctionList, #FunctionName);                   \
+         RecordDebugEvent(DebugType_CounterFunctionList, DEBUG_NAME(#FunctionName));                   \
      } 
 
 #define DEBUG_BEGIN_ARRAY(...)
