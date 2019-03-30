@@ -258,8 +258,17 @@ struct debug_data_block
 #define DEBUG_VALUE(Value)  \
      { \
          RecordDebugEvent(DebugType_Unknown, DEBUG_NAME(#Value));                              \
-         DEBUGValueSetEventData(Event, Value);                          \
+         DEBUGValueSetEventData(Event, Value);               \
      } 
+// TODO(casey):    DEBUGHandleValueEdit(Event, &Value);
+
+#define DEBUG_B32(Value)  \
+{ \
+    RecordDebugEvent(DebugType_Unknown, DEBUG_NAME(#Value));                              \
+    Event->Type = DebugType_b32; \
+    Event->Value_b32 = Value; \
+} 
+// TODO(casey):    DEBUGHandleValueEdit(Event, &Value); \
 
 #define DEBUG_PROFILE(FunctionName) \
      { \

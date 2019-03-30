@@ -2138,7 +2138,7 @@ WinMain(HINSTANCE Instance,
                         DEBUG_VALUE(GlobalPause);
                         DEBUG_VALUE(GlobalRenderingType);
                     }
-                    
+
                     //
                     //
                     //
