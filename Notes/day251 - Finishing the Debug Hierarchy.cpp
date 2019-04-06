@@ -1,4 +1,4 @@
-Handmade Hero Day 250 - Cleaning Up Debug GUIDs
+Handmade Hero Day 251 - Finishing the Debug Hierarchy
 
 Summary:
 cleaning up the debug hierarchy. Making the debug elements show up properly on the debug menu.

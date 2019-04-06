@@ -702,42 +702,44 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
     real32 FadeBottomEndZ = -2.25f*WorldMode->TypicalFloorHeight;
 
     // NOTE(casey): Ground chunk rendering
-    for(uint32 GroundBufferIndex = 0;
-        GroundBufferIndex < TranState->GroundBufferCount;
-        ++GroundBufferIndex)
+    if(Global_GroundChunksOn)
     {
-        ground_buffer *GroundBuffer = TranState->GroundBuffers + GroundBufferIndex;
-        if(IsValid(GroundBuffer->P))
+        for(uint32 GroundBufferIndex = 0;
+            GroundBufferIndex < TranState->GroundBufferCount;
+            ++GroundBufferIndex)
         {
-            loaded_bitmap *Bitmap = &GroundBuffer->Bitmap;
-
-            v3 Delta = Subtract(WorldMode->World, &GroundBuffer->P, &WorldMode->CameraP);
-
-            RenderGroup->GlobalAlpha = 1.0f;
-            if(Delta.z > FadeTopStartZ)
+            ground_buffer *GroundBuffer = TranState->GroundBuffers + GroundBufferIndex;
+            if(IsValid(GroundBuffer->P))
             {
-                RenderGroup->GlobalAlpha = Clamp01MapToRange(FadeTopEndZ, Delta.z, FadeTopStartZ);
-            }
-            else if(Delta.z < FadeBottomStartZ)
-            {
-                RenderGroup->GlobalAlpha = Clamp01MapToRange(FadeBottomEndZ, Delta.z, FadeBottomStartZ);
-            }
+                loaded_bitmap *Bitmap = &GroundBuffer->Bitmap;
 
-            object_transform Transform = DefaultFlatTransform();
-            Transform.OffsetP = Delta;
+                v3 Delta = Subtract(WorldMode->World, &GroundBuffer->P, &WorldMode->CameraP);
 
-            real32 GroundSideInMeters = World->ChunkDimInMeters.x;
-            PushBitmap(RenderGroup, Transform, Bitmap, 1.0f*GroundSideInMeters, V3(0, 0, 0));
-            if(Global_GroundChunks_Outlines)
-            {
-                PushRectOutline(RenderGroup, Transform, Delta, V2(GroundSideInMeters, GroundSideInMeters), V4(1.0f, 1.0f, 0.0f, 1.0f));
+                RenderGroup->GlobalAlpha = 1.0f;
+                if(Delta.z > FadeTopStartZ)
+                {
+                    RenderGroup->GlobalAlpha = Clamp01MapToRange(FadeTopEndZ, Delta.z, FadeTopStartZ);
+                }
+                else if(Delta.z < FadeBottomStartZ)
+                {
+                    RenderGroup->GlobalAlpha = Clamp01MapToRange(FadeBottomEndZ, Delta.z, FadeBottomStartZ);
+                }
+
+                object_transform Transform = DefaultFlatTransform();
+                Transform.OffsetP = Delta;
+
+                real32 GroundSideInMeters = World->ChunkDimInMeters.x;
+                PushBitmap(RenderGroup, Transform, Bitmap, 1.0f*GroundSideInMeters, V3(0, 0, 0));
+                if(Global_GroundChunks_Outlines)
+                {
+                    PushRectOutline(RenderGroup, Transform, Delta, V2(GroundSideInMeters, GroundSideInMeters), V4(1.0f, 1.0f, 0.0f, 1.0f));
+                }
             }
         }
-    }
-    RenderGroup->GlobalAlpha = 1.0f;
+        
+        RenderGroup->GlobalAlpha = 1.0f;
 
-    // NOTE(casey): Ground chunk updating
-    {
+        // NOTE(casey): Ground chunk updating
         world_position MinChunkP = MapIntoChunkSpace(World, WorldMode->CameraP, GetMinCorner(CameraBoundsInMeters));
         world_position MaxChunkP = MapIntoChunkSpace(World, WorldMode->CameraP, GetMaxCorner(CameraBoundsInMeters));
 
@@ -797,7 +799,7 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
                 }
             }
         }
-    }
+    }    
     
     b32 HeroesExist = false;
     b32 QuitRequested = false;
