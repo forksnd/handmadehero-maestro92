@@ -18,7 +18,7 @@ enum debug_variable_to_text_flag
     DEBUGVarToText_NullTerminator = 0x10,
     DEBUGVarToText_Colon = 0x20,
     DEBUGVarToText_PrettyBools = 0x40,
-    DEBUGVarToText_StartAtLastSlash = 0x80,
+    DEBUGVarToText_ShowEntireGUID = 0x80,
     DEBUGVarToText_AddValue = 0x100,
 };
 
@@ -233,8 +233,9 @@ struct debug_interaction
     union
     {
         void *Generic;
-        debug_event *Event;
+        debug_element *Element;
         debug_tree *Tree;
+        debug_variable_link *Link;
         v2 *P;
     };
 };
@@ -255,13 +256,14 @@ struct debug_state
 
     u32 SelectedIDCount;
     debug_id SelectedID[64];
-
+    
     debug_element *ElementHash[1024];
     debug_view *ViewHash[4096];
     debug_variable_group *RootGroup;
     debug_tree TreeSentinel;
 
     v2 LastMouseP;
+    b32 AltUI;
     debug_interaction Interaction;
     debug_interaction HotInteraction;
     debug_interaction NextHotInteraction;
@@ -293,6 +295,9 @@ struct debug_state
     debug_stored_event *FirstFreeStoredEvent;
     debug_frame *FirstFreeFrame;
 };
+
+internal debug_variable_group *CreateVariableGroup(debug_state *DebugState, u32 NameLength, char *Name);
+internal debug_variable_group *CloneVariableGroup(debug_state *DebugState, debug_variable_link *First);
 
 #define HANDMADE_DEBUG_H
 #endif

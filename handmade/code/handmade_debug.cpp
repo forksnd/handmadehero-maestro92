@@ -306,13 +306,13 @@ DEBUGEventToText(char *Buffer, char *End, debug_event *Event, u32 Flags)
     if(Flags & DEBUGVarToText_AddName)
     {
         char *UseName = Name;
-        if(Flags & DEBUGVarToText_StartAtLastSlash)
+        if(!(Flags & DEBUGVarToText_ShowEntireGUID))
         {
             for(char *Scan = Name;
                 *Scan;
                 ++Scan)
             {
-                if((Scan[0] == '/') &&
+                if((Scan[0] == '|') &&
                    (Scan[1] != 0))
                 {
                     UseName = Scan + 1;
@@ -713,13 +713,13 @@ GetOrCreateDebugViewFor(debug_state *DebugState, debug_id ID)
 }
 
 inline debug_interaction
-EventInteraction(debug_state *DebugState, debug_id DebugID, debug_interaction_type Type, debug_event *Event)
+ElementInteraction(debug_state *DebugState, debug_id DebugID, debug_interaction_type Type, debug_element *Element)
 {    
     debug_interaction ItemInteraction = {};
     ItemInteraction.ID = DebugID;    
     ItemInteraction.Type = Type;
-    ItemInteraction.Event = Event;
-    
+    ItemInteraction.Element = Element;
+
     return(ItemInteraction);
 }
 
@@ -730,6 +730,16 @@ DebugIDInteraction(debug_interaction_type Type, debug_id ID)
     ItemInteraction.ID = ID;
     ItemInteraction.Type = Type;
     
+    return(ItemInteraction);
+}
+
+inline debug_interaction
+DebugLinkInteraction(debug_interaction_type Type, debug_variable_link *Link)
+{
+    debug_interaction ItemInteraction = {};
+    ItemInteraction.Link = Link;
+    ItemInteraction.Type = Type;
+
     return(ItemInteraction);
 }
 
@@ -818,7 +828,7 @@ DEBUG_REQUESTED(debug_id ID)
 }
 
 internal void
-DEBUGDrawEvent(layout *Layout, debug_stored_event *StoredEvent, debug_id DebugID)
+DEBUGDrawEvent(layout *Layout, debug_element *InElement, debug_stored_event *StoredEvent, debug_id DebugID)
 {
     object_transform NoTransform = DefaultFlatTransform();
     
@@ -829,7 +839,7 @@ DEBUGDrawEvent(layout *Layout, debug_stored_event *StoredEvent, debug_id DebugID
     {
         debug_event *Event = &StoredEvent->Event;
         debug_interaction ItemInteraction =
-            EventInteraction(DebugState, DebugID, DebugInteraction_AutoModifyVariable, Event);
+            ElementInteraction(DebugState, DebugID, DebugInteraction_AutoModifyVariable, InElement);
                 
         b32 IsHot = InteractionIsHot(DebugState, ItemInteraction);
         v4 ItemColor = IsHot ? V4(1, 1, 0, 1) : V4(1, 1, 1, 1);
@@ -847,12 +857,9 @@ DEBUGDrawEvent(layout *Layout, debug_stored_event *StoredEvent, debug_id DebugID
                     View->InlineBlock.Dim.x = Dim.Size.x;
                 }
 
-                debug_interaction TearInteraction =
-                    EventInteraction(DebugState, DebugID, DebugInteraction_TearValue, Event);
-
                 layout_element Element = BeginElementRectangle(Layout, &View->InlineBlock.Dim);
                 MakeElementSizable(&Element);
-                DefaultInteraction(&Element, TearInteraction);
+                DefaultInteraction(&Element, ItemInteraction);
                 EndElement(&Element);
 
                 PushRect(&DebugState->RenderGroup, NoTransform, Element.Bounds, 0.0f, V4(0, 0, 0, 1.0f));
@@ -919,7 +926,7 @@ DEBUGDrawElement(layout *Layout, debug_tree *Tree, debug_element *Element, debug
             default:
             {
                 debug_stored_event *Event = Element->MostRecentEvent;
-                DEBUGDrawEvent(Layout, Event, DebugID);
+                DEBUGDrawEvent(Layout, Element, Event, DebugID);
             } break;
         }        
     }
@@ -969,6 +976,10 @@ DEBUGDrawMainMenu(debug_state *DebugState, render_group *RenderGroup, v2 MouseP)
                         debug_id ID = DebugIDFromLink(Tree, Link);
                         debug_view *View = GetOrCreateDebugViewFor(DebugState, ID);
                         debug_interaction ItemInteraction = DebugIDInteraction(DebugInteraction_ToggleExpansion, ID);
+                        if(DebugState->AltUI)
+                        {
+                            ItemInteraction = DebugLinkInteraction(DebugInteraction_TearValue, Link);
+                        }
 
                         char Text[256];
                         Assert((Link->Children->NameLength + 1) < ArrayCount(Text));
@@ -1070,13 +1081,13 @@ DEBUGDrawMainMenu(debug_state *DebugState, render_group *RenderGroup, v2 MouseP)
 }
 
 internal void
-DEBUGBeginInteract(debug_state *DebugState, game_input *Input, v2 MouseP, b32 AltUI)
+DEBUGBeginInteract(debug_state *DebugState, game_input *Input, v2 MouseP)
 {
     if(DebugState->HotInteraction.Type)
     {
         if(DebugState->HotInteraction.Type == DebugInteraction_AutoModifyVariable)
         {
-            switch(DebugState->HotInteraction.Event->Type)
+            switch(DebugState->HotInteraction.Element->MostRecentEvent->Event.Type)
             {
                 case DebugType_b32:
                 {
@@ -1093,25 +1104,16 @@ DEBUGBeginInteract(debug_state *DebugState, game_input *Input, v2 MouseP, b32 Al
                     DebugState->HotInteraction.Type = DebugInteraction_ToggleValue;
                 } break;
             }
-
-            if(AltUI)
-            {
-                DebugState->HotInteraction.Type = DebugInteraction_TearValue;
-            }
         }
 
         switch(DebugState->HotInteraction.Type)
         {
             case DebugInteraction_TearValue:
             {
-#if 0
-                debug_variable *RootGroup = DEBUGAddRootGroup(DebugState, "NewUserGroup");
-                DEBUGAddVariableToGroup(DebugState, RootGroup, DebugState->HotInteraction.Var);
-                debug_tree *Tree = AddTree(DebugState, RootGroup, V2(0, 0));
-                Tree->UIP = MouseP;
+                debug_variable_group *RootGroup = CloneVariableGroup(DebugState, DebugState->HotInteraction.Link);
+                debug_tree *Tree = AddTree(DebugState, RootGroup, MouseP);
                 DebugState->HotInteraction.Type = DebugInteraction_Move;
                 DebugState->HotInteraction.P = &Tree->UIP;
-#endif
             } break;
 
             case DebugInteraction_Select:
@@ -1134,6 +1136,17 @@ DEBUGBeginInteract(debug_state *DebugState, game_input *Input, v2 MouseP, b32 Al
 
 internal debug_element *
 GetElementFromEvent(debug_state *DebugState, debug_event *Event, debug_variable_group *Parent = 0);
+void
+DEBUGMarkEditedEvent(debug_state *DebugState, debug_event *Event)
+{
+    if(Event)
+    {
+        GlobalDebugTable->EditEvent = *Event;
+        GlobalDebugTable->EditEvent.GUID = 
+            GetElementFromEvent(DebugState, Event)->OriginalGUID;
+    }
+}
+
 internal void
 DEBUGEndInteract(debug_state *DebugState, game_input *Input, v2 MouseP)
 {
@@ -1147,18 +1160,16 @@ DEBUGEndInteract(debug_state *DebugState, game_input *Input, v2 MouseP)
         
         case DebugInteraction_ToggleValue:
         {
-            debug_event *Event = DebugState->Interaction.Event;
+            debug_event *Event = &DebugState->Interaction.Element->MostRecentEvent->Event;
             Assert(Event);
             switch(Event->Type)
             {
                 case DebugType_b32:
                 {
                     Event->Value_b32 = !Event->Value_b32;
-                    GlobalDebugTable->EditEvent = *Event;
-                    GlobalDebugTable->EditEvent.GUID = 
-                        GetElementFromEvent(DebugState, Event)->OriginalGUID;
                 } break;
             }
+            DEBUGMarkEditedEvent(DebugState, Event);
         } break;
     }
 
@@ -1184,7 +1195,8 @@ DEBUGInteract(debug_state *DebugState, game_input *Input, v2 MouseP)
 */
     if(DebugState->Interaction.Type)
     {
-        debug_event *Event = DebugState->Interaction.Event;
+        debug_event *Event = DebugState->Interaction.Element ? 
+            &DebugState->Interaction.Element->MostRecentEvent->Event : 0;
         debug_tree *Tree = DebugState->Interaction.Tree;
         v2 *P = DebugState->Interaction.P;
         
@@ -1200,6 +1212,7 @@ DEBUGInteract(debug_state *DebugState, game_input *Input, v2 MouseP)
                         Event->Value_r32 += 0.1f*dMouseP.y;
                     } break;
                 }
+                DEBUGMarkEditedEvent(DebugState, Event);
             } break;
 
             case DebugInteraction_Resize:
@@ -1214,7 +1227,6 @@ DEBUGInteract(debug_state *DebugState, game_input *Input, v2 MouseP)
                 *P += V2(dMouseP.x, dMouseP.y);
             } break;
         }
-        b32 AltUI = Input->MouseButtons[PlatformMouseButton_Right].EndedDown;
 
         // NOTE(casey): Click interaction
         for(u32 TransitionIndex = Input->MouseButtons[PlatformMouseButton_Left].HalfTransitionCount;
@@ -1222,7 +1234,7 @@ DEBUGInteract(debug_state *DebugState, game_input *Input, v2 MouseP)
             --TransitionIndex)
         {
             DEBUGEndInteract(DebugState, Input, MouseP);
-            DEBUGBeginInteract(DebugState, Input, MouseP, AltUI);
+            DEBUGBeginInteract(DebugState, Input, MouseP);
         }
 
         if(!Input->MouseButtons[PlatformMouseButton_Left].EndedDown)
@@ -1234,18 +1246,17 @@ DEBUGInteract(debug_state *DebugState, game_input *Input, v2 MouseP)
     {
         DebugState->HotInteraction = DebugState->NextHotInteraction;
 
-        b32 AltUI = Input->MouseButtons[PlatformMouseButton_Right].EndedDown;
         for(u32 TransitionIndex = Input->MouseButtons[PlatformMouseButton_Left].HalfTransitionCount;
             TransitionIndex > 1;
             --TransitionIndex)
         {
-            DEBUGBeginInteract(DebugState, Input, MouseP, AltUI);
+            DEBUGBeginInteract(DebugState, Input, MouseP);
             DEBUGEndInteract(DebugState, Input, MouseP);
         }
         
         if(Input->MouseButtons[PlatformMouseButton_Left].EndedDown)
         {
-            DEBUGBeginInteract(DebugState, Input, MouseP, AltUI);
+            DEBUGBeginInteract(DebugState, Input, MouseP);
         }
     }
 
@@ -1346,6 +1357,34 @@ CreateVariableGroup(debug_state *DebugState, u32 NameLength, char *Name)
     Group->Name = Name;
     
     return(Group);
+}
+
+internal debug_variable_link *
+CloneVariableLink(debug_state *DebugState, debug_variable_group *DestGroup, debug_variable_link *Source)
+{
+    debug_variable_link *Dest = AddElementToGroup(DebugState, DestGroup, Source->Element);
+    if(Source->Children)
+    {
+        Dest->Children = 
+            CreateVariableGroup(DebugState, Source->Children->NameLength, Source->Children->Name);
+        for(debug_variable_link *Child = Source->Children->Sentinel.Next;
+            Child != &Source->Children->Sentinel;
+            Child = Child->Next)
+        {
+            CloneVariableLink(DebugState, Dest->Children, Child);
+        }
+    }
+    
+    return(Dest);
+}    
+
+internal debug_variable_group *
+CloneVariableGroup(debug_state *DebugState, debug_variable_link *Source)
+{
+    char *Name = PushString(&DebugState->DebugArena, "Cloned");
+    debug_variable_group *Result = CreateVariableGroup(DebugState, StringLength(Name), Name);
+    CloneVariableLink(DebugState, Result, Source);
+    return(Result);
 }
 
 internal debug_variable_group *
@@ -2016,7 +2055,8 @@ DEBUGEnd(debug_state *DebugState, game_input *Input)
     render_group *RenderGroup = &DebugState->RenderGroup;
 
     debug_event *HotEvent = 0;
-        
+    
+    DebugState->AltUI = Input->MouseButtons[PlatformMouseButton_Right].EndedDown;
     v2 MouseP = Unproject(RenderGroup, DefaultFlatTransform(), V2(Input->MouseX, Input->MouseY)).xy;
     DEBUGDrawMainMenu(DebugState, RenderGroup, MouseP);
     DEBUGInteract(DebugState, Input, MouseP);
