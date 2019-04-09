@@ -43,8 +43,8 @@ enum debug_type
     DebugType_sound_id,    
     DebugType_font_id,    
 
-    DebugType_CounterThreadList,
-    DebugType_CounterFunctionList,
+    DebugType_ThreadIntervalGraph,
+    // DebugType_CounterFunctionList,
 };
 struct debug_event
 {
@@ -222,10 +222,10 @@ internal void DEBUGEditEventData(char *GUID, debug_event *Event);
     Event->Type = DebugType_b32; \
 } 
 
-#define DEBUG_PROFILE(FunctionName) \
-     { \
-         RecordDebugEvent(DebugType_CounterFunctionList, DEBUG_NAME(#FunctionName));                   \
-     } 
+#define DEBUG_THREAD_INTERVAL_GRAPH(FunctionName) \
+{ \
+    RecordDebugEvent(DebugType_ThreadIntervalGraph, DEBUG_NAME(#FunctionName));                   \
+} 
 
 #define DEBUG_BEGIN_ARRAY(...)
 #define DEBUG_END_ARRAY(...)
