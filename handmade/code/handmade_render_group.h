@@ -10,7 +10,7 @@
 /* NOTE(casey):
 
    1) Everywhere outside the renderer, Y _always_ goes upward, X to the right.
-   
+
    2) All bitmaps including the render target are assumed to be bottom-up
       (meaning that the first row pointer points to the bottom-most row
        when viewed on screen).
@@ -27,7 +27,7 @@
 
    5) All color values specified to the renderer as V4's are in
       NON-premulitplied alpha.
-      
+
 */
 
 struct loaded_bitmap
@@ -96,7 +96,7 @@ struct render_entry_coordinate_system
     v4 Color;
     loaded_bitmap *Texture;
     loaded_bitmap *NormalMap;
-    
+
 //    real32 PixelsToMeters; // TODO(casey): Need to store this for lighting!
 
     environment_map *Top;
@@ -110,13 +110,14 @@ struct object_transform
     // TODO(casey): Move this out to its own thang
     b32 Upright;
     v3 OffsetP;
-    real32 Scale;
+    r32 Scale;
+    r32 SortBias;
 };
 
 struct camera_transform
 {
     b32 Orthographic;
-    
+
     // NOTE(casey): Camera parameters
     r32 MetersToPixels; // NOTE(casey): This translates meters _on the monitor_ into pixels _on the monitor_
     v2 ScreenCenter;
@@ -131,7 +132,7 @@ struct render_group
     real32 GlobalAlpha;
 
     v2 MonitorHalfDimInMeters;
-    
+
     camera_transform CameraTransform;
 
     uint32 MissingResourceCount;

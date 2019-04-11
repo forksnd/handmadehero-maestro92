@@ -97,6 +97,7 @@ global_variable wgl_swap_interval_ext *wglSwapIntervalEXT;
 global_variable wgl_get_extensions_string_ext *wglGetExtensionsStringEXT;
 global_variable b32 OpenGLSupportsSRGBFramebuffer;
 global_variable GLuint OpenGLDefaultInternalTextureFormat;
+global_variable GLuint OpenGLReservedBlitTexture;
 
 #include "handmade_opengl.cpp"
 #include "handmade_render.cpp"
@@ -680,6 +681,8 @@ Win32InitOpenGL(HDC WindowDC)
         {
             wglSwapIntervalEXT(1);
         }
+        
+        glGenTextures(1, &OpenGLReservedBlitTexture);
     }
 
     return(OpenGLRC);
@@ -767,7 +770,8 @@ Win32DisplayBufferInWindow(platform_work_queue *RenderQueue, game_render_command
         if(GlobalRenderingType == Win32RenderType_RenderSoftware_DisplayOpenGL)
         {
             OpenGLDisplayBitmap(GlobalBackbuffer.Width, GlobalBackbuffer.Height, GlobalBackbuffer.Memory,
-                                GlobalBackbuffer.Pitch, WindowWidth, WindowHeight);
+                                GlobalBackbuffer.Pitch, WindowWidth, WindowHeight,
+                                OpenGLReservedBlitTexture);
             SwapBuffers(DeviceContext);
         }
         else
@@ -2120,6 +2124,16 @@ WinMain(HINSTANCE Instance,
 
             if(Samples && GameMemory.PermanentStorage && GameMemory.TransientStorage)
             {
+                // TODO(casey): Monitor XBox controllers for being plugged in after
+                // the fact!
+                b32 XBoxControllerPresent[XUSER_MAX_COUNT] = {};
+                for(u32 ControllerIndex = 0;
+                    ControllerIndex < XUSER_MAX_COUNT;
+                    ++ControllerIndex)
+                {
+                    XBoxControllerPresent[ControllerIndex] = true;
+                }
+                
                 game_input Input[2] = {};
                 game_input *NewInput = &Input[0];
                 game_input *OldInput = &Input[1];
@@ -2194,152 +2208,167 @@ WinMain(HINSTANCE Instance,
                         NewKeyboardController->Buttons[ButtonIndex].EndedDown =
                             OldKeyboardController->Buttons[ButtonIndex].EndedDown;
                     }
-
-                    Win32ProcessPendingMessages(&Win32State, NewKeyboardController);
+                    
+                    {
+                        TIMED_BLOCK("Win32 Message Processing");
+                        Win32ProcessPendingMessages(&Win32State, NewKeyboardController);
+                    }
 
                     if(!GlobalPause)
                     {
-                        POINT MouseP;
-                        GetCursorPos(&MouseP);
-                        ScreenToClient(Window, &MouseP);
-                        NewInput->MouseX = (r32)MouseP.x;
-                        NewInput->MouseY = (r32)((GlobalBackbuffer.Height - 1) - MouseP.y);
-                        NewInput->MouseZ = 0; // TODO(casey): Support mousewheel?
-
-                        NewInput->ShiftDown = (GetKeyState(VK_SHIFT) & (1 << 15));
-                        NewInput->AltDown = (GetKeyState(VK_MENU) & (1 << 15));
-                        NewInput->ControlDown = (GetKeyState(VK_CONTROL) & (1 << 15));
-
-                        DWORD WinButtonID[PlatformMouseButton_Count] =
                         {
-                            VK_LBUTTON,
-                            VK_MBUTTON,
-                            VK_RBUTTON,
-                            VK_XBUTTON1,
-                            VK_XBUTTON2,
-                        };
-                        for(u32 ButtonIndex = 0;
-                            ButtonIndex < PlatformMouseButton_Count;
-                            ++ButtonIndex)
-                        {
-                            NewInput->MouseButtons[ButtonIndex] = OldInput->MouseButtons[ButtonIndex];
-                            NewInput->MouseButtons[ButtonIndex].HalfTransitionCount = 0;
-                            Win32ProcessKeyboardMessage(&NewInput->MouseButtons[ButtonIndex],
-                                                        GetKeyState(WinButtonID[ButtonIndex]) & (1 << 15));
+                            TIMED_BLOCK("Mouse Position");
+                            POINT MouseP;
+                            GetCursorPos(&MouseP);
+                            ScreenToClient(Window, &MouseP);
+                            NewInput->MouseX = (r32)MouseP.x;
+                            NewInput->MouseY = (r32)((GlobalBackbuffer.Height - 1) - MouseP.y);
+                            NewInput->MouseZ = 0; // TODO(casey): Support mousewheel?
+                            
+                            NewInput->ShiftDown = (GetKeyState(VK_SHIFT) & (1 << 15));
+                            NewInput->AltDown = (GetKeyState(VK_MENU) & (1 << 15));
+                            NewInput->ControlDown = (GetKeyState(VK_CONTROL) & (1 << 15));
                         }
 
-                        // TODO(casey): Need to not poll disconnected controllers to avoid
-                        // xinput frame rate hit on older libraries...
-                        // TODO(casey): Should we poll this more frequently
-                        DWORD MaxControllerCount = XUSER_MAX_COUNT;
-                        if(MaxControllerCount > (ArrayCount(NewInput->Controllers) - 1))
                         {
-                            MaxControllerCount = (ArrayCount(NewInput->Controllers) - 1);
-                        }
-
-                        for (DWORD ControllerIndex = 0;
-                             ControllerIndex < MaxControllerCount;
-                             ++ControllerIndex)
-                        {
-                            DWORD OurControllerIndex = ControllerIndex + 1;
-                            game_controller_input *OldController = GetController(OldInput, OurControllerIndex);
-                            game_controller_input *NewController = GetController(NewInput, OurControllerIndex);
-
-                            XINPUT_STATE ControllerState;
-                            if(XInputGetState(ControllerIndex, &ControllerState) == ERROR_SUCCESS)
+                            TIMED_BLOCK("Keyboard Processing");
+                            DWORD WinButtonID[PlatformMouseButton_Count] =
                             {
-                                NewController->IsConnected = true;
-                                NewController->IsAnalog = OldController->IsAnalog;
-
-                                // NOTE(casey): This controller is plugged in
-                                // TODO(casey): See if ControllerState.dwPacketNumber increments too rapidly
-                                XINPUT_GAMEPAD *Pad = &ControllerState.Gamepad;
-
-                                // TODO(casey): This is a square deadzone, check XInput to
-                                // verify that the deadzone is "round" and show how to do
-                                // round deadzone processing.
-                                NewController->StickAverageX = Win32ProcessXInputStickValue(
-                                    Pad->sThumbLX, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
-                                NewController->StickAverageY = Win32ProcessXInputStickValue(
-                                    Pad->sThumbLY, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
-                                if((NewController->StickAverageX != 0.0f) ||
-                                   (NewController->StickAverageY != 0.0f))
-                                {
-                                    NewController->IsAnalog = true;
-                                }
-
-                                if(Pad->wButtons & XINPUT_GAMEPAD_DPAD_UP)
-                                {
-                                    NewController->StickAverageY = 1.0f;
-                                    NewController->IsAnalog = false;
-                                }
-
-                                if(Pad->wButtons & XINPUT_GAMEPAD_DPAD_DOWN)
-                                {
-                                    NewController->StickAverageY = -1.0f;
-                                    NewController->IsAnalog = false;
-                                }
-
-                                if(Pad->wButtons & XINPUT_GAMEPAD_DPAD_LEFT)
-                                {
-                                    NewController->StickAverageX = -1.0f;
-                                    NewController->IsAnalog = false;
-                                }
-
-                                if(Pad->wButtons & XINPUT_GAMEPAD_DPAD_RIGHT)
-                                {
-                                    NewController->StickAverageX = 1.0f;
-                                    NewController->IsAnalog = false;
-                                }
-
-                                real32 Threshold = 0.5f;
-                                Win32ProcessXInputDigitalButton(
-                                    (NewController->StickAverageX < -Threshold) ? 1 : 0,
-                                    &OldController->MoveLeft, 1,
-                                    &NewController->MoveLeft);
-                                Win32ProcessXInputDigitalButton(
-                                    (NewController->StickAverageX > Threshold) ? 1 : 0,
-                                    &OldController->MoveRight, 1,
-                                    &NewController->MoveRight);
-                                Win32ProcessXInputDigitalButton(
-                                    (NewController->StickAverageY < -Threshold) ? 1 : 0,
-                                    &OldController->MoveDown, 1,
-                                    &NewController->MoveDown);
-                                Win32ProcessXInputDigitalButton(
-                                    (NewController->StickAverageY > Threshold) ? 1 : 0,
-                                    &OldController->MoveUp, 1,
-                                    &NewController->MoveUp);
-
-                                Win32ProcessXInputDigitalButton(Pad->wButtons,
-                                                                &OldController->ActionDown, XINPUT_GAMEPAD_A,
-                                                                &NewController->ActionDown);
-                                Win32ProcessXInputDigitalButton(Pad->wButtons,
-                                                                &OldController->ActionRight, XINPUT_GAMEPAD_B,
-                                                                &NewController->ActionRight);
-                                Win32ProcessXInputDigitalButton(Pad->wButtons,
-                                                                &OldController->ActionLeft, XINPUT_GAMEPAD_X,
-                                                                &NewController->ActionLeft);
-                                Win32ProcessXInputDigitalButton(Pad->wButtons,
-                                                                &OldController->ActionUp, XINPUT_GAMEPAD_Y,
-                                                                &NewController->ActionUp);
-                                Win32ProcessXInputDigitalButton(Pad->wButtons,
-                                                                &OldController->LeftShoulder, XINPUT_GAMEPAD_LEFT_SHOULDER,
-                                                                &NewController->LeftShoulder);
-                                Win32ProcessXInputDigitalButton(Pad->wButtons,
-                                                                &OldController->RightShoulder, XINPUT_GAMEPAD_RIGHT_SHOULDER,
-                                                                &NewController->RightShoulder);
-
-                                Win32ProcessXInputDigitalButton(Pad->wButtons,
-                                                                &OldController->Start, XINPUT_GAMEPAD_START,
-                                                                &NewController->Start);
-                                Win32ProcessXInputDigitalButton(Pad->wButtons,
-                                                                &OldController->Back, XINPUT_GAMEPAD_BACK,
-                                                                &NewController->Back);
+                                VK_LBUTTON,
+                                VK_MBUTTON,
+                                VK_RBUTTON,
+                                VK_XBUTTON1,
+                                VK_XBUTTON2,
+                            };
+                            for(u32 ButtonIndex = 0;
+                                ButtonIndex < PlatformMouseButton_Count;
+                                ++ButtonIndex)
+                            {
+                                NewInput->MouseButtons[ButtonIndex] = OldInput->MouseButtons[ButtonIndex];
+                                NewInput->MouseButtons[ButtonIndex].HalfTransitionCount = 0;
+                                Win32ProcessKeyboardMessage(&NewInput->MouseButtons[ButtonIndex],
+                                    GetKeyState(WinButtonID[ButtonIndex]) & (1 << 15));
                             }
-                            else
+                        }
+
+                        {
+                            TIMED_BLOCK("XBox Controllers");
+
+                            // TODO(casey): Need to not poll disconnected controllers to avoid
+                            // xinput frame rate hit on older libraries...
+                            // TODO(casey): Should we poll this more frequently
+                            DWORD MaxControllerCount = XUSER_MAX_COUNT;
+                            if(MaxControllerCount > (ArrayCount(NewInput->Controllers) - 1))
                             {
-                                // NOTE(casey): The controller is not available
-                                NewController->IsConnected = false;
+                                MaxControllerCount = (ArrayCount(NewInput->Controllers) - 1);
+                            }
+
+                            for (DWORD ControllerIndex = 0;
+                                ControllerIndex < MaxControllerCount;
+                                ++ControllerIndex)
+                            {
+                                DWORD OurControllerIndex = ControllerIndex + 1;
+                                game_controller_input *OldController = GetController(OldInput, OurControllerIndex);
+                                game_controller_input *NewController = GetController(NewInput, OurControllerIndex);
+
+                                XINPUT_STATE ControllerState;
+                                if(XBoxControllerPresent[ControllerIndex] &&
+                                   XInputGetState(ControllerIndex, &ControllerState) == ERROR_SUCCESS)
+                                {
+                                    NewController->IsConnected = true;
+                                    NewController->IsAnalog = OldController->IsAnalog;
+
+                                    // NOTE(casey): This controller is plugged in
+                                    // TODO(casey): See if ControllerState.dwPacketNumber increments too rapidly
+                                    XINPUT_GAMEPAD *Pad = &ControllerState.Gamepad;
+
+                                    // TODO(casey): This is a square deadzone, check XInput to
+                                    // verify that the deadzone is "round" and show how to do
+                                    // round deadzone processing.
+                                    NewController->StickAverageX = Win32ProcessXInputStickValue(
+                                        Pad->sThumbLX, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
+                                    NewController->StickAverageY = Win32ProcessXInputStickValue(
+                                        Pad->sThumbLY, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
+                                    if((NewController->StickAverageX != 0.0f) ||
+                                            (NewController->StickAverageY != 0.0f))
+                                    {
+                                        NewController->IsAnalog = true;
+                                    }
+
+                                    if(Pad->wButtons & XINPUT_GAMEPAD_DPAD_UP)
+                                    {
+                                        NewController->StickAverageY = 1.0f;
+                                        NewController->IsAnalog = false;
+                                    }
+
+                                    if(Pad->wButtons & XINPUT_GAMEPAD_DPAD_DOWN)
+                                    {
+                                        NewController->StickAverageY = -1.0f;
+                                        NewController->IsAnalog = false;
+                                    }
+
+                                    if(Pad->wButtons & XINPUT_GAMEPAD_DPAD_LEFT)
+                                    {
+                                        NewController->StickAverageX = -1.0f;
+                                        NewController->IsAnalog = false;
+                                    }
+
+                                    if(Pad->wButtons & XINPUT_GAMEPAD_DPAD_RIGHT)
+                                    {
+                                        NewController->StickAverageX = 1.0f;
+                                        NewController->IsAnalog = false;
+                                    }
+
+                                    real32 Threshold = 0.5f;
+                                    Win32ProcessXInputDigitalButton(
+                                        (NewController->StickAverageX < -Threshold) ? 1 : 0,
+                                        &OldController->MoveLeft, 1,
+                                        &NewController->MoveLeft);
+                                    Win32ProcessXInputDigitalButton(
+                                        (NewController->StickAverageX > Threshold) ? 1 : 0,
+                                        &OldController->MoveRight, 1,
+                                        &NewController->MoveRight);
+                                    Win32ProcessXInputDigitalButton(
+                                        (NewController->StickAverageY < -Threshold) ? 1 : 0,
+                                        &OldController->MoveDown, 1,
+                                        &NewController->MoveDown);
+                                    Win32ProcessXInputDigitalButton(
+                                        (NewController->StickAverageY > Threshold) ? 1 : 0,
+                                        &OldController->MoveUp, 1,
+                                        &NewController->MoveUp);
+
+                                    Win32ProcessXInputDigitalButton(Pad->wButtons,
+                                        &OldController->ActionDown, XINPUT_GAMEPAD_A,
+                                        &NewController->ActionDown);
+                                    Win32ProcessXInputDigitalButton(Pad->wButtons,
+                                        &OldController->ActionRight, XINPUT_GAMEPAD_B,
+                                        &NewController->ActionRight);
+                                    Win32ProcessXInputDigitalButton(Pad->wButtons,
+                                        &OldController->ActionLeft, XINPUT_GAMEPAD_X,
+                                        &NewController->ActionLeft);
+                                    Win32ProcessXInputDigitalButton(Pad->wButtons,
+                                        &OldController->ActionUp, XINPUT_GAMEPAD_Y,
+                                        &NewController->ActionUp);
+                                    Win32ProcessXInputDigitalButton(Pad->wButtons,
+                                        &OldController->LeftShoulder, XINPUT_GAMEPAD_LEFT_SHOULDER,
+                                        &NewController->LeftShoulder);
+                                    Win32ProcessXInputDigitalButton(Pad->wButtons,
+                                        &OldController->RightShoulder, XINPUT_GAMEPAD_RIGHT_SHOULDER,
+                                        &NewController->RightShoulder);
+
+                                    Win32ProcessXInputDigitalButton(Pad->wButtons,
+                                        &OldController->Start, XINPUT_GAMEPAD_START,
+                                        &NewController->Start);
+                                    Win32ProcessXInputDigitalButton(Pad->wButtons,
+                                        &OldController->Back, XINPUT_GAMEPAD_BACK,
+                                        &NewController->Back);
+                                }
+                                else
+                                {
+                                    // NOTE(casey): The controller is not available
+                                    NewController->IsConnected = false;
+                                    XBoxControllerPresent[ControllerIndex] = false;
+                                }
                             }
                         }
                     }
