@@ -681,7 +681,7 @@ Win32InitOpenGL(HDC WindowDC)
         {
             wglSwapIntervalEXT(1);
         }
-        
+
         glGenTextures(1, &OpenGLReservedBlitTexture);
     }
 
@@ -1729,156 +1729,6 @@ global_variable debug_table GlobalDebugTable_;
 debug_table *GlobalDebugTable = &GlobalDebugTable_;
 #endif
 
-internal void
-SetFadeAlpha(HWND Window, r32 Alpha)
-{
-    BYTE WindowsAlpha = (BYTE)(Alpha*255.0f);
-    if(Alpha == 0)
-    {
-        if(IsWindowVisible(Window))
-        {
-            ShowWindow(Window, SW_HIDE);
-        }
-    }
-    else
-    {
-        SetLayeredWindowAttributes(Window, RGB(0, 0, 0), WindowsAlpha, LWA_ALPHA);
-        if(!IsWindowVisible(Window))
-        {
-            ShowWindow(Window, SW_SHOW);
-        }
-    }
-}
-
-internal void
-InitFader(win32_fader *Fader, HINSTANCE Instance)
-{
-    WNDCLASSA WindowClass = {};
-
-    WindowClass.style = CS_HREDRAW|CS_VREDRAW;
-    WindowClass.lpfnWndProc = Win32FadeWindowCallback;
-    WindowClass.hInstance = Instance;
-    WindowClass.hCursor = LoadCursor(0, IDC_ARROW);
-    WindowClass.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
-    WindowClass.lpszClassName = "HandmadeFadeOutWindowClass";
-
-    if(RegisterClassA(&WindowClass))
-    {
-        Fader->Window =
-            CreateWindowExA(
-                WS_EX_LAYERED,//|WS_EX_TOPMOST,
-                WindowClass.lpszClassName,
-                "Handmade Hero",
-                WS_OVERLAPPEDWINDOW,
-                CW_USEDEFAULT,
-                CW_USEDEFAULT,
-                CW_USEDEFAULT,
-                CW_USEDEFAULT,
-                0,
-                0,
-                Instance,
-                0);
-        if(Fader->Window)
-        {
-            ToggleFullscreen(Fader->Window);
-        }
-    }
-}
-
-internal void
-BeginFadeToGame(win32_fader *Fader)
-{
-    Fader->State = Win32Fade_FadingIn;
-    Fader->Alpha = 0.0f;
-}
-
-internal void
-BeginFadeToDesktop(win32_fader *Fader)
-{
-    if(Fader->State == Win32Fade_Inactive)
-    {
-        Fader->State = Win32Fade_FadingGame;
-        Fader->Alpha = 0.0f;
-    }
-}
-
-internal win32_fader_state
-UpdateFade(win32_fader *Fader, r32 dt, HWND GameWindow)
-{
-    switch(Fader->State)
-    {
-        case Win32Fade_FadingIn:
-        {
-            if(Fader->Alpha >= 1.0f)
-            {
-                SetFadeAlpha(Fader->Window, 1.0f);
-                ShowWindow(GameWindow, SW_SHOW);
-                InvalidateRect(GameWindow, 0, TRUE);
-                UpdateWindow(GameWindow);
-
-                Fader->State = Win32Fade_WaitingForShow;
-            }
-            else
-            {
-                SetFadeAlpha(Fader->Window, Fader->Alpha);
-                Fader->Alpha += dt;
-            }
-        } break;
-
-        case Win32Fade_WaitingForShow:
-        {
-            SetFadeAlpha(Fader->Window, 0.0f);
-            Fader->State = Win32Fade_Inactive;
-        } break;
-
-        case Win32Fade_Inactive:
-        {
-            // NOTE(casey): Nothing to do.
-        } break;
-
-        case Win32Fade_FadingGame:
-        {
-            if(Fader->Alpha >= 1.0f)
-            {
-                SetFadeAlpha(Fader->Window, 1.0f);
-                ShowWindow(GameWindow, SW_HIDE);                
-                Fader->State = Win32Fade_FadingOut;
-            }
-            else
-            {
-                SetFadeAlpha(Fader->Window, Fader->Alpha);
-                Fader->Alpha += dt;
-            }
-        } break;
-
-        case Win32Fade_FadingOut:
-        {
-            Fader->Alpha -= dt;
-            if(Fader->Alpha <= 0.0f)
-            {
-                SetFadeAlpha(Fader->Window, 0.0f);
-                Fader->State = Win32Fade_WaitingForClose;
-            }
-            else
-            {
-                SetFadeAlpha(Fader->Window, Fader->Alpha);
-            }
-        } break;
-
-        case Win32Fade_WaitingForClose:
-        {
-            // NOTE(casey): Nothing to do.
-        } break;
-
-        default:
-        {
-            Assert(!"Unrecognized fader state!");
-        } break;
-    }
-
-    return(Fader->State);
-}
-
 int CALLBACK
 WinMain(HINSTANCE Instance,
         HINSTANCE PrevInstance,
@@ -1911,10 +1761,7 @@ WinMain(HINSTANCE Instance,
     bool32 SleepIsGranular = (timeBeginPeriod(DesiredSchedulerMS) == TIMERR_NOERROR);
 
     Win32LoadXInput();
-
-    win32_fader Fader;
-    InitFader(&Fader, Instance);
-
+    
 #if HANDMADE_INTERNAL
     DEBUGGlobalShowCursor = true;
 #endif
@@ -2041,6 +1888,9 @@ WinMain(HINSTANCE Instance,
             GameMemory.PermanentStorageSize = Megabytes(256);
             GameMemory.TransientStorageSize = Gigabytes(1);
             GameMemory.DebugStorageSize = Megabytes(256);
+#if HANDMADE_INTERNAL
+            GameMemory.DebugTable = GlobalDebugTable;
+#endif
             GameMemory.HighPriorityQueue = &HighPriorityQueue;
             GameMemory.LowPriorityQueue = &LowPriorityQueue;
             GameMemory.PlatformAPI.AddEntry = Win32AddEntry;
@@ -2052,8 +1902,8 @@ WinMain(HINSTANCE Instance,
             GameMemory.PlatformAPI.ReadDataFromFile = Win32ReadDataFromFile;
             GameMemory.PlatformAPI.FileError = Win32FileError;
 
-            GameMemory.PlatformAPI.AllocateTexture = Win32AllocateTexture;
-            GameMemory.PlatformAPI.DeallocateTexture = Win32DeallocateTexture;
+            GameMemory.PlatformAPI.AllocateTexture = AllocateTexture;
+            GameMemory.PlatformAPI.DeallocateTexture = DeallocateTexture;
             GameMemory.PlatformAPI.AllocateMemory = Win32AllocateMemory;
             GameMemory.PlatformAPI.DeallocateMemory = Win32DeallocateMemory;
 
@@ -2087,7 +1937,7 @@ WinMain(HINSTANCE Instance,
                                            GameMemory.PermanentStorageSize);
             GameMemory.DebugStorage = ((u8 *)GameMemory.TransientStorage +
                                        GameMemory.TransientStorageSize);
-
+                                   
             for(int ReplayIndex = 1;
                 ReplayIndex < ArrayCount(Win32State.ReplayBuffers);
                 ++ReplayIndex)
@@ -2133,7 +1983,7 @@ WinMain(HINSTANCE Instance,
                 {
                     XBoxControllerPresent[ControllerIndex] = true;
                 }
-                
+
                 game_input Input[2] = {};
                 game_input *NewInput = &Input[0];
                 game_input *OldInput = &Input[1];
@@ -2151,6 +2001,7 @@ WinMain(HINSTANCE Instance,
                 win32_game_code Game = Win32LoadGameCode(SourceGameCodeDLLFullPath,
                                                          TempGameCodeDLLFullPath,
                                                          GameCodeLockFullPath);
+                ShowWindow(Window, SW_SHOW);
                 while(GlobalRunning)
                 {
                     {DEBUG_DATA_BLOCK("Platform/Controls");
@@ -2165,21 +2016,13 @@ WinMain(HINSTANCE Instance,
                     BEGIN_BLOCK("Executable Refresh");
                     NewInput->dtForFrame = TargetSecondsPerFrame;
 
-                    if(UpdateFade(&Fader, NewInput->dtForFrame, Window) == Win32Fade_WaitingForClose)
-                    {
-                        GlobalRunning = false;
-                    }
-
                     GameMemory.ExecutableReloaded = false;                    
                     FILETIME NewDLLWriteTime = Win32GetLastWriteTime(SourceGameCodeDLLFullPath);
                     if(CompareFileTime(&NewDLLWriteTime, &Game.DLLLastWriteTime) != 0)
                     {
                         Win32CompleteAllWork(&HighPriorityQueue);
                         Win32CompleteAllWork(&LowPriorityQueue);
-
-#if HANDMADE_INTERNAL
-                        GlobalDebugTable = &GlobalDebugTable_;
-#endif
+                        
                         Win32UnloadGameCode(&Game);
                         Game = Win32LoadGameCode(SourceGameCodeDLLFullPath,
                                                  TempGameCodeDLLFullPath,
@@ -2208,7 +2051,7 @@ WinMain(HINSTANCE Instance,
                         NewKeyboardController->Buttons[ButtonIndex].EndedDown =
                             OldKeyboardController->Buttons[ButtonIndex].EndedDown;
                     }
-                    
+
                     {
                         TIMED_BLOCK("Win32 Message Processing");
                         Win32ProcessPendingMessages(&Win32State, NewKeyboardController);
@@ -2224,7 +2067,7 @@ WinMain(HINSTANCE Instance,
                             NewInput->MouseX = (r32)MouseP.x;
                             NewInput->MouseY = (r32)((GlobalBackbuffer.Height - 1) - MouseP.y);
                             NewInput->MouseZ = 0; // TODO(casey): Support mousewheel?
-                            
+
                             NewInput->ShiftDown = (GetKeyState(VK_SHIFT) & (1 << 15));
                             NewInput->AltDown = (GetKeyState(VK_MENU) & (1 << 15));
                             NewInput->ControlDown = (GetKeyState(VK_CONTROL) & (1 << 15));
@@ -2416,9 +2259,8 @@ WinMain(HINSTANCE Instance,
                             Game.UpdateAndRender(&GameMemory, NewInput, &RenderCommands);
                             if(NewInput->QuitRequested)
                             {
-                                BeginFadeToDesktop(&Fader);
+                                GlobalRunning = false;
                             }
-//                            HandleDebugCycleCounters(&GameMemory);
                         }
                     }
 
@@ -2571,9 +2413,15 @@ WinMain(HINSTANCE Instance,
 
                     if(Game.DEBUGFrameEnd)
                     {
-                        GlobalDebugTable = Game.DEBUGFrameEnd(&GameMemory, NewInput, &RenderCommands);
+                        Game.DEBUGFrameEnd(&GameMemory, NewInput, &RenderCommands);
                     }
-                    GlobalDebugTable_.EventArrayIndex_EventIndex = 0;
+                    else
+                    {
+                        // NOTE(casey): If for some reason the game didn't load,
+                        // make sure we clear the debug event array so it doesn't
+                        // pile up on itself.
+                        GlobalDebugTable_.EventArrayIndex_EventIndex = 0;
+                    }
 
                     END_BLOCK();
 #endif

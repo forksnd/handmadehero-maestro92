@@ -14,7 +14,6 @@
 #include "handmade_sim_region.cpp"
 #include "handmade_entity.cpp"
 #include "handmade_world_mode.cpp"
-#include "handmade_meta.cpp"
 #include "handmade_cutscene.cpp"
 
 
@@ -265,6 +264,7 @@ SetGameMode(game_state *GameState, transient_state *TranState, game_mode GameMod
 }
 
 #if HANDMADE_INTERNAL
+debug_table *GlobalDebugTable;
 game_memory *DebugGlobalMemory;
 #endif
 extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
@@ -272,6 +272,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     Platform = Memory->PlatformAPI;    
     
 #if HANDMADE_INTERNAL
+    GlobalDebugTable = Memory->DebugTable;
     DebugGlobalMemory = Memory;
     
     {DEBUG_DATA_BLOCK("Renderer");

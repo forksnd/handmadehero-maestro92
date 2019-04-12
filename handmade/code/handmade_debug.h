@@ -131,7 +131,6 @@ struct debug_tree
 
 struct debug_variable_group
 {
-    u32 NameLength;
     char *Name;
     debug_variable_link Sentinel;
 };
@@ -208,9 +207,8 @@ struct open_debug_block
     };
 
     u32 StartingFrameIndex;
-    debug_event *OpeningEvent;
     debug_element *Element;
-    
+    u64 BeginClock;
     debug_stored_event *Node;
 
     // NOTE(casey): Only for data blocks?  Probably!

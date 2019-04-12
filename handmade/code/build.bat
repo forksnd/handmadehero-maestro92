@@ -1,8 +1,12 @@
 @echo off
 
 set CommonCompilerFlags=-Od -MTd -nologo -fp:fast -fp:except- -Gm- -GR- -EHa- -Zo -Oi -WX -W4 -wd4201 -wd4100 -wd4189 -wd4505 -wd4127 -FC -Z7
-set CommonCompilerFlags=-DHANDMADE_STREAMING=1 -DHANDMADE_INTERNAL=1 -DHANDMADE_SLOW=1 -DHANDMADE_WIN32=1 %CommonCompilerFlags% 
+set CommonCompilerFlags=-DHANDMADE_INTERNAL=1 -DHANDMADE_SLOW=1 -DHANDMADE_WIN32=1 %CommonCompilerFlags% 
 set CommonLinkerFlags= -incremental:no -opt:ref user32.lib gdi32.lib winmm.lib opengl32.lib
+
+IF "%HANDMADE_STREAMING%"=="" goto nostreaming
+set CommonCompilerFlags=%CommonCompilerFlags% -DHANDMADE_STREAMING=1
+:nostreaming
 
 REM TODO - can we just build both with one exe?
 
@@ -12,10 +16,10 @@ pushd ..\..\build
 del *.pdb > NUL 2> NUL
 
 REM Simple preprocessor
-cl %CommonCompilerFlags% -D_CRT_SECURE_NO_WARNINGS ..\handmade\code\simple_preprocessor.cpp /link %CommonLinkerFlags%
-pushd ..\handmade\code
-..\..\build\simple_preprocessor.exe > handmade_generated.h
-popd
+REM cl %CommonCompilerFlags% -D_CRT_SECURE_NO_WARNINGS ..\handmade\code\simple_preprocessor.cpp /link %CommonLinkerFlags%
+REM pushd ..\handmade\code
+REM ..\..\build\simple_preprocessor.exe > handmade_generated.h
+REM popd
 
 REM Asset file builder build
 REM cl %CommonCompilerFlags% -D_CRT_SECURE_NO_WARNINGS ..\handmade\code\test_asset_builder.cpp /link %CommonLinkerFlags%

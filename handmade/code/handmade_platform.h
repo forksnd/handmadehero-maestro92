@@ -103,7 +103,8 @@ typedef real64 r64;
 
 typedef uintptr_t umm;
 
-#define PointerToU32(Pointer) ((u32)(memory_index)(Pointer))
+#define U32FromPointer(Pointer) ((u32)(memory_index)(Pointer))
+#define PointerFromU32(type, Value) (type *)((memory_index)Value)
     
 #pragma pack(push, 1)
 struct bitmap_id
@@ -541,6 +542,10 @@ typedef struct game_memory
 
     uint64 DebugStorageSize;
     void *DebugStorage; // NOTE(casey): REQUIRED to be cleared to zero at startup
+    
+#if HANDMADE_INTERNAL
+    struct debug_table *DebugTable;
+#endif
 
     platform_work_queue *HighPriorityQueue;
     platform_work_queue *LowPriorityQueue;
