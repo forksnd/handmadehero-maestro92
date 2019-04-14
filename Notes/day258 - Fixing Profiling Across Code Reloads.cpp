@@ -1,7 +1,8 @@
 Handmade Hero Day 258 - Fixing Profiling Across Code Reloads
 
 Summary:
-
+reorgnaized the game code dll reload code and the DEBUGFrameEnd code so that the profiler works during 
+debug code reloading.
 
 Keyword:
 debug system, profiler 

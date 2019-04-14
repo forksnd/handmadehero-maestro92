@@ -554,7 +554,7 @@ Win32SetPixelFormat(HDC WindowDC)
             0,
         };
 
-        if(!OpenGLDefaultInternalTextureFormat)
+        if(!OpenGLSupportsSRGBFramebuffer)
         {
             IntAttribList[10] = 0;
         }
@@ -676,7 +676,7 @@ Win32InitOpenGL(HDC WindowDC)
 
     if(wglMakeCurrent(WindowDC, OpenGLRC))
     {
-        OpenGLInit(ModernContext);
+        OpenGLInit(ModernContext, OpenGLSupportsSRGBFramebuffer);
         if(wglSwapIntervalEXT)
         {
             wglSwapIntervalEXT(1);
