@@ -1211,7 +1211,6 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
                     }
                 } break;
 
-#if 1
                 case EntityType_Wall:
                 {
                     PushBitmap(RenderGroup, EntityTransform, GetFirstBitmapFrom(TranState->Assets, Asset_Tree), 2.5f, V3(0, 0, 0));
@@ -1248,7 +1247,7 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
 
                     DrawHitpoints(Entity, RenderGroup, EntityTransform);
                 } break;
-#endif
+                
                 case EntityType_Space:
                 {
                     if(Global_Simulation_UseSpaceOutlines)

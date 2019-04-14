@@ -50,10 +50,13 @@ struct layered_scene
 // NOTE(casey): Thank you to Ron Gilbert and friends for
 // introducing the word "cutscene" into the game development
 // vocabulary.
+enum cutscene_id
+{
+    CutsceneID_Intro,
+};
 struct game_mode_cutscene
 {
-    u32 SceneCount;
-    layered_scene *Scenes;
+    cutscene_id ID;
     r32 t;
 };
 
