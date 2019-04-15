@@ -803,6 +803,22 @@ DEBUG_REQUESTED(debug_id ID)
     return(Result);
 }
 
+global_variable v3 DebugColorTable[] =
+{
+    {1, 0, 0},
+    {0, 1, 0},
+    {0, 0, 1},
+    {1, 1, 0},
+    {0, 1, 1},
+    {1, 0, 1},
+    {1, 0.5f, 0},
+    {1, 0, 0.5f},
+    {0.5f, 1, 0},
+    {0, 1, 0.5f},
+    {0.5f, 0, 1},
+    //    {0, 0.5f, 1},
+};
+
 internal void
 DrawProfileBars(debug_state *DebugState, debug_id GraphID, rectangle2 ProfileRect, v2 MouseP,
                 debug_profile_node *RootNode, r32 LaneStride, r32 LaneHeight)
@@ -816,22 +832,6 @@ DrawProfileBars(debug_state *DebugState, debug_id GraphID, rectangle2 ProfileRec
         Scale = PixelSpan / FrameSpan;
     }
 
-    v3 Colors[] =
-    {
-        {1, 0, 0},
-        {0, 1, 0},
-        {0, 0, 1},
-        {1, 1, 0},
-        {0, 1, 1},
-        {1, 0, 1},
-        {1, 0.5f, 0},
-        {1, 0, 0.5f},
-        {0.5f, 1, 0},
-        {0, 1, 0.5f},
-        {0.5f, 0, 1},
-        //    {0, 0.5f, 1},
-    };
-
     for(debug_stored_event *StoredEvent = RootNode->FirstChild;
         StoredEvent;
         StoredEvent = StoredEvent->ProfileNode.NextSameParent)
@@ -840,7 +840,7 @@ DrawProfileBars(debug_state *DebugState, debug_id GraphID, rectangle2 ProfileRec
         debug_element *Element = Node->Element;
         Assert(Element);
 
-        v3 Color = Colors[U32FromPointer(Element->GUID)%ArrayCount(Colors)];
+        v3 Color = DebugColorTable[U32FromPointer(Element->GUID)%ArrayCount(DebugColorTable)];
         r32 ThisMinX = ProfileRect.Min.x + Scale*(r32)(Node->ParentRelativeClock);
         r32 ThisMaxX = ThisMinX + Scale*(r32)(Node->Duration);
 
@@ -868,7 +868,7 @@ DrawProfileBars(debug_state *DebugState, debug_id GraphID, rectangle2 ProfileRec
             DebugState->NextHotInteraction = ZoomInteraction;
         }
     
-        DrawProfileBars(DebugState, GraphID, RegionRect, MouseP, Node, 0, LaneHeight/2);
+//        DrawProfileBars(DebugState, GraphID, RegionRect, MouseP, Node, 0, LaneHeight/2);
     }
 }
 
@@ -893,13 +893,81 @@ DrawProfileIn(debug_state *DebugState, debug_id GraphID, rectangle2 ProfileRect,
 }
 
 internal void
-DEBUGDrawElement(layout *Layout, debug_tree *Tree, debug_element *Element, debug_id DebugID)
+DrawFrameBars(debug_state *DebugState, debug_id GraphID, rectangle2 ProfileRect, v2 MouseP,
+              debug_stored_event *FirstEvent, u32 FrameCount = 128)
+{
+    if(FrameCount > 0)
+    {
+        DebugState->MouseTextStackY = 10.0f;
+        
+        object_transform NoTransform = DefaultFlatTransform();
+        PushRect(&DebugState->RenderGroup, DebugState->BackingTransform, ProfileRect, 0.0f, V4(0, 0, 0, 0.25f));
+        
+        r32 BarWidth = (GetDim(ProfileRect).x / (r32)FrameCount);
+        r32 AtX = ProfileRect.Min.x;
+        debug_stored_event *RootEvent = FirstEvent;
+        for(u32 FrameIndex = 0;
+            RootEvent && (FrameIndex < FrameCount);
+            ++FrameIndex, RootEvent = RootEvent->Next)
+        {
+            debug_profile_node *RootNode = &RootEvent->ProfileNode;
+            r32 FrameSpan = (r32)(RootNode->Duration);
+            r32 PixelSpan = GetDim(ProfileRect).y;
+
+            r32 Scale = 0.0f;
+            if(FrameSpan > 0)
+            {
+                Scale = PixelSpan / FrameSpan;
+            }
+
+            for(debug_stored_event *StoredEvent = RootNode->FirstChild;
+                StoredEvent;
+                StoredEvent = StoredEvent->ProfileNode.NextSameParent)
+            {
+                debug_profile_node *Node = &StoredEvent->ProfileNode;
+                debug_element *Element = Node->Element;
+                Assert(Element);
+
+                v3 Color = DebugColorTable[U32FromPointer(Element->GUID)%ArrayCount(DebugColorTable)];
+                r32 ThisMinY = ProfileRect.Min.y + Scale*(r32)(Node->ParentRelativeClock);
+                r32 ThisMaxY = ThisMinY + Scale*(r32)(Node->Duration);
+
+                rectangle2 RegionRect = RectMinMax(V2(AtX, ThisMinY), V2(AtX + BarWidth, ThisMaxY));
+                
+                PushRectOutline(&DebugState->RenderGroup, DebugState->UITransform, RegionRect,
+                    0.0f, V4(Color, 1), 2.0f);
+
+                if(IsInRectangle(RegionRect, MouseP))
+                {
+                    char TextBuffer[256];
+                    _snprintf_s(TextBuffer, sizeof(TextBuffer),
+                        "%s: %10ucy",
+                        Element->GUID, Node->Duration);
+                    DEBUGTextOutAt(MouseP + V2(0.0f, DebugState->MouseTextStackY), TextBuffer);
+                    DebugState->MouseTextStackY -= GetLineAdvance(DebugState);
+
+                    debug_interaction ZoomInteraction = {};
+                    ZoomInteraction.ID = GraphID;
+                    ZoomInteraction.Type = DebugInteraction_SetProfileGraphRoot;
+                    ZoomInteraction.Element = Element;
+                    DebugState->NextHotInteraction = ZoomInteraction;
+                }
+            }
+            
+            AtX += BarWidth;
+        }
+    }
+}
+
+internal void
+DEBUGDrawElement(layout *Layout, debug_tree *Tree, debug_element *Element, debug_id DebugID,
+                 u32 FrameOrdinal)
 {
     object_transform NoTransform = DefaultFlatTransform();
 
     debug_state *DebugState = Layout->DebugState;
     render_group *RenderGroup = &DebugState->RenderGroup;
-    debug_stored_event *StoredEvent = Element->MostRecentEvent;
+    debug_stored_event *StoredEvent = Element->Frames[FrameOrdinal].MostRecentEvent;
 
     if(StoredEvent)
     {
@@ -935,41 +1003,37 @@ DEBUGDrawElement(layout *Layout, debug_tree *Tree, debug_element *Element, debug
 
             case DebugType_ThreadIntervalGraph:
             {
-                layout_element Element = BeginElementRectangle(Layout, &View->ProfileGraph.Block.Dim);
+                debug_view_profile_graph *Graph = &View->ProfileGraph;
+
+                layout_element Element = BeginElementRectangle(Layout, &Graph->Block.Dim);
+                if((Graph->Block.Dim.x == 0) && (Graph->Block.Dim.y == 0))
+                {
+                    Graph->Block.Dim.x = 1800;
+                    Graph->Block.Dim.y = 480;
+                }
+                
                 MakeElementSizable(&Element);
                 //                DefaultInteraction(&Element, ItemInteraction);
                 EndElement(&Element);
                 
                 debug_stored_event *RootNode = 0;
                 
-                // TODO(casey): Need to figure out how we're going to get specific frames
-                // less slowly than linear search?
-                debug_frame *Frame = DebugState->MostRecentFrame;
-                if(Frame)
+                u32 MostRecentFrameOrdinal = DebugState->MostRecentFrameOrdinal;
+                debug_element *ViewingElement = GetElementFromGUID(DebugState, View->ProfileGraph.GUID);
+                if(ViewingElement)
                 {
-                    debug_element *ViewingElement = GetElementFromGUID(DebugState, View->ProfileGraph.GUID);
-                    if(ViewingElement)
-                    {
-                        for(debug_stored_event *Search = ViewingElement->OldestEvent;
-                            Search;
-                            Search = Search->Next)
-                        {
-                            if(Search->FrameIndex == Frame->FrameIndex)
-                            {
-                                RootNode = Search;
-                            }
-                        }
-                    }
-                        
-                    if(!RootNode)
-                    {
-                        RootNode = Frame->RootProfileNode;
-                    }
+                    RootNode = ViewingElement->Frames[MostRecentFrameOrdinal].OldestEvent;
+                }
+                
+                if(!RootNode)
+                {
+                    RootNode = DebugState->Frames[MostRecentFrameOrdinal].RootProfileNode;
                 }
                 
                 if(RootNode)
                 {
-                    DrawProfileIn(DebugState, DebugID, Element.Bounds, Layout->MouseP, RootNode);
+                    // DrawProfileIn(DebugState, DebugID, Element.Bounds, Layout->MouseP, RootNode);
+                    DrawFrameBars(DebugState, DebugID, Element.Bounds, Layout->MouseP, RootNode);
                 }
             } break;
 
@@ -1003,6 +1067,7 @@ DEBUGDrawMainMenu(debug_state *DebugState, render_group *RenderGroup, v2 MouseP)
 {
     object_transform NoTransform = DefaultFlatTransform();
 
+    u32 FrameOrdinal = DebugState->MostRecentFrameOrdinal;
     for(debug_tree *Tree = DebugState->TreeSentinel.Next;
         Tree != &DebugState->TreeSentinel;
         Tree = Tree->Next)
@@ -1074,7 +1139,7 @@ DEBUGDrawMainMenu(debug_state *DebugState, render_group *RenderGroup, v2 MouseP)
                     else
                     {
                         debug_id DebugID = DebugIDFromLink(Tree, Link);
-                        DEBUGDrawElement(&Layout, Tree, Link->Element, DebugID);
+                        DEBUGDrawElement(&Layout, Tree, Link->Element, DebugID, FrameOrdinal);
                     }
                 }
             }    
@@ -1146,11 +1211,12 @@ DEBUGDrawMainMenu(debug_state *DebugState, render_group *RenderGroup, v2 MouseP)
 internal void
 DEBUGBeginInteract(debug_state *DebugState, game_input *Input, v2 MouseP)
 {
+    u32 FrameOrdinal = DebugState->MostRecentFrameOrdinal;
     if(DebugState->HotInteraction.Type)
     {
         if(DebugState->HotInteraction.Type == DebugInteraction_AutoModifyVariable)
         {
-            switch(DebugState->HotInteraction.Element->MostRecentEvent->Event.Type)
+            switch(DebugState->HotInteraction.Element->Frames[FrameOrdinal].MostRecentEvent->Event.Type)
             {
                 case DebugType_b32:
                 {
@@ -1214,6 +1280,7 @@ DEBUGMarkEditedEvent(debug_state *DebugState, debug_event *Event)
 internal void
 DEBUGEndInteract(debug_state *DebugState, game_input *Input, v2 MouseP)
 {
+    u32 FrameOrdinal = DebugState->MostRecentFrameOrdinal;
     switch(DebugState->Interaction.Type)
     {
         case DebugInteraction_ToggleExpansion:
@@ -1230,7 +1297,8 @@ DEBUGEndInteract(debug_state *DebugState, game_input *Input, v2 MouseP)
 
         case DebugInteraction_ToggleValue:
         {
-            debug_event *Event = &DebugState->Interaction.Element->MostRecentEvent->Event;
+            debug_event *Event = &DebugState->Interaction.Element->Frames[FrameOrdinal].
+                MostRecentEvent->Event;
             Assert(Event);
             switch(Event->Type)
             {
@@ -1265,8 +1333,9 @@ DEBUGInteract(debug_state *DebugState, game_input *Input, v2 MouseP)
 */
     if(DebugState->Interaction.Type)
     {
+        u32 FrameOrdinal = DebugState->MostRecentFrameOrdinal;
         debug_event *Event = DebugState->Interaction.Element ? 
-            &DebugState->Interaction.Element->MostRecentEvent->Event : 0;
+            &DebugState->Interaction.Element->Frames[FrameOrdinal].MostRecentEvent->Event : 0;
         debug_tree *Tree = DebugState->Interaction.Tree;
         v2 *P = DebugState->Interaction.P;
 
@@ -1556,8 +1625,12 @@ EventsMatch(debug_event A, debug_event B)
 }
 
 internal void
-FreeFrame(debug_state *DebugState, debug_frame *Frame)
+FreeFrame(debug_state *DebugState, u32 FrameOrdinal)
 {
+    Assert(FrameOrdinal < DEBUG_FRAME_COUNT);
+    
+    u32 FreedEventCount = 0;
+    
     for(u32 ElementHashIndex = 0;
         ElementHashIndex < ArrayCount(DebugState->ElementHash);
         ++ElementHashIndex)
@@ -1566,71 +1639,54 @@ FreeFrame(debug_state *DebugState, debug_frame *Frame)
             Element;
             Element = Element->NextInHash)
         {
-            while(Element->OldestEvent && (Element->OldestEvent->FrameIndex <= Frame->FrameIndex))
+            debug_element_frame *ElementFrame = Element->Frames + FrameOrdinal;
+            while(ElementFrame->OldestEvent)
             {
-                debug_stored_event *FreeEvent = Element->OldestEvent;
-                Element->OldestEvent = FreeEvent->Next;
-                if(Element->MostRecentEvent == FreeEvent)
-                {
-                    Assert(FreeEvent->Next == 0);
-                    Element->MostRecentEvent = 0;
-                }
-
+                debug_stored_event *FreeEvent = ElementFrame->OldestEvent;
+                ElementFrame->OldestEvent = FreeEvent->Next;
                 FREELIST_DEALLOCATE(FreeEvent, DebugState->FirstFreeStoredEvent);
+                ++FreedEventCount;
             }
+            ZeroStruct(*ElementFrame);
         }
     }
+    
+    debug_frame *Frame = DebugState->Frames + FrameOrdinal;
+    Assert(Frame->StoredEventCount == FreedEventCount);
+}
 
-    FREELIST_DEALLOCATE(Frame, DebugState->FirstFreeFrame);
+internal void
+InitFrame(debug_state *DebugState, u64 BeginClock, debug_frame *Result)
+{
+    ZeroStruct(*Result);
+    Result->FrameIndex = DebugState->TotalFrameCount++;
+    Result->FrameBarScale = 1.0f;
+    Result->BeginClock = BeginClock;
+}
+
+inline void
+IncrementFrameOrdinal(u32 *Ordinal)
+{
+    *Ordinal = (*Ordinal+1) % DEBUG_FRAME_COUNT;
 }
 
 internal void
 FreeOldestFrame(debug_state *DebugState)
 {
-    if(DebugState->OldestFrame)
+    FreeFrame(DebugState, DebugState->OldestFrameOrdinal);
+    
+    if(DebugState->OldestFrameOrdinal == DebugState->MostRecentFrameOrdinal)
     {
-        debug_frame *Frame = DebugState->OldestFrame;
-        DebugState->OldestFrame = Frame->Next;
-        if(DebugState->MostRecentFrame == Frame)
-        {
-            Assert(Frame->Next == 0);
-            DebugState->MostRecentFrame = 0;
-        }
-
-        FreeFrame(DebugState, Frame);
+        IncrementFrameOrdinal(&DebugState->MostRecentFrameOrdinal);
     }
+    IncrementFrameOrdinal(&DebugState->OldestFrameOrdinal);
 }
 
-internal debug_frame *
-NewFrame(debug_state *DebugState, u64 BeginClock)
+inline debug_frame *
+GetCollationFrame(debug_state *DebugState)
 {
-    debug_frame *Result = 0;
-    while(!Result)
-    {
-        Result = DebugState->FirstFreeFrame;
-        if(Result)
-        {
-            DebugState->FirstFreeFrame = Result->NextFree;
-        }
-        else
-        {
-            if(ArenaHasRoomFor(&DebugState->PerFrameArena, sizeof(debug_frame)))
-            {
-                Result = PushStruct(&DebugState->PerFrameArena, debug_frame);
-            }
-            else
-            {
-                Assert(DebugState->OldestFrame);    
-                FreeOldestFrame(DebugState);
-            }
-        }
-    }
-
-    ZeroStruct(*Result);
-    Result->FrameIndex = DebugState->TotalFrameCount++;
-    Result->FrameBarScale = 1.0f;
-    Result->BeginClock = BeginClock;
-
+    debug_frame *Result = DebugState->Frames + DebugState->CollationFrameOrdinal;
+    
     return(Result);
 }
 
@@ -1653,25 +1709,27 @@ StoreEvent(debug_state *DebugState, debug_element *Element, debug_event *Event)
             }
             else
             {
-                Assert(DebugState->OldestFrame);    
                 FreeOldestFrame(DebugState);
             }
         }
     }
 
+    debug_frame *CollationFrame = GetCollationFrame(DebugState);
+
     Result->Next = 0;
-    Result->FrameIndex = DebugState->CollationFrame->FrameIndex;
+    Result->FrameIndex = CollationFrame->FrameIndex;
     Result->Event = *Event;
     
-    ++DebugState->CollationFrame->StoredEventCount;
+    ++CollationFrame->StoredEventCount;
 
-    if(Element->MostRecentEvent)
+    debug_element_frame *Frame = Element->Frames + DebugState->CollationFrameOrdinal;
+    if(Frame->MostRecentEvent)
     {
-        Element->MostRecentEvent = Element->MostRecentEvent->Next = Result;
+        Frame->MostRecentEvent = Frame->MostRecentEvent->Next = Result;
     }
     else
     {
-        Element->OldestEvent = Element->MostRecentEvent = Result;
+        Frame->OldestEvent = Frame->MostRecentEvent = Result;
     }
 
     return(Result);
@@ -1704,9 +1762,7 @@ GetElementFromEvent(debug_state *DebugState, debug_event *Event, debug_variable_
 
         Result->NextInHash = DebugState->ElementHash[Index];
         DebugState->ElementHash[Index] = Result;
-
-        Result->OldestEvent = Result->MostRecentEvent = 0;
-
+        
         debug_variable_group *ParentGroup = Parent;
         if(CreateHierarchy)
         {
@@ -1726,65 +1782,41 @@ CollateDebugRecords(debug_state *DebugState, u32 EventCount, debug_event *EventA
         ++EventIndex)
     {
         debug_event *Event = EventArray + EventIndex;
-
-        if(!DebugState->CollationFrame)
-        {
-            DebugState->CollationFrame = NewFrame(DebugState, Event->Clock);
-        }
-
         if(Event->Type == DebugType_FrameMarker)
         {
-            Assert(DebugState->CollationFrame);
+            debug_frame *CollationFrame = GetCollationFrame(DebugState);
             
-            DebugState->CollationFrame->EndClock = Event->Clock;
-            if(DebugState->CollationFrame->RootProfileNode)
+            CollationFrame->EndClock = Event->Clock;
+            if(CollationFrame->RootProfileNode)
             {
-                DebugState->CollationFrame->RootProfileNode->ProfileNode.Duration =
-                    (u32)(DebugState->CollationFrame->EndClock -
-                          DebugState->CollationFrame->BeginClock);
+                CollationFrame->RootProfileNode->ProfileNode.Duration =
+                    (u32)(CollationFrame->EndClock -
+                          CollationFrame->BeginClock);
             }
 
-            DebugState->CollationFrame->WallSecondsElapsed = Event->Value_r32;
+            CollationFrame->WallSecondsElapsed = Event->Value_r32;
 
-            r32 ClockRange = (r32)(DebugState->CollationFrame->EndClock - DebugState->CollationFrame->BeginClock);
-            // TODO(casey): Can we reenable this now??
-#if 0
-            if(ClockRange > 0.0f)
+            r32 ClockRange = (r32)(CollationFrame->EndClock - CollationFrame->BeginClock);
+            ++DebugState->TotalFrameCount;
+            
+            DebugState->MostRecentFrameOrdinal = DebugState->CollationFrameOrdinal;
+            IncrementFrameOrdinal(&DebugState->CollationFrameOrdinal);
+            if(DebugState->CollationFrameOrdinal == DebugState->OldestFrameOrdinal)
             {
-                r32 FrameBarScale = 1.0f / ClockRange;
-                if(DebugState->FrameBarScale > FrameBarScale)
-                {
-                    DebugState->FrameBarScale = FrameBarScale;
-                }
+                FreeOldestFrame(DebugState);
             }
-#endif
-
-            if(DebugState->Paused)
-            {
-                FreeFrame(DebugState, DebugState->CollationFrame);
-            }
-            else
-            {
-                if(DebugState->MostRecentFrame)
-                {
-                    DebugState->MostRecentFrame = DebugState->MostRecentFrame->Next = DebugState->CollationFrame;
-                }
-                else
-                {
-                    DebugState->OldestFrame = DebugState->MostRecentFrame = DebugState->CollationFrame;
-                }                    
-                ++DebugState->FrameCount;
-            }
-
-            DebugState->CollationFrame = NewFrame(DebugState, Event->Clock);
+            CollationFrame = GetCollationFrame(DebugState);
+            InitFrame(DebugState, Event->Clock, CollationFrame);
         }
         else 
         {
-            Assert(DebugState->CollationFrame);
+            debug_frame *CollationFrame = GetCollationFrame(DebugState);
 
-            u32 FrameIndex = DebugState->FrameCount - 1;
+            Assert(CollationFrame);
+
+            u32 FrameIndex = DebugState->TotalFrameCount - 1;
             debug_thread *Thread = GetDebugThread(DebugState, Event->ThreadID);
-            u64 RelativeClock = Event->Clock - DebugState->CollationFrame->BeginClock;
+            u64 RelativeClock = Event->Clock - CollationFrame->BeginClock;
 
             debug_variable_group *DefaultParentGroup = DebugState->RootGroup;
             if(Thread->FirstOpenDataBlock)
@@ -1796,12 +1828,12 @@ CollateDebugRecords(debug_state *DebugState, u32 EventCount, debug_event *EventA
             {
                 case DebugType_BeginBlock:
                 {
-                    ++DebugState->CollationFrame->ProfileBlockCount;
+                    ++CollationFrame->ProfileBlockCount;
                     debug_element *Element = 
                         GetElementFromEvent(DebugState, Event, DebugState->ProfileGroup, false);
                      
-                    debug_stored_event *ParentEvent = DebugState->CollationFrame->RootProfileNode;
-                    u64 ClockBasis = DebugState->CollationFrame->BeginClock;
+                    debug_stored_event *ParentEvent = CollationFrame->RootProfileNode;
+                    u64 ClockBasis = CollationFrame->BeginClock;
                     if(Thread->FirstOpenCodeBlock)
                     {
                         ParentEvent = Thread->FirstOpenCodeBlock->Node;
@@ -1821,8 +1853,8 @@ CollateDebugRecords(debug_state *DebugState, u32 EventCount, debug_event *EventA
                         Node->ThreadOrdinal = 0;
                         Node->CoreIndex = 0;
 
-                        ClockBasis = DebugState->CollationFrame->BeginClock;
-                        DebugState->CollationFrame->RootProfileNode = ParentEvent;
+                        ClockBasis = CollationFrame->BeginClock;
+                        CollationFrame->RootProfileNode = ParentEvent;
                     }
                                             
                     debug_stored_event *StoredEvent = StoreEvent(DebugState, Element, Event);
@@ -1859,7 +1891,7 @@ CollateDebugRecords(debug_state *DebugState, u32 EventCount, debug_event *EventA
 
                 case DebugType_OpenDataBlock:
                 {
-                    ++DebugState->CollationFrame->DataBlockCount;
+                    ++CollationFrame->DataBlockCount;
                     open_debug_block *DebugBlock = AllocateOpenDebugBlock(
                         DebugState, 0, FrameIndex, Event, &Thread->FirstOpenDataBlock);
 
@@ -1901,11 +1933,12 @@ DEBUGStart(debug_state *DebugState, game_render_commands *Commands, game_assets 
         DebugState->FirstFreeThread = 0;
         DebugState->FirstFreeBlock = 0;
 
-        DebugState->FrameCount = 0;    
+        DebugState->TotalFrameCount = 0;    
+        DebugState->MostRecentFrameOrdinal = 0;
+        DebugState->CollationFrameOrdinal = 1;
+        DebugState->OldestFrameOrdinal = 0;
 
-        DebugState->OldestFrame = DebugState->MostRecentFrame = DebugState->FirstFreeFrame = 0;
-        DebugState->CollationFrame = 0;
-
+        
         DebugState->TreeSentinel.Next = &DebugState->TreeSentinel;
         DebugState->TreeSentinel.Prev = &DebugState->TreeSentinel;
         DebugState->TreeSentinel.Group = 0;
@@ -2078,23 +2111,20 @@ DEBUGEnd(debug_state *DebugState, game_input *Input)
         }
 #endif
 
-        if(DebugState->MostRecentFrame)
-        {
-            char TextBuffer[256];
-            _snprintf_s(TextBuffer, sizeof(TextBuffer),
-                        "Last frame time: %.02fms %de %dp %dd",
-                        DebugState->MostRecentFrame->WallSecondsElapsed * 1000.0f,
-                    DebugState->MostRecentFrame->StoredEventCount,
-                    DebugState->MostRecentFrame->ProfileBlockCount,
-                    DebugState->MostRecentFrame->DataBlockCount
-                );
-            DEBUGTextLine(TextBuffer);
-
-            _snprintf_s(TextBuffer, sizeof(TextBuffer),
-                        "Per-frame arena space remaining: %ukb",
+        debug_frame *MostRecentFrame = DebugState->Frames + DebugState->MostRecentFrameOrdinal;
+        char TextBuffer[256];
+        _snprintf_s(TextBuffer, sizeof(TextBuffer),
+            "Last frame time: %.02fms %de %dp %dd",
+            MostRecentFrame->WallSecondsElapsed * 1000.0f,
+            MostRecentFrame->StoredEventCount,
+            MostRecentFrame->ProfileBlockCount,
+            MostRecentFrame->DataBlockCount);
+        DEBUGTextLine(TextBuffer);
+        
+        _snprintf_s(TextBuffer, sizeof(TextBuffer),
+            "Per-frame arena space remaining: %ukb",
                         (u32)(GetArenaSizeRemaining(&DebugState->PerFrameArena, AlignNoClear(1)) / 1024));
-            DEBUGTextLine(TextBuffer);
-        }
+        DEBUGTextLine(TextBuffer);
     }
 
     if(WasPressed(Input->MouseButtons[PlatformMouseButton_Left]))
