@@ -70,9 +70,9 @@ struct debug_profile_node
     struct debug_element *Element;
     struct debug_stored_event *FirstChild;
     struct debug_stored_event *NextSameParent;
-    u32 ParentRelativeClock;
-    u32 Duration;
-    u32 AggregateCount;
+    u64 Duration;
+    u64 ParentRelativeClock;
+    u32 Reserved;
     u16 ThreadOrdinal;
     u16 CoreIndex;
 };
@@ -102,7 +102,6 @@ struct debug_string
 
 struct debug_element_frame
 {
-    u64 TotalClocks;
     debug_stored_event *OldestEvent;
     debug_stored_event *MostRecentEvent;
 };
@@ -281,7 +280,7 @@ struct debug_state
 
     u32 SelectedIDCount;
     debug_id SelectedID[64];
-    
+   
     debug_element *ElementHash[1024];
     debug_view *ViewHash[4096];
     debug_variable_group *RootGroup;
@@ -313,6 +312,8 @@ struct debug_state
     u32 CollationFrameOrdinal;
     u32 OldestFrameOrdinal;
     debug_frame Frames[DEBUG_FRAME_COUNT];
+    
+    debug_element *RootProfileElement;
     
     u32 FrameBarLaneCount;
     debug_thread *FirstThread;
