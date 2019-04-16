@@ -3,6 +3,10 @@ Handmade Hero Day 262 - Drawing Multi-frame Profile Graphs
 Summary:
 more experimental code with how to organize and store debug_element and debug_frame
 
+[I feel like all these debug experimental code will only make sense to me once i make one.
+    none of these code is registering in my mind]
+
+
 Keyword:
 debug system, profiler 
 

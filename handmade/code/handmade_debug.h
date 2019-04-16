@@ -86,7 +86,7 @@ struct debug_stored_event
     };
 
     u32 FrameIndex;
-    
+
     union
     {
         debug_event Event;
@@ -113,11 +113,11 @@ struct debug_element
     u32 FileNameCount;
     u32 LineNumber;
     u32 NameStartsAt;
-    
+
     b32 ValueWasEdited;
-    
+
     debug_element_frame Frames[DEBUG_FRAME_COUNT];
-    
+
     debug_element *NextInHash;
 };
 inline char *GetName(debug_element *Element) {char *Result = Element->GUID + Element->NameStartsAt; return(Result);}
@@ -184,11 +184,11 @@ struct debug_frame
     r32 FrameBarScale;
 
     u32 FrameIndex;
-    
+
     u32 StoredEventCount;
     u32 ProfileBlockCount;
     u32 DataBlockCount;
-    
+
     debug_stored_event *RootProfileNode;
 };
 
@@ -237,12 +237,13 @@ enum debug_interaction_type
 
     DebugInteraction_Resize,
     DebugInteraction_Move,
-    
+
     DebugInteraction_Select,
 
     DebugInteraction_ToggleExpansion,
-    
+
     DebugInteraction_SetProfileGraphRoot,
+    DebugInteraction_SetViewFrameOrdinal,
 };
 
 struct debug_interaction
@@ -252,6 +253,7 @@ struct debug_interaction
     union
     {
         void *Generic;
+        u32 UInt32;
         debug_element *Element;
         debug_tree *Tree;
         debug_variable_link *Link;
@@ -269,7 +271,7 @@ struct debug_state
     render_group RenderGroup;
     loaded_font *DebugFont;
     hha_font *DebugFontInfo;
-    
+
     object_transform TextTransform;
     object_transform ShadowTransform;
     object_transform UITransform;
@@ -280,7 +282,7 @@ struct debug_state
 
     u32 SelectedIDCount;
     debug_id SelectedID[64];
-   
+
     debug_element *ElementHash[1024];
     debug_view *ViewHash[4096];
     debug_variable_group *RootGroup;
@@ -301,20 +303,22 @@ struct debug_state
     font_id FontID;
     r32 GlobalWidth;
     r32 GlobalHeight;
-    
+
     r32 MouseTextStackY;
 
     char *ScopeToRecord;
 
     u32 TotalFrameCount;
 
+    u32 ViewingFrameOrdinal;
+
     u32 MostRecentFrameOrdinal;
     u32 CollationFrameOrdinal;
     u32 OldestFrameOrdinal;
     debug_frame Frames[DEBUG_FRAME_COUNT];
-    
+
     debug_element *RootProfileElement;
-    
+
     u32 FrameBarLaneCount;
     debug_thread *FirstThread;
     debug_thread *FirstFreeThread;
