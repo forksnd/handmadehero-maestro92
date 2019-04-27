@@ -94,14 +94,6 @@ struct debug_stored_event
     };
 };
 
-/*
-struct debug_string
-{
-    u32 Length;
-    char *Value;
-};
-*/
-
 struct debug_element_frame
 {
     debug_stored_event *OldestEvent;
@@ -125,9 +117,6 @@ struct debug_element
     debug_element *NextInHash;
 };
 inline char *GetName(debug_element *Element) {char *Result = Element->GUID + Element->NameStartsAt; return(Result);}
-/*
-inline debug_string GetFileName(debug_element *Element) {debug_string Result = {Element->FileNameCount, Element->GUID}; return(Result);}
-*/
 
 struct debug_variable_group;
 struct debug_variable_link
@@ -296,6 +285,7 @@ struct debug_statistic
 {
     r64 Min;
     r64 Max;
+    r64 Sum;
     r64 Avg;
     u32 Count;
 };
@@ -311,6 +301,12 @@ DebugIDsAreEqual(debug_id A, debug_id B)
 
     return(Result);
 }
+
+enum debug_element_add_op
+{
+    DebugElement_AddToGroup = 0x1,
+    DebugElement_CreateHierarchy = 0x2,
+};
 
 #define HANDMADE_DEBUG_H
 #endif

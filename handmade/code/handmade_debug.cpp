@@ -162,7 +162,7 @@ BeginDebugStatistic(debug_statistic *Stat)
 {
     Stat->Min = Real32Maximum;
     Stat->Max = -Real32Maximum;
-    Stat->Avg = 0.0f;
+    Stat->Sum = 0.0f;
     Stat->Count = 0;
 }
 
@@ -181,7 +181,7 @@ AccumDebugStatistic(debug_statistic *Stat, r64 Value)
         Stat->Max = Value;
     }
 
-    Stat->Avg += Value;
+    Stat->Sum += Value;
 }
 
 inline void
@@ -189,12 +189,13 @@ EndDebugStatistic(debug_statistic *Stat)
 {
     if(Stat->Count)
     {
-        Stat->Avg /= (r64)Stat->Count;
+        Stat->Avg = Stat->Sum / (r64)Stat->Count;
     }
     else
     {
         Stat->Min = 0.0f;
         Stat->Max = 0.0f;
+        Stat->Avg = 0.0f;
     }
 }
 
@@ -581,7 +582,6 @@ DrawProfileIn(debug_state *DebugState, debug_id GraphID, rectangle2 ProfileRect,
 {
     DebugState->MouseTextStackY = 10.0f;
     object_transform NoTransform = DefaultFlatTransform();
-    PushRect(&DebugState->RenderGroup, DebugState->BackingTransform, ProfileRect, 0.0f, V4(0, 0, 0, 0.25f));
 
     u32 LaneCount = DebugState->FrameBarLaneCount;
     r32 LaneHeight = 0.0f;
@@ -621,7 +621,6 @@ DrawFrameBars(debug_state *DebugState, debug_id GraphID, rectangle2 ProfileRect,
         DebugState->MouseTextStackY = 10.0f;
 
         object_transform NoTransform = DefaultFlatTransform();
-        PushRect(&DebugState->RenderGroup, DebugState->BackingTransform, ProfileRect, 0.0f, V4(0, 0, 0, 0.25f));
 
         r32 BarWidth = (GetDim(ProfileRect).x / (r32)FrameCount);
         r32 AtX = ProfileRect.Min.x;
@@ -677,6 +676,88 @@ DrawFrameBars(debug_state *DebugState, debug_id GraphID, rectangle2 ProfileRect,
             }
         }
     }
+}
+
+struct debug_clock_entry
+{
+    debug_element *Element;
+    debug_statistic Stats;
+};
+internal void
+DrawTopClocksList(debug_state *DebugState, debug_id GraphID, rectangle2 ProfileRect, v2 MouseP,
+    debug_element *RootElement)
+{
+    temporary_memory Temp = BeginTemporaryMemory(&DebugState->DebugArena);
+
+    u32 LinkCount = 0;
+    for(debug_variable_link *Link = DebugState->ProfileGroup->Sentinel.Next;
+        Link != &DebugState->ProfileGroup->Sentinel;
+        Link = Link->Next)
+    {
+        ++LinkCount;
+    }
+    
+    debug_clock_entry *Entries = PushArray(Temp.Arena, LinkCount, debug_clock_entry, NoClear());
+    sort_entry *SortA = PushArray(Temp.Arena, LinkCount, sort_entry, NoClear());
+    sort_entry *SortB = PushArray(Temp.Arena, LinkCount, sort_entry, NoClear());
+        
+    r64 TotalTime = 0.0f;
+    v2 At = V2(ProfileRect.Min.x, ProfileRect.Max.y - GetBaseline(DebugState));
+    u32 Index = 0;
+    for(debug_variable_link *Link = DebugState->ProfileGroup->Sentinel.Next;
+        Link != &DebugState->ProfileGroup->Sentinel;
+        Link = Link->Next, ++Index)
+    {
+        Assert(!Link->Children);
+        
+        debug_clock_entry *Entry = Entries + Index;
+        sort_entry *Sort = SortA + Index;
+
+        Entry->Element = Link->Element;
+        debug_element *Element = Entry->Element;
+
+        BeginDebugStatistic(&Entry->Stats);
+        for(debug_stored_event *Event = Element->Frames[DebugState->ViewingFrameOrdinal].OldestEvent;
+            Event;
+            Event = Event->Next)
+        {
+            AccumDebugStatistic(&Entry->Stats, (r64)Event->ProfileNode.Duration);
+        }
+        EndDebugStatistic(&Entry->Stats);
+        TotalTime += Entry->Stats.Sum;
+        
+        Sort->SortKey = -(r32)Entry->Stats.Sum;
+        Sort->Index = Index;
+    }
+    
+    RadixSort(LinkCount, SortA, SortB);
+    
+    r64 PC = 0.0f;
+    if(TotalTime > 0)
+    {
+        PC = 100.0f / TotalTime;
+    }
+    
+    for(Index = 0;
+        Index < LinkCount;
+        ++Index)
+    {
+        debug_clock_entry *Entry = Entries + SortA[Index].Index;
+        debug_statistic *Stats = &Entry->Stats;
+        debug_element *Element = Entry->Element;
+        
+        char TextBuffer[256];
+        _snprintf_s(TextBuffer, sizeof(TextBuffer),
+            "%10ucy %02.02f%% %4d %s",
+            (u32)Stats->Sum,
+            (PC*Stats->Sum),
+            Stats->Count,
+            Element->GUID + Element->NameStartsAt);
+        TextOutAt(DebugState, At, TextBuffer);
+        At.y -= GetLineAdvance(DebugState);    
+    }
+    
+    EndTemporaryMemory(Temp);
 }
 
 internal void
@@ -799,6 +880,7 @@ DEBUGDrawElement(layout *Layout, debug_tree *Tree, debug_element *Element, debug
 
         case DebugType_ThreadIntervalGraph:
         case DebugType_FrameBarGraph:
+        case DebugType_TopClocksList:
         {
             debug_view_profile_graph *Graph = &View->ProfileGraph;
 
@@ -808,20 +890,23 @@ DEBUGDrawElement(layout *Layout, debug_tree *Tree, debug_element *Element, debug
                 SetUInt32Interaction(DebugID, (u32 *)&Element->Type, DebugType_ThreadIntervalGraph));
             BooleanButton(Layout, "Frames", (Element->Type == DebugType_FrameBarGraph),
                 SetUInt32Interaction(DebugID, (u32 *)&Element->Type, DebugType_FrameBarGraph));
+            BooleanButton(Layout, "Clocks", (Element->Type == DebugType_TopClocksList),
+                SetUInt32Interaction(DebugID, (u32 *)&Element->Type, DebugType_TopClocksList));
             EndRow(Layout);
 
             layout_element LayEl = BeginElementRectangle(Layout, &Graph->Block.Dim);
             if((Graph->Block.Dim.x == 0) && (Graph->Block.Dim.y == 0))
             {
                 Graph->Block.Dim.x = 1400;
-                Graph->Block.Dim.y = 480;
+                Graph->Block.Dim.y = 280;
             }
-
-
 
             MakeElementSizable(&LayEl);
             //                DefaultInteraction(&LayEl, ItemInteraction);
             EndElement(&LayEl);
+
+            PushRect(&DebugState->RenderGroup, DebugState->BackingTransform,
+                LayEl.Bounds, 0.0f, V4(0, 0, 0, 0.75f));
 
             debug_stored_event *RootNode = 0;
 
@@ -842,6 +927,11 @@ DEBUGDrawElement(layout *Layout, debug_tree *Tree, debug_element *Element, debug
                 case DebugType_FrameBarGraph:
                 {
                     DrawFrameBars(DebugState, DebugID, LayEl.Bounds, Layout->MouseP, ViewingElement);
+                } break;
+                
+                case DebugType_TopClocksList:
+                {
+                    DrawTopClocksList(DebugState, DebugID, LayEl.Bounds, Layout->MouseP, ViewingElement);
                 } break;
             }
         } break;
@@ -1109,8 +1199,8 @@ DEBUGBeginInteract(debug_state *DebugState, game_input *Input, v2 MouseP)
 }
 
 internal debug_element *
-GetElementFromEvent(debug_state *DebugState, debug_event *Event, debug_variable_group *Parent = 0,
-                    b32 CreateHierarchy = true);
+GetElementFromEvent(debug_state *DebugState, debug_event *Event, 
+    debug_variable_group *Parent, u32 Op);
 void
 DEBUGMarkEditedEvent(debug_state *DebugState, debug_event *Event)
 {
@@ -1118,7 +1208,7 @@ DEBUGMarkEditedEvent(debug_state *DebugState, debug_event *Event)
     {
         GlobalDebugTable->EditEvent = *Event;
         GlobalDebugTable->EditEvent.GUID = 
-            GetElementFromEvent(DebugState, Event)->OriginalGUID;
+            GetElementFromEvent(DebugState, Event, 0, DebugElement_AddToGroup|DebugElement_CreateHierarchy)->OriginalGUID;
     }
 }
 
@@ -1587,7 +1677,7 @@ StoreEvent(debug_state *DebugState, debug_element *Element, debug_event *Event)
 
 internal debug_element *
 GetElementFromEvent(debug_state *DebugState, debug_event *Event, debug_variable_group *Parent,
-                    b32 CreateHierarchy)
+                    u32 Op)
 {
     Assert(Event->GUID);
 
@@ -1615,9 +1705,13 @@ GetElementFromEvent(debug_state *DebugState, debug_event *Event, debug_variable_
         DebugState->ElementHash[Index] = Result;
 
         debug_variable_group *ParentGroup = Parent;
-        if(CreateHierarchy)
+        if(Op & DebugElement_CreateHierarchy)
         {
             ParentGroup = GetGroupForHierarchicalName(DebugState, Parent, GetName(Result), false);
+        }
+        
+        if(Op & DebugElement_AddToGroup)
+        {
             AddElementToGroup(DebugState, ParentGroup, Result);
         }
     }
@@ -1687,7 +1781,8 @@ CollateDebugRecords(debug_state *DebugState, u32 EventCount, debug_event *EventA
                 {
                     ++CollationFrame->ProfileBlockCount;
                     debug_element *Element = 
-                        GetElementFromEvent(DebugState, Event, DebugState->ProfileGroup, false);
+                        GetElementFromEvent(DebugState, Event, DebugState->ProfileGroup, 
+                            DebugElement_AddToGroup);
 
                     debug_stored_event *ParentEvent = CollationFrame->RootProfileNode;
                     u64 ClockBasis = CollationFrame->BeginClock;
@@ -1768,7 +1863,7 @@ CollateDebugRecords(debug_state *DebugState, u32 EventCount, debug_event *EventA
 
                 default:
                 {
-                    debug_element *Element = GetElementFromEvent(DebugState, Event, DefaultParentGroup, true);
+                    debug_element *Element = GetElementFromEvent(DebugState, Event, DefaultParentGroup,  DebugElement_AddToGroup|DebugElement_CreateHierarchy);
                     Element->OriginalGUID = Event->GUID;
                     StoreEvent(DebugState, Element, Event);
                 } break;
@@ -1846,7 +1941,7 @@ DEBUGStart(debug_state *DebugState, game_render_commands *Commands, game_assets 
 
         debug_event RootProfileEvent = {};
         RootProfileEvent.GUID = DEBUG_NAME("RootProfile");
-        DebugState->RootProfileElement = GetElementFromEvent(DebugState, &RootProfileEvent, 0, false);
+        DebugState->RootProfileElement = GetElementFromEvent(DebugState, &RootProfileEvent, 0, 0);
 
         DebugState->Paused = false;
         DebugState->ScopeToRecord = 0;
