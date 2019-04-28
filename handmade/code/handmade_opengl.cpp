@@ -155,6 +155,7 @@ OpenGLDisplayBitmap(s32 Width, s32 Height, void *Memory, int Pitch,
     Assert(Pitch == (Width*4));
     glViewport(0, 0, Width, Height);
 
+    glDisable(GL_SCISSOR_TEST);
     glBindTexture(GL_TEXTURE_2D, BlitTexture);
 
     glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB8_ALPHA8, Width, Height, 0,
@@ -195,6 +196,7 @@ OpenGLRenderCommands(game_render_commands *Commands, s32 WindowWidth, s32 Window
     glViewport(0, 0, Commands->Width, Commands->Height);
 
     glEnable(GL_TEXTURE_2D);
+    glEnable(GL_SCISSOR_TEST);
     glEnable(GL_BLEND);
     glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -206,6 +208,7 @@ OpenGLRenderCommands(game_render_commands *Commands, s32 WindowWidth, s32 Window
     u32 SortEntryCount = Commands->PushBufferElementCount;
     sort_entry *SortEntries = (sort_entry *)(Commands->PushBufferBase + Commands->SortEntryAt);
 
+    u32 ClipRectIndex = 0xFFFFFFFF;
     sort_entry *Entry = SortEntries;
     for(u32 SortEntryIndex = 0;
         SortEntryIndex < SortEntryCount;
@@ -213,6 +216,16 @@ OpenGLRenderCommands(game_render_commands *Commands, s32 WindowWidth, s32 Window
     {
         render_group_entry_header *Header = (render_group_entry_header *)
             (Commands->PushBufferBase + Entry->Index);
+        if(ClipRectIndex != Header->ClipRectIndex)
+        {
+            ClipRectIndex = Header->ClipRectIndex;
+            Assert(ClipRectIndex < Commands->ClipRectCount);
+            
+            render_entry_cliprect *Clip = Commands->ClipRects + ClipRectIndex;
+            glScissor(Clip->Rect.MinX, Clip->Rect.MinY, 
+                      Clip->Rect.MaxX - Clip->Rect.MinX, 
+                      Clip->Rect.MaxY - Clip->Rect.MinY);
+        }
 
         void *Data = (uint8 *)Header + sizeof(*Header);
         switch(Header->Type)

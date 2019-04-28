@@ -702,7 +702,6 @@ DrawTopClocksList(debug_state *DebugState, debug_id GraphID, rectangle2 ProfileR
     sort_entry *SortB = PushArray(Temp.Arena, LinkCount, sort_entry, NoClear());
         
     r64 TotalTime = 0.0f;
-    v2 At = V2(ProfileRect.Min.x, ProfileRect.Max.y - GetBaseline(DebugState));
     u32 Index = 0;
     for(debug_variable_link *Link = DebugState->ProfileGroup->Sentinel.Next;
         Link != &DebugState->ProfileGroup->Sentinel;
@@ -721,7 +720,9 @@ DrawTopClocksList(debug_state *DebugState, debug_id GraphID, rectangle2 ProfileR
             Event;
             Event = Event->Next)
         {
-            AccumDebugStatistic(&Entry->Stats, (r64)Event->ProfileNode.Duration);
+            u64 ClocksWithChildren = Event->ProfileNode.Duration;
+            u64 ClocksWithoutChildren = ClocksWithChildren - Event->ProfileNode.DurationOfChildren;
+            AccumDebugStatistic(&Entry->Stats, (r64)ClocksWithoutChildren);
         }
         EndDebugStatistic(&Entry->Stats);
         TotalTime += Entry->Stats.Sum;
@@ -738,8 +739,9 @@ DrawTopClocksList(debug_state *DebugState, debug_id GraphID, rectangle2 ProfileR
         PC = 100.0f / TotalTime;
     }
     
+    v2 At = V2(ProfileRect.Min.x, ProfileRect.Max.y - GetBaseline(DebugState));
     for(Index = 0;
-        Index < LinkCount;
+        (Index < LinkCount);
         ++Index)
     {
         debug_clock_entry *Entry = Entries + SortA[Index].Index;
@@ -754,7 +756,15 @@ DrawTopClocksList(debug_state *DebugState, debug_id GraphID, rectangle2 ProfileR
             Stats->Count,
             Element->GUID + Element->NameStartsAt);
         TextOutAt(DebugState, At, TextBuffer);
-        At.y -= GetLineAdvance(DebugState);    
+        
+        if(At.y < ProfileRect.Min.y)
+        {
+            break;
+        }
+        else
+        {
+            At.y -= GetLineAdvance(DebugState);    
+        }
     }
     
     EndTemporaryMemory(Temp);
@@ -907,7 +917,11 @@ DEBUGDrawElement(layout *Layout, debug_tree *Tree, debug_element *Element, debug
 
             PushRect(&DebugState->RenderGroup, DebugState->BackingTransform,
                 LayEl.Bounds, 0.0f, V4(0, 0, 0, 0.75f));
-
+            
+            u32 OldClipRect = RenderGroup->CurrentClipRectIndex;
+            RenderGroup->CurrentClipRectIndex = 
+                PushClipRect(RenderGroup, DebugState->BackingTransform, LayEl.Bounds, 0.0f);
+                
             debug_stored_event *RootNode = 0;
 
             u32 ViewingFrameOrdinal = DebugState->ViewingFrameOrdinal;
@@ -934,6 +948,8 @@ DEBUGDrawElement(layout *Layout, debug_tree *Tree, debug_element *Element, debug
                     DrawTopClocksList(DebugState, DebugID, LayEl.Bounds, Layout->MouseP, ViewingElement);
                 } break;
             }
+            
+            RenderGroup->CurrentClipRectIndex = OldClipRect;
         } break;
 
         case DebugType_FrameSlider:
@@ -1801,6 +1817,7 @@ CollateDebugRecords(debug_state *DebugState, u32 EventCount, debug_event *EventA
                         Node->NextSameParent = 0;
                         Node->ParentRelativeClock = 0;
                         Node->Duration = 0;
+                        Node->DurationOfChildren = 0;
                         Node->ThreadOrdinal = 0;
                         Node->CoreIndex = 0;
 
@@ -1814,6 +1831,7 @@ CollateDebugRecords(debug_state *DebugState, u32 EventCount, debug_event *EventA
                     Node->FirstChild = 0;
                     Node->ParentRelativeClock = Event->Clock - ClockBasis;
                     Node->Duration = 0;
+                    Node->DurationOfChildren = 0;
                     Node->ThreadOrdinal = (u16)Thread->LaneIndex;
                     Node->CoreIndex = Event->CoreIndex;
 
@@ -1835,8 +1853,15 @@ CollateDebugRecords(debug_state *DebugState, u32 EventCount, debug_event *EventA
 
                         debug_profile_node *Node = &MatchingBlock->Node->ProfileNode;
                         Node->Duration = Event->Clock - MatchingBlock->BeginClock;
-
+                        
                         DeallocateOpenDebugBlock(DebugState, &Thread->FirstOpenCodeBlock);
+                        
+                        if(Thread->FirstOpenCodeBlock)
+                        {
+                            debug_profile_node *ParentNode = 
+                                &Thread->FirstOpenCodeBlock->Node->ProfileNode;
+                            ParentNode->DurationOfChildren += Node->Duration;
+                        }
                     }
                 } break;
 
