@@ -200,10 +200,10 @@ EndDebugStatistic(debug_statistic *Stat)
 }
 
 internal memory_index
-DEBUGEventToText(char *Buffer, char *End, debug_event *Event, u32 Flags)
+DEBUGEventToText(char *Buffer, char *End, debug_element *Element, debug_event *Event, u32 Flags)
 {
     char *At = Buffer;
-    char *Name = Event->GUID;
+    char *Name = Element->GUID;
 
     if(Flags & DEBUGVarToText_AddDebugUI)
     {
@@ -519,11 +519,13 @@ global_variable v3 DebugColorTable[] =
 
 internal void
 DrawProfileBars(debug_state *DebugState, debug_id GraphID, rectangle2 ProfileRect, v2 MouseP,
-                debug_profile_node *RootNode, r32 LaneStride, r32 LaneHeight)
+                debug_profile_node *RootNode, r32 LaneStride, r32 LaneHeight, u32 DepthRemaining)
 {
     r32 FrameSpan = (r32)(RootNode->Duration);
     r32 PixelSpan = GetDim(ProfileRect).x;
 
+    r32 BaseZ = 100.0f - 10.0f*(r32)DepthRemaining;
+    
     r32 Scale = 0.0f;
     if(FrameSpan > 0)
     {
@@ -547,8 +549,10 @@ DrawProfileBars(debug_state *DebugState, debug_id GraphID, rectangle2 ProfileRec
         rectangle2 RegionRect = RectMinMax(V2(ThisMinX, LaneY - LaneHeight),
                                            V2(ThisMaxX, LaneY));
 
+        PushRect(&DebugState->RenderGroup, DebugState->UITransform, RegionRect,
+            BaseZ, V4(Color, 1));
         PushRectOutline(&DebugState->RenderGroup, DebugState->UITransform, RegionRect,
-            0.0f, V4(Color, 1), 2.0f);
+            BaseZ+1.0f, V4(0,0,0, 1), 2.0f);
 
         // TODO(casey): Pull this out so all profilers share it.
         if(IsInRectangle(RegionRect, MouseP))
@@ -557,16 +561,48 @@ DrawProfileBars(debug_state *DebugState, debug_id GraphID, rectangle2 ProfileRec
             _snprintf_s(TextBuffer, sizeof(TextBuffer),
                 "%s: %10ucy",
                 Element->GUID, Node->Duration);
-            TextOutAt(DebugState, MouseP + V2(0.0f, DebugState->MouseTextStackY), TextBuffer);
-            DebugState->MouseTextStackY -= GetLineAdvance(DebugState);
-
+            AddTooltip(DebugState, TextBuffer);
+            
             // TODO(casey): It would be better to generate a graph+element debug ID here!
             debug_view *View = GetOrCreateDebugViewFor(DebugState, GraphID);
             DebugState->NextHotInteraction = 
                 SetPointerInteraction(GraphID, (void **)&View->ProfileGraph.GUID, Element->GUID);
         }
 
-//        DrawProfileBars(DebugState, GraphID, RegionRect, MouseP, Node, 0, LaneHeight/2);
+        if(DepthRemaining > 0)
+        {
+            DrawProfileBars(DebugState, GraphID, RegionRect, MouseP, Node, 0, LaneHeight/2,
+                DepthRemaining - 1);
+        }
+    }
+}
+
+internal void
+DrawArenaOccupancy(debug_state *DebugState, debug_id GraphID, rectangle2 FrameRect, v2 MouseP,
+    debug_element *RootElement)
+{
+    debug_element_frame *RootFrame = RootElement->Frames + DebugState->ViewingFrameOrdinal;
+    debug_stored_event *Event = RootFrame->OldestEvent;
+    if(Event)
+    {
+        memory_arena *Arena = Event->Event.Value_memory_arena_p;
+        
+        r32 t = (r32)(((r64)Arena->Used) / ((r64)Arena->Size));
+        r32 SplitPoint = Lerp(FrameRect.Min.x, t, FrameRect.Max.x);
+        rectangle2 UsedRect = RectMinMax(V2(FrameRect.Min.x, FrameRect.Min.y),
+                                           V2(SplitPoint, FrameRect.Max.y));
+        rectangle2 UnusedRect = RectMinMax(V2(SplitPoint, FrameRect.Min.y),
+                                           V2(FrameRect.Max.x, FrameRect.Max.y));
+
+        PushRect(&DebugState->RenderGroup, DebugState->UITransform, UsedRect,
+            0.0f, V4(1,0.5f,0, 1));
+        PushRectOutline(&DebugState->RenderGroup, DebugState->UITransform, UsedRect,
+            1.0f, V4(0,0,0, 1), 2.0f);
+        
+        PushRect(&DebugState->RenderGroup, DebugState->UITransform, UnusedRect,
+            0.0f, V4(0,1,0, 1));
+        PushRectOutline(&DebugState->RenderGroup, DebugState->UITransform, UnusedRect,
+            1.0f, V4(0,0,0, 1), 2.0f);
     }
 }
 
@@ -574,7 +610,6 @@ internal void
 DrawProfileIn(debug_state *DebugState, debug_id GraphID, rectangle2 ProfileRect, v2 MouseP,
     debug_element *RootElement)
 {
-    DebugState->MouseTextStackY = 10.0f;
     object_transform NoTransform = DefaultFlatTransform();
 
     u32 LaneCount = DebugState->FrameBarLaneCount;
@@ -601,7 +636,7 @@ DrawProfileIn(debug_state *DebugState, debug_id GraphID, rectangle2 ProfileRect,
         EventRect.Max.x = (1.0f - t)*ProfileRect.Min.x + t*ProfileRect.Max.x;
         NextX = EventRect.Max.x;
 
-        DrawProfileBars(DebugState, GraphID, EventRect, MouseP, Node, LaneHeight, LaneHeight);
+        DrawProfileBars(DebugState, GraphID, EventRect, MouseP, Node, LaneHeight, LaneHeight, 1);
     }
 }
 
@@ -612,8 +647,6 @@ DrawFrameBars(debug_state *DebugState, debug_id GraphID, rectangle2 ProfileRect,
     u32 FrameCount = ArrayCount(RootElement->Frames);
     if(FrameCount > 0)
     {
-        DebugState->MouseTextStackY = 10.0f;
-
         object_transform NoTransform = DefaultFlatTransform();
 
         r32 BarWidth = (GetDim(ProfileRect).x / (r32)FrameCount);
@@ -633,7 +666,10 @@ DrawFrameBars(debug_state *DebugState, debug_id GraphID, rectangle2 ProfileRect,
                 {
                     Scale = PixelSpan / FrameSpan;
                 }
-
+                
+                b32 Highlight = (FrameIndex == DebugState->ViewingFrameOrdinal);
+                r32 HighDim = Highlight ? 1.0f : 0.5f;
+                
                 for(debug_stored_event *StoredEvent = RootNode->FirstChild;
                     StoredEvent;
                     StoredEvent = StoredEvent->ProfileNode.NextSameParent)
@@ -645,11 +681,13 @@ DrawFrameBars(debug_state *DebugState, debug_id GraphID, rectangle2 ProfileRect,
                     v3 Color = DebugColorTable[U32FromPointer(Element->GUID)%ArrayCount(DebugColorTable)];
                     r32 ThisMinY = ProfileRect.Min.y + Scale*(r32)(Node->ParentRelativeClock);
                     r32 ThisMaxY = ThisMinY + Scale*(r32)(Node->Duration);
-
+                    
                     rectangle2 RegionRect = RectMinMax(V2(AtX, ThisMinY), V2(AtX + BarWidth, ThisMaxY));
 
+                    PushRect(&DebugState->RenderGroup, DebugState->UITransform, RegionRect,
+                        0.0f, V4(HighDim*Color, 1));
                     PushRectOutline(&DebugState->RenderGroup, DebugState->UITransform, RegionRect,
-                        0.0f, V4(Color, 1), 2.0f);
+                        1.0f, V4(0, 0, 0, 1), 2.0f);
 
                     if(IsInRectangle(RegionRect, MouseP))
                     {
@@ -657,9 +695,8 @@ DrawFrameBars(debug_state *DebugState, debug_id GraphID, rectangle2 ProfileRect,
                         _snprintf_s(TextBuffer, sizeof(TextBuffer),
                             "%s: %10ucy",
                             Element->GUID, Node->Duration);
-                        TextOutAt(DebugState, MouseP + V2(0.0f, DebugState->MouseTextStackY), TextBuffer);
-                        DebugState->MouseTextStackY -= GetLineAdvance(DebugState);
-
+                        AddTooltip(DebugState, TextBuffer);
+                        
                         debug_view *View = GetOrCreateDebugViewFor(DebugState, GraphID);
                         DebugState->NextHotInteraction = 
                             SetPointerInteraction(GraphID, (void **)&View->ProfileGraph.GUID, Element->GUID);
@@ -822,8 +859,8 @@ DrawFrameSlider(debug_state *DebugState, debug_id SliderID, rectangle2 TotalRect
             {
                 char TextBuffer[256];
                 _snprintf_s(TextBuffer, sizeof(TextBuffer), "%u", FrameIndex);
-                TextOutAt(DebugState, MouseP + V2(0.0f, 10.0f), TextBuffer);
-
+                AddTooltip(DebugState, TextBuffer);
+                
                 DebugState->NextHotInteraction = 
                     SetUInt32Interaction(SliderID, &DebugState->ViewingFrameOrdinal, FrameIndex);
             }
@@ -873,13 +910,53 @@ DEBUGDrawElement(layout *Layout, debug_tree *Tree, debug_element *Element, debug
             MakeElementSizable(&LayEl);
             DefaultInteraction(&LayEl, ItemInteraction);
             EndElement(&LayEl);
-            PushRect(&DebugState->RenderGroup, NoTransform, LayEl.Bounds, 0.0f, V4(0, 0, 0, 1.0f));
+            PushRect(&DebugState->RenderGroup, DebugState->BackingTransform, LayEl.Bounds, 0.0f, V4(0, 0, 0, 1.0f));
 
             if(Bitmap)
             {
-                PushBitmap(&DebugState->RenderGroup, NoTransform, Event->Value_bitmap_id, BitmapScale,
-                    V3(GetMinCorner(LayEl.Bounds), 0.0f), V4(1, 1, 1, 1), 0.0f);
+                PushBitmap(&DebugState->RenderGroup, DebugState->BackingTransform, Event->Value_bitmap_id, BitmapScale,
+                    V3(GetMinCorner(LayEl.Bounds), 1.0f), V4(1, 1, 1, 1), 0.0f);
             }
+        } break;
+
+        case DebugType_memory_arena_p:
+        case DebugType_ArenaOccupancy:
+        {
+            debug_view_arena_graph *Graph = &View->ArenaGraph;
+            
+            BeginRow(Layout);
+            Label(Layout, GetName(Element));
+            BooleanButton(Layout, "Occupancy", (Element->Type == DebugType_ArenaOccupancy),
+                SetUInt32Interaction(DebugID, (u32 *)&Element->Type, DebugType_ArenaOccupancy));
+            EndRow(Layout);
+
+            layout_element LayEl = BeginElementRectangle(Layout, &Graph->Block.Dim);
+            if((Graph->Block.Dim.x == 0) && (Graph->Block.Dim.y == 0))
+            {
+                Graph->Block.Dim.x = 1400;
+                Graph->Block.Dim.y = 280;
+            }
+
+            MakeElementSizable(&LayEl);
+            //                DefaultInteraction(&LayEl, ItemInteraction);
+            EndElement(&LayEl);
+
+            PushRect(&DebugState->RenderGroup, DebugState->BackingTransform,
+                LayEl.Bounds, 0.0f, V4(0, 0, 0, 0.75f));
+            
+            u32 OldClipRect = RenderGroup->CurrentClipRectIndex;
+            RenderGroup->CurrentClipRectIndex = 
+                PushClipRect(RenderGroup, DebugState->BackingTransform, LayEl.Bounds, 0.0f);
+                
+            switch(Element->Type)
+            {
+                case DebugType_ArenaOccupancy:
+                {
+                    DrawArenaOccupancy(DebugState, DebugID, LayEl.Bounds, Layout->MouseP, Element);
+                } break;
+            }
+            
+            RenderGroup->CurrentClipRectIndex = OldClipRect;
         } break;
 
         case DebugType_ThreadIntervalGraph:
@@ -948,8 +1025,15 @@ DEBUGDrawElement(layout *Layout, debug_tree *Tree, debug_element *Element, debug
 
         case DebugType_FrameSlider:
         {
-            v2 Dim = {1400, 32};
-            layout_element LayEl = BeginElementRectangle(Layout, &Dim);
+            v2 *Dim = &View->InlineBlock.Dim;
+            if((Dim->x == 0) && (Dim->y == 0))
+            {
+                Dim->x = 1400;
+                Dim->y = 32;
+            }
+            
+            layout_element LayEl = BeginElementRectangle(Layout, Dim);
+            MakeElementSizable(&LayEl);
             EndElement(&LayEl);
 
             BeginRow(Layout);
@@ -968,8 +1052,9 @@ DEBUGDrawElement(layout *Layout, debug_tree *Tree, debug_element *Element, debug
 
         case DebugType_LastFrameInfo:
         {
-            debug_frame *MostRecentFrame = DebugState->Frames + DebugState->ViewingFrameOrdinal;
             char Text[256];
+            
+            debug_frame *MostRecentFrame = DebugState->Frames + DebugState->ViewingFrameOrdinal;
             _snprintf_s(Text, sizeof(Text),
                 "Viewing frame time: %.02fms %de %dp %dd",
                 MostRecentFrame->WallSecondsElapsed * 1000.0f,
@@ -998,7 +1083,7 @@ DEBUGDrawElement(layout *Layout, debug_tree *Tree, debug_element *Element, debug
 
             debug_event *Event = OldestStoredEvent ? &OldestStoredEvent->Event : &NullEvent;
             char Text[256];
-            DEBUGEventToText(Text, Text + sizeof(Text), Event,
+            DEBUGEventToText(Text, Text + sizeof(Text), Element, Event,
                 DEBUGVarToText_AddName|
                     DEBUGVarToText_AddValue|
                     DEBUGVarToText_NullTerminator|
@@ -1077,12 +1162,7 @@ DrawTrees(debug_state *DebugState, v2 MouseP)
         debug_variable_link *Group = Tree->Group;
         if(Group)
         {
-            for(debug_variable_link *SubLink = Group->FirstChild;
-                SubLink != GetSentinel(Group);
-                SubLink = SubLink->Next)
-            {
-                DrawTreeLink(DebugState, &Layout, Tree, SubLink);
-            }
+            DrawTreeLink(DebugState, &Layout, Tree, Group);
         }
         
         debug_interaction MoveInteraction = {};
@@ -1892,7 +1972,13 @@ DEBUGStart(debug_state *DebugState, game_render_commands *Commands, game_assets 
         SubArena(&DebugState->PerFrameArena, &DebugState->DebugArena, 8*1024*1024);
 #endif
 
+        
         DebugState->RootGroup = CreateVariableLink(DebugState, 4, "Root");
+        DebugState->RootInfoSize = 256;
+        DebugState->RootGroup->Name = 
+            DebugState->RootInfo = (char *)PushSize(&DebugState->DebugArena, 
+                DebugState->RootInfoSize);
+        
         DebugState->ProfileGroup = CreateVariableLink(DebugState, 7, "Profile");
 
 #if 0
@@ -1967,6 +2053,8 @@ DEBUGStart(debug_state *DebugState, game_render_commands *Commands, game_assets 
     DebugState->UITransform.SortBias = 300000.0f;
     DebugState->TextTransform.SortBias = 400000.0f;
 
+    DebugState->DefaultClipRect = DebugState->RenderGroup.CurrentClipRectIndex;
+    
     if(!DebugState->Paused)
     {
         DebugState->ViewingFrameOrdinal = DebugState->MostRecentFrameOrdinal;
@@ -1982,9 +2070,19 @@ DEBUGEnd(debug_state *DebugState, game_input *Input)
 
     debug_event *HotEvent = 0;
 
+    debug_frame *MostRecentFrame = DebugState->Frames + DebugState->ViewingFrameOrdinal;
+    _snprintf_s(DebugState->RootInfo, DebugState->RootInfoSize, DebugState->RootInfoSize,
+        "%.02fms %de %dp %dd",
+        MostRecentFrame->WallSecondsElapsed * 1000.0f,
+        MostRecentFrame->StoredEventCount,
+        MostRecentFrame->ProfileBlockCount,
+        MostRecentFrame->DataBlockCount);
+
     DebugState->AltUI = Input->MouseButtons[PlatformMouseButton_Right].EndedDown;
     v2 MouseP = Unproject(RenderGroup, DefaultFlatTransform(), V2(Input->MouseX, Input->MouseY)).xy;
+    DebugState->MouseTextLayout = BeginLayout(DebugState, MouseP, MouseP);
     DrawTrees(DebugState, MouseP);
+    EndLayout(&DebugState->MouseTextLayout);
     DEBUGInteract(DebugState, Input, MouseP);
     
     EndRenderGroup(&DebugState->RenderGroup);

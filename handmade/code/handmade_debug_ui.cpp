@@ -57,7 +57,8 @@ GetHex(char Char)
 }
 
 internal rectangle2
-TextOp(debug_state *DebugState, debug_text_op Op, v2 P, char *String, v4 Color = V4(1, 1, 1, 1))
+TextOp(debug_state *DebugState, debug_text_op Op, v2 P, char *String, v4 Color = V4(1, 1, 1, 1),
+    r32 AtZ = 0.0f)
 {
     rectangle2 Result = InvertedInfinityRectangle2();
     if(DebugState && DebugState->DebugFont)
@@ -120,7 +121,7 @@ TextOp(debug_state *DebugState, debug_text_op Op, v2 P, char *String, v4 Color =
                     hha_bitmap *Info = GetBitmapInfo(RenderGroup->Assets, BitmapID);
 
                     r32 BitmapScale = CharScale*(r32)Info->Dim[1];
-                    v3 BitmapOffset = V3(AtX, AtY, 0);
+                    v3 BitmapOffset = V3(AtX, AtY, AtZ);
                     if(Op == DEBUGTextOp_DrawText)
                     {
                         PushBitmap(RenderGroup, DebugState->TextTransform, BitmapID, BitmapScale,
@@ -153,10 +154,11 @@ TextOp(debug_state *DebugState, debug_text_op Op, v2 P, char *String, v4 Color =
 }
 
 inline void
-TextOutAt(debug_state *DebugState, v2 P, char *String, v4 Color = V4(1, 1, 1, 1))
+TextOutAt(debug_state *DebugState, v2 P, char *String, v4 Color = V4(1, 1, 1, 1), r32 AtZ = 0.0f)
 {
     render_group *RenderGroup = &DebugState->RenderGroup;
-    TextOp(DebugState, DEBUGTextOp_DrawText, P, String, Color);
+
+    TextOp(DebugState, DEBUGTextOp_DrawText, P, String, Color, AtZ);    
 }
 
 inline rectangle2
@@ -372,6 +374,13 @@ BeginRow(layout *Layout)
 }
 
 internal void
+Label(layout *Layout, char *Name)
+{
+    debug_interaction NullInteraction = {};
+    BasicTextElement(Layout, Name, NullInteraction, V4(1, 1, 1, 1), V4(1, 1, 1, 1));
+}
+
+internal void
 ActionButton(layout *Layout, char *Name, debug_interaction Interaction)
 {
     BasicTextElement(Layout, Name, Interaction, 
@@ -394,4 +403,27 @@ EndRow(layout *Layout)
     --Layout->NoLineFeed;
 
     AdvanceElement(Layout, RectMinMax(Layout->At, Layout->At));
+}
+
+internal void
+AddTooltip(debug_state *DebugState, char *Text)
+{
+    render_group *RenderGroup = &DebugState->RenderGroup;
+    u32 OldClipRect = RenderGroup->CurrentClipRectIndex;
+    RenderGroup->CurrentClipRectIndex = DebugState->DefaultClipRect;
+    
+    layout *Layout = &DebugState->MouseTextLayout;
+    
+    rectangle2 TextBounds = GetTextSize(DebugState, Text);
+    v2 Dim = {GetDim(TextBounds).x, Layout->LineAdvance};
+    
+    layout_element Element = BeginElementRectangle(Layout, &Dim);
+    EndElement(&Element);
+    
+    TextOutAt(DebugState, V2(GetMinCorner(Element.Bounds).x,
+                GetMaxCorner(Element.Bounds).y - 
+                DebugState->FontScale*GetStartingBaselineY(DebugState->DebugFontInfo)),
+            Text, V4(1, 1, 1, 1), 10000.0f);
+        
+    RenderGroup->CurrentClipRectIndex = OldClipRect;
 }

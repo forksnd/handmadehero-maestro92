@@ -145,12 +145,19 @@ then at the end, we define the ClipRect for DebugState->RenderGroup
                             u32 OldClipRect = RenderGroup->CurrentClipRectIndex;
                             RenderGroup->CurrentClipRectIndex = 
         ---------->             PushClipRect(RenderGroup, DebugState->BackingTransform, LayEl.Bounds, 0.0f);
+
+                            ...
+                            ...
+
+                            RenderGroup->CurrentClipRectIndex = OldClipRect;
+
                         }
                     }
                 }
 
 this way everything in this RenderGroup will be restrained into this ClipRect
-
+then when this current element is done with the clipRect,
+we set it back to the OldClipRect
 
 
 1:03:15
