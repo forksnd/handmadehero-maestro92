@@ -352,18 +352,6 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
 //        GameState->Music = PlaySound(&GameState->AudioState, GetFirstSoundFrom(TranState->Assets, Asset_Music));
         
-        // TODO(casey): Pick a real number here!
-        TranState->GroundBufferCount = 256;
-        TranState->GroundBuffers = PushArray(&TranState->TranArena, TranState->GroundBufferCount, ground_buffer);
-        for(uint32 GroundBufferIndex = 0;
-            GroundBufferIndex < TranState->GroundBufferCount;
-            ++GroundBufferIndex)
-        {
-            ground_buffer *GroundBuffer = TranState->GroundBuffers + GroundBufferIndex;
-            GroundBuffer->Bitmap = MakeEmptyBitmap(&TranState->TranArena, GroundBufferWidth, GroundBufferHeight, false);
-            GroundBuffer->P = NullPosition();
-        }
-
         GameState->TestDiffuse = MakeEmptyBitmap(&TranState->TranArena, 256, 256, false);
         GameState->TestNormal = MakeEmptyBitmap(&TranState->TranArena, GameState->TestDiffuse.Width, GameState->TestDiffuse.Height, false);
         MakeSphereNormalMap(&GameState->TestNormal, 0.0f);
@@ -416,20 +404,6 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         PlayIntroCutscene(GameState, TranState);
     }
     
-    if(Global_GroundChunks_RecomputeOnEXEChange)
-    {
-        if(Memory->ExecutableReloaded)
-        {
-            for(uint32 GroundBufferIndex = 0;
-                GroundBufferIndex < TranState->GroundBufferCount;
-                ++GroundBufferIndex)
-            {
-                ground_buffer *GroundBuffer = TranState->GroundBuffers + GroundBufferIndex;
-                GroundBuffer->P = NullPosition();            
-            }        
-        }
-    }
-
 #if 0
     //
     // NOTE(casey): 
