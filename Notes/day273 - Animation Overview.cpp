@@ -327,6 +327,29 @@ so Casey changed the hopping code, to add the different phases
                     } break;
                 }
 
+
+
+
+in the rendering code 
+we render the Cape/body based on Entity->tBob position. Notice that V3(0, Entity->tBob, 1.0f); is the offset from from 
+EntityTransform. So we are rendering the HeroBitmaps.Cape at an offset, but rendering HeroBitmaps.Torso at exactly where
+EntityTransform is at. 
+
+                switch(Entity->Type)
+                {
+                    case EntityType_HeroBody:
+                    {
+                        real32 HeroSizeC = 2.5f;
+                        PushBitmap(RenderGroup, EntityTransform, GetFirstBitmapFrom(TranState->Assets, Asset_Shadow), HeroSizeC*1.0f, V3(0, 0, 0), V4(1, 1, 1, ShadowAlpha));
+                        PushBitmap(RenderGroup, EntityTransform, HeroBitmaps.Torso, HeroSizeC*1.2f, V3(0, 0, 0));
+                        PushBitmap(RenderGroup, EntityTransform, HeroBitmaps.Cape, HeroSizeC*1.2f, V3(0, Entity->tBob, 1.0f));
+    ---------------->   DrawHitpoints(Entity, RenderGroup, EntityTransform);
+                    } break;
+
+
+
+
+
 Q/A
 
 1:04:51
