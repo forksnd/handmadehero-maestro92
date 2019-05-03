@@ -131,6 +131,8 @@ struct sim_entity
     v2 XAxis;
     v2 YAxis;
     
+    v2 FloorDisplace;
+    
     // TODO(casey): Generation index so we know how "up to date" this entity is.
 };
 
