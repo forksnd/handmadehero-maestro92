@@ -84,7 +84,10 @@ struct render_entry_bitmap
     
     v4 Color;
     v2 P;
-    v2 Size;
+    
+    // NOTE(casey): X and Y axes are already scaled by the dimension.
+    v2 XAxis;
+    v2 YAxis;
 };
 
 struct render_entry_rectangle

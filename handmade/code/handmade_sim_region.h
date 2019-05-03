@@ -128,6 +128,9 @@ struct sim_entity
     v3 MovementFrom;
     v3 MovementTo;
     
+    v2 XAxis;
+    v2 YAxis;
+    
     // TODO(casey): Generation index so we know how "up to date" this entity is.
 };
 
