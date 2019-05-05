@@ -9,15 +9,6 @@
 
 struct game_mode_world;
 
-struct low_entity
-{
-    // TODO(casey): It's kind of busted that P's can be invalid here,
-    // AND we store whether they would be invalid in the flags field...
-    // Can we do something better here?
-    world_position P;
-    sim_entity Sim;
-};
-
 struct pairwise_collision_rule
 {
     bool32 CanCollide;
@@ -59,14 +50,14 @@ struct game_mode_world
     pairwise_collision_rule *CollisionRuleHash[256];
     pairwise_collision_rule *FirstFreeCollisionRule;
 
-    sim_entity_collision_volume_group *NullCollision;
-    sim_entity_collision_volume_group *StairCollision;
-    sim_entity_collision_volume_group *HeroHeadCollision;
-    sim_entity_collision_volume_group *HeroBodyCollision;
-    sim_entity_collision_volume_group *MonstarCollision;
-    sim_entity_collision_volume_group *FamiliarCollision;
-    sim_entity_collision_volume_group *WallCollision;
-    sim_entity_collision_volume_group *FloorCollision;
+    entity_collision_volume_group *NullCollision;
+    entity_collision_volume_group *StairCollision;
+    entity_collision_volume_group *HeroHeadCollision;
+    entity_collision_volume_group *HeroBodyCollision;
+    entity_collision_volume_group *MonstarCollision;
+    entity_collision_volume_group *FamiliarCollision;
+    entity_collision_volume_group *WallCollision;
+    entity_collision_volume_group *FloorCollision;
 
     real32 Time;
 
@@ -77,8 +68,8 @@ struct game_mode_world
     u32 NextParticle;
     particle Particles[256];
 
-    b32 CreationBufferLocked; // TODO(casey): Remove this eventually, just for catching bugs?
-    low_entity CreationBuffer;
+    u32 CreationBufferIndex;
+    entity CreationBuffer[4];
     u32 LastUsedEntityStorageIndex; // TODO(casey): Worry about this wrapping - free list for IDs?
     
     particle_cel ParticleCels[PARTICLE_CEL_DIM][PARTICLE_CEL_DIM];

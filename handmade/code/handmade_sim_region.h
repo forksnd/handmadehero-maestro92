@@ -38,7 +38,7 @@ struct hit_point
 };
 
 // TODO(casey): Rename sim_entity to entity!
-struct sim_entity;
+struct entity;
 
 struct entity_id
 {
@@ -46,11 +46,11 @@ struct entity_id
 };
 union entity_reference
 {
-    sim_entity *Ptr;
+    entity *Ptr;
     entity_id Index;
 };
 
-enum sim_entity_flags
+enum entity_flags
 {
     // TODO(casey): Does it make more sense to have the flag be for _non_ colliding entities?
     // TODO(casey): Collides and ZSupported probably can be removed now/soon
@@ -61,30 +61,30 @@ enum sim_entity_flags
     EntityFlag_Simming = (1 << 30),
 };
 
-struct sim_entity_collision_volume
+struct entity_collision_volume
 {
     v3 OffsetP;
     v3 Dim;
 };
 
-struct sim_entity_traversable_point
+struct entity_traversable_point
 {
     v3 P;
 };
 
-struct sim_entity_collision_volume_group
+struct entity_collision_volume_group
 {
-    sim_entity_collision_volume TotalVolume;
+    entity_collision_volume TotalVolume;
 
     // TODO(casey): VolumeCount is always expected to be greater than 0 if the entity
     // has any volume... in the future, this could be compressed if necessary to say
     // that the VolumeCount can be 0 if the TotalVolume should be used as the only
     // collision volume for the entity.
     u32 VolumeCount;
-    sim_entity_collision_volume *Volumes; 
+    entity_collision_volume *Volumes; 
     
     u32 TraversableCount;
-    sim_entity_traversable_point *Traversables;
+    entity_traversable_point *Traversables;
 };
 
 enum sim_movement_mode
@@ -92,10 +92,12 @@ enum sim_movement_mode
     MovementMode_Planted,
     MovementMode_Hopping,
 };
-struct sim_entity
+struct entity
 {
     // NOTE(casey): These are only for the sim region
     world_chunk *OldChunk;
+    world_position ChunkP;
+    
     entity_id StorageIndex;
     b32 Updatable;
 
@@ -109,7 +111,7 @@ struct sim_entity
     
     r32 DistanceLimit;
 
-    sim_entity_collision_volume_group *Collision;
+    entity_collision_volume_group *Collision;
 
     r32 FacingDirection;
     r32 tBob;
@@ -140,9 +142,9 @@ struct sim_entity
     // TODO(casey): Generation index so we know how "up to date" this entity is.
 };
 
-struct sim_entity_hash
+struct entity_hash
 {
-    sim_entity *Ptr;
+    entity *Ptr;
     entity_id Index;
 };
 
@@ -161,11 +163,11 @@ struct sim_region
     
     u32 MaxEntityCount;
     u32 EntityCount;
-    sim_entity *Entities;
+    entity *Entities;
     
     // TODO(casey): Do I really want a hash for this??
     // NOTE(casey): Must be a power of two!
-    sim_entity_hash Hash[4096];
+    entity_hash Hash[4096];
 };
 
 #define HANDMADE_SIM_REGION_H
