@@ -19,13 +19,13 @@ GetSimSpaceTraversable(sim_entity *Entity, u32 Index)
 }
 
 internal sim_entity_hash *
-GetHashFromStorageIndex(sim_region *SimRegion, uint32 StorageIndex)
+GetHashFromStorageIndex(sim_region *SimRegion, entity_id StorageIndex)
 {
-    Assert(StorageIndex);
+    Assert(StorageIndex.Value);
     
     sim_entity_hash *Result = 0;
     
-    uint32 HashValue = StorageIndex;
+    uint32 HashValue = StorageIndex.Value;
     for(uint32 Offset = 0;
         Offset < ArrayCount(SimRegion->Hash);
         ++Offset)
@@ -33,7 +33,7 @@ GetHashFromStorageIndex(sim_region *SimRegion, uint32 StorageIndex)
         uint32 HashMask = (ArrayCount(SimRegion->Hash) - 1);
         uint32 HashIndex = ((HashValue + Offset) & HashMask);
         sim_entity_hash *Entry = SimRegion->Hash + HashIndex;
-        if((Entry->Index == 0) || (Entry->Index == StorageIndex))
+        if((Entry->Index.Value == 0) || (Entry->Index.Value == StorageIndex.Value))
         {
             Result = Entry;
             break;
@@ -44,7 +44,7 @@ GetHashFromStorageIndex(sim_region *SimRegion, uint32 StorageIndex)
 }
 
 inline sim_entity *
-GetEntityByStorageIndex(sim_region *SimRegion, uint32 StorageIndex)
+GetEntityByStorageIndex(sim_region *SimRegion, entity_id StorageIndex)
 {
     sim_entity_hash *Entry = GetHashFromStorageIndex(SimRegion, StorageIndex);
     sim_entity *Result = Entry->Ptr;
@@ -67,23 +67,13 @@ GetSimSpaceP(sim_region *SimRegion, low_entity *Stored)
     return(Result);
 }
 
-internal sim_entity *
-AddEntity(game_mode_world *WorldMode, sim_region *SimRegion, uint32 StorageIndex, low_entity *Source, v3 *SimP);
 inline void
 LoadEntityReference(game_mode_world *WorldMode, sim_region *SimRegion, entity_reference *Ref)
 {
-    if(Ref->Index)
+    if(Ref->Index.Value)
     {
         sim_entity_hash *Entry = GetHashFromStorageIndex(SimRegion, Ref->Index);
-        if(Entry->Ptr == 0)
-        {
-            Entry->Index = Ref->Index;
-            low_entity *LowEntity = GetLowEntity(WorldMode, Ref->Index);
-            v3 P = GetSimSpaceP(SimRegion, LowEntity);
-            Entry->Ptr = AddEntity(WorldMode, SimRegion, Ref->Index, LowEntity, &P);
-        }
-        
-        Ref->Ptr = Entry->Ptr;
+        Ref->Ptr = Entry ? Entry->Ptr : 0;
     }
 }
 
@@ -97,11 +87,11 @@ StoreEntityReference(entity_reference *Ref)
 }
 
 internal sim_entity *
-AddEntityRaw(game_mode_world *WorldMode, sim_region *SimRegion, uint32 StorageIndex, low_entity *Source)
+AddEntityRaw(game_mode_world *WorldMode, sim_region *SimRegion, entity_id StorageIndex, low_entity *Source)
 {
     TIMED_FUNCTION();
 
-    Assert(StorageIndex);
+    Assert(StorageIndex.Value);
     sim_entity *Entity = 0;
 
     sim_entity_hash *Entry = GetHashFromStorageIndex(SimRegion, StorageIndex);
@@ -119,7 +109,6 @@ AddEntityRaw(game_mode_world *WorldMode, sim_region *SimRegion, uint32 StorageIn
                 // TODO(casey): This should really be a decompression step, not
                 // a copy!
                 *Entity = Source->Sim;
-                LoadEntityReference(WorldMode, SimRegion, &Entity->Sword);
                 LoadEntityReference(WorldMode, SimRegion, &Entity->Head);
 
                 Assert(!IsSet(&Source->Sim, EntityFlag_Simming));
@@ -147,7 +136,7 @@ EntityOverlapsRectangle(v3 P, sim_entity_collision_volume Volume, rectangle3 Rec
 }
 
 internal sim_entity *
-AddEntity(game_mode_world *WorldMode, sim_region *SimRegion, uint32 StorageIndex, low_entity *Source, v3 *SimP)
+AddEntity(game_mode_world *WorldMode, sim_region *SimRegion, entity_id StorageIndex, low_entity *Source, v3 *SimP)
 {
     sim_entity *Dest = AddEntityRaw(WorldMode, SimRegion, StorageIndex, Source);
     if(Dest)
@@ -219,18 +208,17 @@ BeginSim(memory_arena *SimArena, game_mode_world *WorldMode, world *World, world
                         Block;
                         Block = Block->Next)
                     {
-                        for(uint32 EntityIndexIndex = 0;
-                            EntityIndexIndex < Block->EntityCount;
-                            ++EntityIndexIndex)
+                        for(uint32 EntityIndex = 0;
+                            EntityIndex < Block->EntityCount;
+                            ++EntityIndex)
                         {                        
-                            uint32 LowEntityIndex = Block->LowEntityIndex[EntityIndexIndex];                        
-                            low_entity *Low = WorldMode->LowEntities + LowEntityIndex;
+                            low_entity *Low = (low_entity *)Block->EntityData + EntityIndex;
                             if(!IsSet(&Low->Sim, EntityFlag_Nonspatial))
                             {
                                 v3 SimSpaceP = GetSimSpaceP(SimRegion, Low);
                                 if(EntityOverlapsRectangle(SimSpaceP, Low->Sim.Collision->TotalVolume, SimRegion->Bounds))
                                 {
-                                    AddEntity(WorldMode, SimRegion, LowEntityIndex, Low, &SimSpaceP);
+                                    AddEntity(WorldMode, SimRegion, Low->Sim.StorageIndex, Low, &SimSpaceP);
                                 }
                             }
                         }
@@ -253,18 +241,16 @@ EndSim(sim_region *Region, game_mode_world *WorldMode)
 
     world *World = WorldMode->World;
     
+#if 0
     sim_entity *Entity = Region->Entities;
     for(uint32 EntityIndex = 0;
         EntityIndex < Region->EntityCount;
         ++EntityIndex, ++Entity)
     {
-        low_entity *Stored = WorldMode->LowEntities + Entity->StorageIndex;
-
         Assert(IsSet(&Stored->Sim, EntityFlag_Simming));
         Stored->Sim = *Entity;
         Assert(!IsSet(&Stored->Sim, EntityFlag_Simming));
 
-        StoreEntityReference(&Stored->Sim.Sword);
         StoreEntityReference(&Stored->Sim.Head);
 
         // TODO(casey): Save state back to the stored entity, once high entities
@@ -311,6 +297,7 @@ EndSim(sim_region *Region, game_mode_world *WorldMode)
         }
 
     }
+#endif
 }
 
 struct test_wall
@@ -355,7 +342,7 @@ CanCollide(game_mode_world *WorldMode, sim_entity *A, sim_entity *B)
 
     if(A != B)
     {
-        if(A->StorageIndex > B->StorageIndex)
+        if(A->StorageIndex.Value > B->StorageIndex.Value)
         {
             sim_entity *Temp = A;
             A = B;
@@ -372,13 +359,13 @@ CanCollide(game_mode_world *WorldMode, sim_entity *A, sim_entity *B)
             }
 
             // TODO(casey): BETTER HASH FUNCTION
-            uint32 HashBucket = A->StorageIndex & (ArrayCount(WorldMode->CollisionRuleHash) - 1);
+            uint32 HashBucket = A->StorageIndex.Value & (ArrayCount(WorldMode->CollisionRuleHash) - 1);
             for(pairwise_collision_rule *Rule = WorldMode->CollisionRuleHash[HashBucket];
                 Rule;
                 Rule = Rule->NextInHash)
             {
-                if((Rule->StorageIndexA == A->StorageIndex) &&
-                   (Rule->StorageIndexB == B->StorageIndex))
+                if((Rule->StorageIndexA == A->StorageIndex.Value) &&
+                   (Rule->StorageIndexB == B->StorageIndex.Value))
                 {
                     Result = Rule->CanCollide;
                     break;
@@ -397,7 +384,7 @@ HandleCollision(game_mode_world *WorldMode, sim_entity *A, sim_entity *B)
 
     if(A->Type == EntityType_Sword)
     {                    
-        AddCollisionRule(WorldMode, A->StorageIndex, B->StorageIndex, false);
+        AddCollisionRule(WorldMode, A->StorageIndex.Value, B->StorageIndex.Value, false);
         StopsOnCollision = false;
     }
     else

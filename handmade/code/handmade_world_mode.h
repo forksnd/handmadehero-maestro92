@@ -51,20 +51,15 @@ struct game_mode_world
     real32 TypicalFloorHeight;
     
     // TODO(casey): Should we allow split-screen?
-    uint32 CameraFollowingEntityIndex;
+    entity_id CameraFollowingEntityIndex;
     world_position CameraP;
     world_position LastCameraP;
-
-    // TODO(casey): Change the name to "stored entity"
-    uint32 LowEntityCount;
-    low_entity LowEntities[100000];
 
     // TODO(casey): Must be power of two
     pairwise_collision_rule *CollisionRuleHash[256];
     pairwise_collision_rule *FirstFreeCollisionRule;
 
     sim_entity_collision_volume_group *NullCollision;
-    sim_entity_collision_volume_group *SwordCollision;
     sim_entity_collision_volume_group *StairCollision;
     sim_entity_collision_volume_group *HeroHeadCollision;
     sim_entity_collision_volume_group *HeroBodyCollision;
@@ -81,22 +76,13 @@ struct game_mode_world
 #define PARTICLE_CEL_DIM 32
     u32 NextParticle;
     particle Particles[256];
+
+    b32 CreationBufferLocked; // TODO(casey): Remove this eventually, just for catching bugs?
+    low_entity CreationBuffer;
+    u32 LastUsedEntityStorageIndex; // TODO(casey): Worry about this wrapping - free list for IDs?
     
     particle_cel ParticleCels[PARTICLE_CEL_DIM][PARTICLE_CEL_DIM];
 };
-
-inline low_entity *
-GetLowEntity(game_mode_world *WorldMode, uint32 Index)
-{
-    low_entity *Result = 0;
-    
-    if((Index > 0) && (Index < WorldMode->LowEntityCount))
-    {
-        Result = WorldMode->LowEntities + Index;
-    }
-
-    return(Result);
-}
 
 internal void PlayWorld(game_state *GameState, transient_state *TranState);
 

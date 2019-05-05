@@ -302,7 +302,7 @@ Copy(memory_index Size, void *SourceInit, void *DestInit)
 
 struct controlled_hero
 {
-    uint32 EntityIndex;
+    entity_id EntityIndex;
     
     // NOTE(casey): These are the controller requests for simulation
     v2 ddP;

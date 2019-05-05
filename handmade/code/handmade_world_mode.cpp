@@ -6,48 +6,47 @@
    $Notice: (C) Copyright 2015 by Molly Rocket, Inc. All Rights Reserved. $
    ======================================================================== */
 
-struct add_low_entity_result
+internal low_entity *
+BeginLowEntity(game_mode_world *WorldMode, entity_type Type, world_position P)
 {
-    low_entity *Low;
-    u32 LowIndex;
-};
-internal add_low_entity_result
-AddLowEntity(game_mode_world *WorldMode, entity_type Type, world_position P)
-{
-    Assert(WorldMode->LowEntityCount < ArrayCount(WorldMode->LowEntities));
-    uint32 EntityIndex = WorldMode->LowEntityCount++;
+    Assert(!WorldMode->CreationBufferLocked);
+    WorldMode->CreationBufferLocked = true;
+    
+    low_entity *EntityLow = &WorldMode->CreationBuffer;
+    EntityLow->Sim.StorageIndex.Value = ++WorldMode->LastUsedEntityStorageIndex;
 
-    low_entity *EntityLow = WorldMode->LowEntities + EntityIndex;
-    *EntityLow = {};
+    // TODO(casey): Worry about this taking awhile once the entities are large (sparse clear?)
+    ZeroStruct(*EntityLow);
+    
     EntityLow->Sim.Type = Type;
     EntityLow->Sim.Collision = WorldMode->NullCollision;
-    EntityLow->P = NullPosition();
-
-    ChangeEntityLocation(&WorldMode->World->Arena, WorldMode->World, EntityIndex, EntityLow, P);
-
-    add_low_entity_result Result;
-    Result.Low = EntityLow;
-    Result.LowIndex = EntityIndex;
-
-    // TODO(casey): Do we need to have a begin/end paradigm for adding
-    // entities so that they can be brought into the high set when they
-    // are added and are in the camera region?
-
-    return(Result);
+    EntityLow->P = P;
+    
+    return(EntityLow);
 }
 
 internal void
-DeleteLowEntity(game_mode_world *WorldMode, int Index)
+PackEntityIntoChunk(world *World, low_entity *Entity)
 {
-    // TODO(casey): Actually delete;
+    // TODO(casey): NotImplemented
 }
 
-internal add_low_entity_result
-AddGroundedEntity(game_mode_world *WorldMode, entity_type Type, world_position P,
-                  sim_entity_collision_volume_group *Collision)
+internal void
+EndEntity(game_mode_world *WorldMode, low_entity *EntityLow)
 {
-    add_low_entity_result Entity = AddLowEntity(WorldMode, Type, P);
-    Entity.Low->Sim.Collision = Collision;
+    Assert(WorldMode->CreationBufferLocked);
+    WorldMode->CreationBufferLocked = false;
+    
+    PackEntityIntoChunk(WorldMode->World, EntityLow);
+}
+
+internal low_entity *
+BeginGroundedEntity(game_mode_world *WorldMode, entity_type Type, world_position P,
+    sim_entity_collision_volume_group *Collision)
+{
+    low_entity *Entity = BeginLowEntity(WorldMode, Type, P);
+    Entity->Sim.Collision = Collision;
+    
     return(Entity);
 }
 
@@ -82,34 +81,33 @@ AddStandardRoom(game_mode_world *WorldMode, u32 AbsTileX, u32 AbsTileY, u32 AbsT
         {
             world_position P = ChunkPositionFromTilePosition(
                 WorldMode->World, AbsTileX + OffsetX, AbsTileY + OffsetY, AbsTileZ);
-            add_low_entity_result Entity = AddGroundedEntity(WorldMode, EntityType_Floor, P,
+            low_entity *Entity = BeginGroundedEntity(WorldMode, EntityType_Floor, P,
                 WorldMode->FloorCollision);
+            EndEntity(WorldMode, Entity);
         }
     }
 }
 
-internal add_low_entity_result
+internal void
 AddWall(game_mode_world *WorldMode, uint32 AbsTileX, uint32 AbsTileY, uint32 AbsTileZ)
 {
     world_position P = ChunkPositionFromTilePosition(WorldMode->World, AbsTileX, AbsTileY, AbsTileZ);
-    add_low_entity_result Entity = AddGroundedEntity(WorldMode, EntityType_Wall, P,
-                                                     WorldMode->WallCollision);
-    AddFlags(&Entity.Low->Sim, EntityFlag_Collides);
-
-    return(Entity);
+    low_entity *Entity = BeginGroundedEntity(WorldMode, EntityType_Wall, P,
+        WorldMode->WallCollision);
+    AddFlags(&Entity->Sim, EntityFlag_Collides);
+    EndEntity(WorldMode, Entity);
 }
 
-internal add_low_entity_result
+internal void
 AddStair(game_mode_world *WorldMode, uint32 AbsTileX, uint32 AbsTileY, uint32 AbsTileZ)
 {
     world_position P = ChunkPositionFromTilePosition(WorldMode->World, AbsTileX, AbsTileY, AbsTileZ);
-    add_low_entity_result Entity = AddGroundedEntity(WorldMode, EntityType_Stairwell, P,
-                                                     WorldMode->StairCollision);
-    AddFlags(&Entity.Low->Sim, EntityFlag_Collides);
-    Entity.Low->Sim.WalkableDim = Entity.Low->Sim.Collision->TotalVolume.Dim.xy;
-    Entity.Low->Sim.WalkableHeight = WorldMode->TypicalFloorHeight;
-
-    return(Entity);
+    low_entity *Entity = BeginGroundedEntity(WorldMode, EntityType_Stairwell, P,
+        WorldMode->StairCollision);
+    AddFlags(&Entity->Sim, EntityFlag_Collides);
+    Entity->Sim.WalkableDim = Entity->Sim.Collision->TotalVolume.Dim.xy;
+    Entity->Sim.WalkableHeight = WorldMode->TypicalFloorHeight;
+    EndEntity(WorldMode, Entity);
 }
 
 internal void
@@ -127,68 +125,59 @@ InitHitPoints(low_entity *EntityLow, uint32 HitPointCount)
     }
 }
 
-internal add_low_entity_result
-AddSword(game_mode_world *WorldMode)
-{
-    add_low_entity_result Entity = AddLowEntity(WorldMode, EntityType_Sword, NullPosition());
-    Entity.Low->Sim.Collision = WorldMode->SwordCollision;
-
-    AddFlags(&Entity.Low->Sim, EntityFlag_Moveable);
-
-    return(Entity);
-}
-
-internal add_low_entity_result
+internal entity_id
 AddPlayer(game_mode_world *WorldMode)
 {
     world_position P = WorldMode->CameraP;
 
-    add_low_entity_result Body = AddGroundedEntity(WorldMode, EntityType_HeroBody, P,
+    low_entity *Body = BeginGroundedEntity(WorldMode, EntityType_HeroBody, P,
         WorldMode->HeroBodyCollision);
-    AddFlags(&Body.Low->Sim, EntityFlag_Collides|EntityFlag_Moveable);
+    AddFlags(&Body->Sim, EntityFlag_Collides|EntityFlag_Moveable);
 
-    add_low_entity_result Head = AddGroundedEntity(WorldMode, EntityType_HeroHead, P,
+    low_entity *Head = BeginGroundedEntity(WorldMode, EntityType_HeroHead, P,
         WorldMode->HeroHeadCollision);
-    AddFlags(&Head.Low->Sim, EntityFlag_Collides|EntityFlag_Moveable);
+    AddFlags(&Head->Sim, EntityFlag_Collides|EntityFlag_Moveable);
 
-    InitHitPoints(Body.Low, 3);
+    InitHitPoints(Body, 3);
 
-    add_low_entity_result Sword = AddSword(WorldMode);
-    Head.Low->Sim.Sword.Index = Sword.LowIndex;
+    Body->Sim.Head.Index = Head->Sim.StorageIndex;
+    Head->Sim.Head.Index = Body->Sim.StorageIndex;
 
-    Body.Low->Sim.Head.Index = Head.LowIndex;
-    Head.Low->Sim.Head.Index = Body.LowIndex;
-
-    if(WorldMode->CameraFollowingEntityIndex == 0)
+    if(WorldMode->CameraFollowingEntityIndex.Value == 0)
     {
-        WorldMode->CameraFollowingEntityIndex = Body.LowIndex;
+        WorldMode->CameraFollowingEntityIndex = Body->Sim.StorageIndex;
     }
+    
+    entity_id Result = Head->Sim.StorageIndex;
+    
+    EndEntity(WorldMode, Body);
+    EndEntity(WorldMode, Head);
 
-    return(Head);
+    return(Result);
 }
 
-internal add_low_entity_result
+internal void
 AddMonstar(game_mode_world *WorldMode, uint32 AbsTileX, uint32 AbsTileY, uint32 AbsTileZ)
 {
     world_position P = ChunkPositionFromTilePosition(WorldMode->World, AbsTileX, AbsTileY, AbsTileZ);
-    add_low_entity_result Entity = AddGroundedEntity(WorldMode, EntityType_Monstar, P,
+    low_entity *Entity = BeginGroundedEntity(WorldMode, EntityType_Monstar, P,
                                                      WorldMode->MonstarCollision);
-    AddFlags(&Entity.Low->Sim, EntityFlag_Collides|EntityFlag_Moveable);
+    AddFlags(&Entity->Sim, EntityFlag_Collides|EntityFlag_Moveable);
 
-    InitHitPoints(Entity.Low, 3);
-
-    return(Entity);
+    InitHitPoints(Entity, 3);
+    
+    EndEntity(WorldMode, Entity);
 }
 
-internal add_low_entity_result
+internal void
 AddFamiliar(game_mode_world *WorldMode, uint32 AbsTileX, uint32 AbsTileY, uint32 AbsTileZ)
 {
     world_position P = ChunkPositionFromTilePosition(WorldMode->World, AbsTileX, AbsTileY, AbsTileZ);
-    add_low_entity_result Entity = AddGroundedEntity(WorldMode, EntityType_Familiar, P,
+    low_entity *Entity = BeginGroundedEntity(WorldMode, EntityType_Familiar, P,
                                                      WorldMode->FamiliarCollision);
-    AddFlags(&Entity.Low->Sim, EntityFlag_Collides|EntityFlag_Moveable);
+    AddFlags(&Entity->Sim, EntityFlag_Collides|EntityFlag_Moveable);
 
-    return(Entity);
+    EndEntity(WorldMode, Entity);
 }
 
 internal void
@@ -412,14 +401,10 @@ PlayWorld(game_state *GameState, transient_state *TranState)
                                 WorldMode->TypicalFloorHeight};
     WorldMode->World = CreateWorld(WorldChunkDimInMeters, &GameState->ModeArena);
 
-    // NOTE(casey): Reserve entity slot 0 for the null entity
-    AddLowEntity(WorldMode, EntityType_Null, NullPosition());
-
     real32 TileSideInMeters = 1.4f;
     real32 TileDepthInMeters = WorldMode->TypicalFloorHeight;
 
     WorldMode->NullCollision = MakeNullCollision(WorldMode);
-    WorldMode->SwordCollision = MakeSimpleGroundedCollision(WorldMode, 1.0f, 0.5f, 0.1f);
     WorldMode->StairCollision = MakeSimpleGroundedCollision(WorldMode,
                                                             TileSideInMeters,
                                                             2.0f*TileSideInMeters,
@@ -650,7 +635,7 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
     {
         game_controller_input *Controller = GetController(Input, ControllerIndex);
         controlled_hero *ConHero = GameState->ControlledHeroes + ControllerIndex;
-        if(ConHero->EntityIndex == 0)
+        if(ConHero->EntityIndex.Value == 0)
         {
             if(WasPressed(Controller->Back))
             {
@@ -659,11 +644,11 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
             else if(WasPressed(Controller->Start))
             {
                 *ConHero = {};
-                ConHero->EntityIndex = AddPlayer(WorldMode).LowIndex;
+                ConHero->EntityIndex = AddPlayer(WorldMode);
             }
         }
 
-        if(ConHero->EntityIndex)
+        if(ConHero->EntityIndex.Value)
         {
             HeroesExist = true;
 
@@ -764,8 +749,9 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
 
             if(WasPressed(Controller->Back))
             {
-                DeleteLowEntity(WorldMode, ConHero->EntityIndex);
-                ConHero->EntityIndex = 0;
+                Assert(!"Mark this and delete in sim!");
+                    // DeleteLowEntity(WorldMode, ConHero->EntityIndex);
+                ConHero->EntityIndex.Value = 0;
             }
         }
     }
@@ -801,7 +787,8 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
             Entity->XAxis = V2(1, 0);
             Entity->YAxis = V2(0, 1);
 
-            debug_id EntityDebugID = DEBUG_POINTER_ID(WorldMode->LowEntities + Entity->StorageIndex);
+            // TODO(casey): We don't really have a way to unique-ify these :(
+            debug_id EntityDebugID = DEBUG_POINTER_ID((void *)Entity->StorageIndex.Value);
             if(DEBUG_REQUESTED(EntityDebugID))
             {
                 DEBUG_BEGIN_DATA_BLOCK("Simulation/Entity");
@@ -857,7 +844,7 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
                         {
                             controlled_hero *ConHero = GameState->ControlledHeroes + ControlIndex;
 
-                            if(Entity->StorageIndex == ConHero->EntityIndex)
+                            if(Entity->StorageIndex.Value == ConHero->EntityIndex.Value)
                             {
                                 ConHero->RecenterTimer = ClampAboveZero(ConHero->RecenterTimer - dt);
                                 
@@ -904,22 +891,6 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
                                     }
                                     Entity->dP += dt*ddP2;
                                 }
-                                
-#if 0
-                                if((ConHero->dSword.x != 0.0f) || (ConHero->dSword.y != 0.0f))
-                                {
-                                    sim_entity *Sword = Entity->Sword.Ptr;
-                                    if(Sword && IsSet(Sword, EntityFlag_Nonspatial))
-                                    {
-                                        Sword->DistanceLimit = 5.0f;
-                                        MakeEntitySpatial(Sword, Entity->P,
-                                            Entity->dP + 5.0f*V3(ConHero->dSword, 0));
-                                        AddCollisionRule(WorldMode, Sword->StorageIndex, Entity->StorageIndex, false);
-
-                                        //                                    PlaySound(&WorldMode->AudioState, GetRandomSoundFrom(TranState->Assets, Asset_Bloop, &WorldMode->EffectsEntropy));
-                                    }
-                                }
-#endif
                             }
                         }
                     } break;
@@ -1016,7 +987,7 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
 
                         if(Entity->DistanceLimit == 0.0f)
                         {
-                            ClearCollisionRulesFor(WorldMode, Entity->StorageIndex);
+                            ClearCollisionRulesFor(WorldMode, Entity->StorageIndex.Value);
                             MakeEntityNonSpatial(Entity);
                         }
                     } break;
@@ -1169,7 +1140,7 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
 
                 if(DEBUG_UI_ENABLED)
                 {
-                    debug_id EntityDebugID = DEBUG_POINTER_ID(WorldMode->LowEntities + Entity->StorageIndex);
+                    debug_id EntityDebugID = DEBUG_POINTER_ID((void *)Entity->StorageIndex.Value);
 
                     for(uint32 VolumeIndex = 0;
                         VolumeIndex < Entity->Collision->VolumeCount;
@@ -1195,7 +1166,7 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
 
                 if(DEBUG_REQUESTED(EntityDebugID))
                 {
-                    DEBUG_VALUE(Entity->StorageIndex);
+                    DEBUG_VALUE(Entity->StorageIndex.Value);
                     DEBUG_VALUE(Entity->Updatable);
                     DEBUG_VALUE(Entity->Type);
                     DEBUG_VALUE(Entity->P);

@@ -8,9 +8,9 @@
 
 // TODO(casey): Think about what the real safe margin is!
 #define TILE_CHUNK_SAFE_MARGIN (INT32_MAX/64)
-#define TILE_CHUNK_UNINITIALIZED INT32_MAX
-
 #define TILES_PER_CHUNK 8
+
+#define TILE_CHUNK_UNINITIALIZED INT32_MAX
 
 inline world_position
 NullPosition(void)
@@ -63,6 +63,14 @@ AreInSameChunk(world *World, world_position *A, world_position *B)
     return(Result);
 }
 
+inline void
+ClearWorldEntityBlock(world_entity_block *Block)
+{
+    Block->EntityCount = 0;
+    Block->Next = 0;
+    Block->EntityDataSize = 0;
+}
+
 inline world_chunk *
 GetWorldChunk(world *World, int32 ChunkX, int32 ChunkY, int32 ChunkZ,
               memory_arena *Arena = 0)
@@ -81,37 +89,33 @@ GetWorldChunk(world *World, int32 ChunkX, int32 ChunkY, int32 ChunkZ,
     uint32 HashSlot = HashValue & (ArrayCount(World->ChunkHash) - 1);
     Assert(HashSlot < ArrayCount(World->ChunkHash));
     
-    world_chunk *Chunk = World->ChunkHash + HashSlot;
-    do
+    world_chunk *Result = 0;
+    for(world_chunk *Chunk = World->ChunkHash[HashSlot];
+        Chunk;
+        Chunk = Chunk->NextInHash)
     {
         if((ChunkX == Chunk->ChunkX) &&
            (ChunkY == Chunk->ChunkY) &&
            (ChunkZ == Chunk->ChunkZ))
         {            
+            Result = Chunk;
             break;
         }
+    }
 
-        if(Arena && (Chunk->ChunkX != TILE_CHUNK_UNINITIALIZED) && (!Chunk->NextInHash))
-        {
-            Chunk->NextInHash = PushStruct(Arena, world_chunk);
-            Chunk = Chunk->NextInHash;
-            Chunk->ChunkX = TILE_CHUNK_UNINITIALIZED;
-        }
-        
-        if(Arena && (Chunk->ChunkX == TILE_CHUNK_UNINITIALIZED))
-        {
-            Chunk->ChunkX = ChunkX;
-            Chunk->ChunkY = ChunkY;
-            Chunk->ChunkZ = ChunkZ;
+    if(!Result && Arena)
+    {
+        Result = PushStruct(Arena, world_chunk, NoClear());
+        ClearWorldEntityBlock(&Result->FirstBlock);
+        Result->ChunkX = ChunkX;
+        Result->ChunkY = ChunkY;
+        Result->ChunkZ = ChunkZ;
 
-            Chunk->NextInHash = 0;
-            break;
-        }
-
-        Chunk = Chunk->NextInHash;
-    } while(Chunk);
+        Result->NextInHash = World->ChunkHash[HashSlot];
+        World->ChunkHash[HashSlot] = Result;
+    }
     
-    return(Chunk);
+    return(Result);
 }
 
 internal world *
@@ -121,15 +125,7 @@ CreateWorld(v3 ChunkDimInMeters, memory_arena *ParentArena)
     
     World->ChunkDimInMeters = ChunkDimInMeters;
     World->FirstFree = 0;
-    SubArena(&World->Arena, ParentArena, GetArenaSizeRemaining(ParentArena));
-
-    for(uint32 ChunkIndex = 0;
-        ChunkIndex < ArrayCount(World->ChunkHash);
-        ++ChunkIndex)
-    {
-        World->ChunkHash[ChunkIndex].ChunkX = TILE_CHUNK_UNINITIALIZED;
-        World->ChunkHash[ChunkIndex].FirstBlock.EntityCount = 0;
-    }
+    SubArena(&World->Arena, ParentArena, GetArenaSizeRemaining(ParentArena), NoClear());
 
     return(World);
 }
