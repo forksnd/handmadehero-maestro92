@@ -1,4 +1,3 @@
-#if !defined(HANDMADE_SIM_REGION_H)
 /* ========================================================================
    $File: $
    $Date: $
@@ -12,134 +11,6 @@ struct move_spec
     bool32 UnitMaxAccelVector;
     real32 Speed;
     real32 Drag;
-};
-
-enum entity_type
-{
-    EntityType_Null,
-    
-    EntityType_HeroBody,
-    EntityType_HeroHead,
-    
-    EntityType_Wall,
-    EntityType_Floor,
-    EntityType_Familiar,
-    EntityType_Monstar,
-    EntityType_Sword,
-    EntityType_Stairwell,
-};
-
-#define HIT_POINT_SUB_COUNT 4
-struct hit_point
-{
-    // TODO(casey): Bake this down into one variable
-    uint8 Flags;
-    uint8 FilledAmount;
-};
-
-// TODO(casey): Rename sim_entity to entity!
-struct entity;
-
-struct entity_id
-{
-    u32 Value;
-};
-union entity_reference
-{
-    entity *Ptr;
-    entity_id Index;
-};
-
-enum entity_flags
-{
-    // TODO(casey): Does it make more sense to have the flag be for _non_ colliding entities?
-    // TODO(casey): Collides and ZSupported probably can be removed now/soon
-    EntityFlag_Collides = (1 << 0),
-    EntityFlag_Nonspatial = (1 << 1),
-    EntityFlag_Moveable = (1 << 2),
-    
-    EntityFlag_Simming = (1 << 30),
-};
-
-struct entity_collision_volume
-{
-    v3 OffsetP;
-    v3 Dim;
-};
-
-struct entity_traversable_point
-{
-    v3 P;
-};
-
-struct entity_collision_volume_group
-{
-    entity_collision_volume TotalVolume;
-
-    // TODO(casey): VolumeCount is always expected to be greater than 0 if the entity
-    // has any volume... in the future, this could be compressed if necessary to say
-    // that the VolumeCount can be 0 if the TotalVolume should be used as the only
-    // collision volume for the entity.
-    u32 VolumeCount;
-    entity_collision_volume *Volumes; 
-    
-    u32 TraversableCount;
-    entity_traversable_point *Traversables;
-};
-
-enum sim_movement_mode
-{
-    MovementMode_Planted,
-    MovementMode_Hopping,
-};
-struct entity
-{
-    // NOTE(casey): These are only for the sim region
-    world_chunk *OldChunk;
-    world_position ChunkP;
-    
-    entity_id StorageIndex;
-    b32 Updatable;
-
-    //
-    
-    entity_type Type;
-    u32 Flags;
-    
-    v3 P;
-    v3 dP;
-    
-    r32 DistanceLimit;
-
-    entity_collision_volume_group *Collision;
-
-    r32 FacingDirection;
-    r32 tBob;
-    r32 dtBob;
-
-    s32 dAbsTileZ;
-
-    // TODO(casey): Should hitpoints themselves be entities?
-    u32 HitPointMax;
-    hit_point HitPoint[16];
-
-    entity_reference Head;
-
-    // TODO(casey): Only for stairwells!
-    v2 WalkableDim;
-    r32 WalkableHeight;
-    
-    sim_movement_mode MovementMode;
-    r32 tMovement;
-    v3 MovementFrom;
-    v3 MovementTo;
-    
-    v2 XAxis;
-    v2 YAxis;
-    
-    v2 FloorDisplace;
-    
-    // TODO(casey): Generation index so we know how "up to date" this entity is.
 };
 
 struct entity_hash
@@ -169,6 +40,3 @@ struct sim_region
     // NOTE(casey): Must be a power of two!
     entity_hash Hash[4096];
 };
-
-#define HANDMADE_SIM_REGION_H
-#endif

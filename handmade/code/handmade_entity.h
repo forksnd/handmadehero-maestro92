@@ -1,4 +1,3 @@
-#if !defined(HANDMADE_ENTITY_H)
 /* ========================================================================
    $File: $
    $Date: $
@@ -6,6 +5,124 @@
    $Creator: Casey Muratori $
    $Notice: (C) Copyright 2015 by Molly Rocket, Inc. All Rights Reserved. $
    ======================================================================== */
+
+struct entity;
+
+enum entity_type
+{
+    EntityType_Null,
+    
+    EntityType_HeroBody,
+    EntityType_HeroHead,
+    
+    EntityType_Wall,
+    EntityType_Floor,
+    EntityType_Familiar,
+    EntityType_Monstar,
+    EntityType_Stairwell,
+};
+
+#define HIT_POINT_SUB_COUNT 4
+struct hit_point
+{
+    // TODO(casey): Bake this down into one variable
+    uint8 Flags;
+    uint8 FilledAmount;
+};
+
+struct entity_id
+{
+    u32 Value;
+};
+union entity_reference
+{
+    entity *Ptr;
+    entity_id Index;
+};
+
+enum entity_flags
+{
+    EntityFlag_Collides = (1 << 0),
+    EntityFlag_Moveable = (1 << 1),
+    EntityFlag_Deleted = (1 << 2),
+};
+
+struct entity_collision_volume
+{
+    v3 OffsetP;
+    v3 Dim;
+};
+
+struct entity_traversable_point
+{
+    v3 P;
+};
+
+struct entity_collision_volume_group
+{
+    entity_collision_volume TotalVolume;
+
+    // TODO(casey): VolumeCount is always expected to be greater than 0 if the entity
+    // has any volume... in the future, this could be compressed if necessary to say
+    // that the VolumeCount can be 0 if the TotalVolume should be used as the only
+    // collision volume for the entity.
+    u32 VolumeCount;
+    entity_collision_volume *Volumes; 
+
+    u32 TraversableCount;
+    entity_traversable_point *Traversables;
+};
+
+enum entity_movement_mode
+{
+    MovementMode_Planted,
+    MovementMode_Hopping,
+};
+struct entity
+{
+    entity_id ID;
+    b32 Updatable;
+
+    //
+
+    entity_type Type;
+    u32 Flags;
+
+    v3 P;
+    v3 dP;
+
+    r32 DistanceLimit;
+
+    entity_collision_volume_group *Collision;
+
+    r32 FacingDirection;
+    r32 tBob;
+    r32 dtBob;
+
+    s32 dAbsTileZ;
+
+    // TODO(casey): Should hitpoints themselves be entities?
+    u32 HitPointMax;
+    hit_point HitPoint[16];
+
+    entity_reference Head;
+
+    // TODO(casey): Only for stairwells!
+    v2 WalkableDim;
+    r32 WalkableHeight;
+
+    entity_movement_mode MovementMode;
+    r32 tMovement;
+    v3 MovementFrom;
+    v3 MovementTo;
+
+    v2 XAxis;
+    v2 YAxis;
+
+    v2 FloorDisplace;
+
+    // TODO(casey): Generation index so we know how "up to date" this entity is.
+};
 
 #define InvalidP V3(100000.0f, 100000.0f, 100000.0f)
 
@@ -30,16 +147,8 @@ ClearFlags(entity *Entity, uint32 Flag)
 }
 
 inline void
-MakeEntityNonSpatial(entity *Entity)
-{
-    AddFlags(Entity, EntityFlag_Nonspatial);
-    Entity->P = InvalidP;
-}
-
-inline void
 MakeEntitySpatial(entity *Entity, v3 P, v3 dP)
 {
-    ClearFlags(Entity, EntityFlag_Nonspatial);
     Entity->P = P;
     Entity->dP = dP;
 }
@@ -71,6 +180,3 @@ GetStairGround(entity *Entity, v3 AtGroundPoint)
 
     return(Result);
 }
-
-#define HANDMADE_ENTITY_H
-#endif

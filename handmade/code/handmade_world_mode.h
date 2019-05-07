@@ -1,4 +1,3 @@
-#if !defined(HANDMADE_WORLD_MODE_H)
 /* ========================================================================
    $File: $
    $Date: $
@@ -12,8 +11,8 @@ struct game_mode_world;
 struct pairwise_collision_rule
 {
     bool32 CanCollide;
-    uint32 StorageIndexA;
-    uint32 StorageIndexB;
+    uint32 IDA;
+    uint32 IDB;
     
     pairwise_collision_rule *NextInHash;
 };
@@ -76,6 +75,3 @@ struct game_mode_world
 };
 
 internal void PlayWorld(game_state *GameState, transient_state *TranState);
-
-#define HANDMADE_WORLD_MODE_H
-#endif

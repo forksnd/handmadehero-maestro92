@@ -1,4 +1,3 @@
-#if !defined(HANDMADE_H)
 /* ========================================================================
    $File: $
    $Date: $
@@ -293,8 +292,8 @@ Copy(memory_index Size, void *SourceInit, void *DestInit)
 }
 
 #include "handmade_world.h"
-#include "handmade_sim_region.h"
 #include "handmade_entity.h"
+#include "handmade_sim_region.h"
 #include "handmade_world_mode.h"
 #include "handmade_render_group.h"
 #include "handmade_asset.h"
@@ -309,13 +308,7 @@ struct controlled_hero
     v2 dSword;
     real32 dZ;
     r32 RecenterTimer;
-};
-
-struct ground_buffer
-{
-    // NOTE(casey): An invalid P tells us that this ground_buffer has not been filled
-    world_position P; // NOTE(casey): This is the center of the bitmap
-    loaded_bitmap Bitmap;
+    b32 Exited;
 };
 
 struct hero_bitmap_ids
@@ -395,6 +388,3 @@ internal void SetGameMode(game_state *GameState, transient_state *TranState, gam
 // TODO(casey): Get these into a more reasonable location?
 #define GroundBufferWidth 256
 #define GroundBufferHeight 256
-
-#define HANDMADE_H
-#endif

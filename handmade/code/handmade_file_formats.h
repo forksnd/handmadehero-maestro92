@@ -1,4 +1,3 @@
-#if !defined(HANDMADE_FILE_FORMATS_H)
 /* ========================================================================
    $File: $
    $Date: $
@@ -178,6 +177,3 @@ struct hha_asset
 };
 
 #pragma pack(pop)
-
-#define HANDMADE_FILE_FORMATS_H
-#endif

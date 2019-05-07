@@ -1,4 +1,3 @@
-#if !defined(HANDMADE_INTRINSICS_H)
 /* ========================================================================
    $File: $
    $Date: $
@@ -154,6 +153,3 @@ FindLeastSignificantSetBit(uint32 Value)
     
     return(Result);
 }
-
-#define HANDMADE_INTRINSICS_H
-#endif

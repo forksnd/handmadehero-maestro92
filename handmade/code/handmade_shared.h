@@ -1,4 +1,3 @@
-#if !defined(HANDMADE_SHARED_H)
 /* ========================================================================
    $File: $
    $Date: $
@@ -102,5 +101,3 @@ StringsAreEqual(memory_index ALength, char *A, memory_index BLength, char *B)
     return(Result);
 }
 
-#define HANDMADE_SHARED_H
-#endif

@@ -1,4 +1,3 @@
-#if !defined(HANDMADE_AUDIO_H)
 /* ========================================================================
    $File: $
    $Date: $
@@ -28,6 +27,3 @@ struct audio_state
 
     v2 MasterVolume;
 };
-
-#define HANDMADE_AUDIO_H
-#endif

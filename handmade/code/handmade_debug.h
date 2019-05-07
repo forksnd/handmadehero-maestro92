@@ -1,4 +1,3 @@
-#if !defined(HANDMADE_DEBUG_H)
 /* ========================================================================
    $File: $
    $Date: $
@@ -322,6 +321,3 @@ enum debug_element_add_op
     DebugElement_AddToGroup = 0x1,
     DebugElement_CreateHierarchy = 0x2,
 };
-
-#define HANDMADE_DEBUG_H
-#endif

@@ -1,4 +1,3 @@
-#if !defined(HANDMADE_MATH_H)
 /* ========================================================================
    $File: $
    $Date: $
@@ -992,6 +991,3 @@ Linear1ToSRGB255(v4 C)
 
     return(Result);
 }
-
-#define HANDMADE_MATH_H
-#endif

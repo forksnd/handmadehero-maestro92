@@ -11,12 +11,10 @@ BeginLowEntity(game_mode_world *WorldMode, entity_type Type)
 {
     Assert(WorldMode->CreationBufferIndex < ArrayCount(WorldMode->CreationBuffer));
     entity *EntityLow = WorldMode->CreationBuffer + WorldMode->CreationBufferIndex++;
-    
-    EntityLow->StorageIndex.Value = ++WorldMode->LastUsedEntityStorageIndex;
-
     // TODO(casey): Worry about this taking awhile once the entities are large (sparse clear?)
     ZeroStruct(*EntityLow);
-    
+
+    EntityLow->ID.Value = ++WorldMode->LastUsedEntityStorageIndex;
     EntityLow->Type = Type;
     EntityLow->Collision = WorldMode->NullCollision;
     
@@ -28,6 +26,7 @@ EndEntity(game_mode_world *WorldMode, entity *EntityLow, world_position P)
 {
     --WorldMode->CreationBufferIndex;
     Assert(EntityLow == (WorldMode->CreationBuffer + WorldMode->CreationBufferIndex));
+    EntityLow->P = P.Offset_;
     PackEntityIntoWorld(WorldMode->World, EntityLow, P);
 }
 
@@ -131,15 +130,15 @@ AddPlayer(game_mode_world *WorldMode)
 
     InitHitPoints(Body, 3);
 
-    Body->Head.Index = Head->StorageIndex;
-    Head->Head.Index = Body->StorageIndex;
+    Body->Head.Index = Head->ID;
+    Head->Head.Index = Body->ID;
 
     if(WorldMode->CameraFollowingEntityIndex.Value == 0)
     {
-        WorldMode->CameraFollowingEntityIndex = Body->StorageIndex;
+        WorldMode->CameraFollowingEntityIndex = Body->ID;
     }
     
-    entity_id Result = Head->StorageIndex;
+    entity_id Result = Head->ID;
     
     EndEntity(WorldMode, Head, P);
     EndEntity(WorldMode, Body, P);
@@ -198,7 +197,7 @@ DrawHitpoints(entity *Entity, render_group *PieceGroup, object_transform Transfo
 }
 
 internal void
-ClearCollisionRulesFor(game_mode_world *WorldMode, uint32 StorageIndex)
+ClearCollisionRulesFor(game_mode_world *WorldMode, uint32 ID)
 {
     // TODO(casey): Need to make a better data structure that allows
     // removal of collision rules without searching the entire table
@@ -218,8 +217,8 @@ ClearCollisionRulesFor(game_mode_world *WorldMode, uint32 StorageIndex)
             *Rule;
             )
         {
-            if(((*Rule)->StorageIndexA == StorageIndex) ||
-               ((*Rule)->StorageIndexB == StorageIndex))
+            if(((*Rule)->IDA == ID) ||
+               ((*Rule)->IDB == ID))
             {
                 pairwise_collision_rule *RemovedRule = *Rule;
                 *Rule = (*Rule)->NextInHash;
@@ -236,25 +235,25 @@ ClearCollisionRulesFor(game_mode_world *WorldMode, uint32 StorageIndex)
 }
 
 internal void
-AddCollisionRule(game_mode_world *WorldMode, uint32 StorageIndexA, uint32 StorageIndexB, bool32 CanCollide)
+AddCollisionRule(game_mode_world *WorldMode, uint32 IDA, uint32 IDB, bool32 CanCollide)
 {
     // TODO(casey): Collapse this with ShouldCollide
-    if(StorageIndexA > StorageIndexB)
+    if(IDA > IDB)
     {
-        uint32 Temp = StorageIndexA;
-        StorageIndexA = StorageIndexB;
-        StorageIndexB = Temp;
+        uint32 Temp = IDA;
+        IDA = IDB;
+        IDB = Temp;
     }
 
     // TODO(casey): BETTER HASH FUNCTION
     pairwise_collision_rule *Found = 0;
-    uint32 HashBucket = StorageIndexA & (ArrayCount(WorldMode->CollisionRuleHash) - 1);
+    uint32 HashBucket = IDA & (ArrayCount(WorldMode->CollisionRuleHash) - 1);
     for(pairwise_collision_rule *Rule = WorldMode->CollisionRuleHash[HashBucket];
         Rule;
         Rule = Rule->NextInHash)
     {
-        if((Rule->StorageIndexA == StorageIndexA) &&
-           (Rule->StorageIndexB == StorageIndexB))
+        if((Rule->IDA == IDA) &&
+           (Rule->IDB == IDB))
         {
             Found = Rule;
             break;
@@ -279,8 +278,8 @@ AddCollisionRule(game_mode_world *WorldMode, uint32 StorageIndexA, uint32 Storag
 
     if(Found)
     {
-        Found->StorageIndexA = StorageIndexA;
-        Found->StorageIndexB = StorageIndexB;
+        Found->IDA = IDA;
+        Found->IDB = IDB;
         Found->CanCollide = CanCollide;
     }
 }
@@ -430,10 +429,10 @@ PlayWorld(game_state *GameState, transient_state *TranState)
     bool32 DoorUp = false;
     bool32 DoorDown = false;
     for(uint32 ScreenIndex = 0;
-        ScreenIndex < 1;
+        ScreenIndex < 8;
         ++ScreenIndex)
     {
-#if 1
+#if 0
         uint32 DoorDirection = RandomChoice(&Series, (DoorUp || DoorDown) ? 2 : 4);
 #else
         uint32 DoorDirection = RandomChoice(&Series, 2);
@@ -740,9 +739,7 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
 
             if(WasPressed(Controller->Back))
             {
-                Assert(!"Mark this and delete in sim!");
-                    // DeleteLowEntity(WorldMode, ConHero->EntityIndex);
-                ConHero->EntityIndex.Value = 0;
+                ConHero->Exited = true;
             }
         }
     }
@@ -779,7 +776,7 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
             Entity->YAxis = V2(0, 1);
 
             // TODO(casey): We don't really have a way to unique-ify these :(
-            debug_id EntityDebugID = DEBUG_POINTER_ID((void *)Entity->StorageIndex.Value);
+            debug_id EntityDebugID = DEBUG_POINTER_ID((void *)Entity->ID.Value);
             if(DEBUG_REQUESTED(EntityDebugID))
             {
                 DEBUG_BEGIN_DATA_BLOCK("Simulation/Entity");
@@ -835,7 +832,7 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
                         {
                             controlled_hero *ConHero = GameState->ControlledHeroes + ControlIndex;
 
-                            if(Entity->StorageIndex.Value == ConHero->EntityIndex.Value)
+                            if(Entity->ID.Value == ConHero->EntityIndex.Value)
                             {
                                 ConHero->RecenterTimer = ClampAboveZero(ConHero->RecenterTimer - dt);
                                 
@@ -881,6 +878,13 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
                                         }
                                     }
                                     Entity->dP += dt*ddP2;
+                                }
+                                
+                                if(ConHero->Exited)
+                                {
+                                    ConHero->Exited = false;
+                                    DeleteEntity(SimRegion, Entity);
+                                    ConHero->EntityIndex.Value = 0;
                                 }
                             }
                         }
@@ -969,20 +973,7 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
                             // Entity->XAxis = Perp(Entity->YAxis);
                         }
                     } break;
-
-                    case EntityType_Sword:
-                    {
-                        MoveSpec.UnitMaxAccelVector = false;
-                        MoveSpec.Speed = 0.0f;
-                        MoveSpec.Drag = 0.0f;
-
-                        if(Entity->DistanceLimit == 0.0f)
-                        {
-                            ClearCollisionRulesFor(WorldMode, Entity->StorageIndex.Value);
-                            MakeEntityNonSpatial(Entity);
-                        }
-                    } break;
-
+                    
                     case EntityType_Familiar:
                     {
                         entity *ClosestHero = 0;
@@ -1021,8 +1012,7 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
                     } break;
                 }
 
-                if(!IsSet(Entity, EntityFlag_Nonspatial) &&
-                        IsSet(Entity, EntityFlag_Moveable))
+                if(IsSet(Entity, EntityFlag_Moveable))
                 {
                     MoveEntity(WorldMode, SimRegion, Entity, Input->dtForFrame, &MoveSpec, ddP);
                 }
@@ -1069,12 +1059,6 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
                     {
                         PushRect(RenderGroup, EntityTransform, V3(0, 0, 0), Entity->WalkableDim, V4(1, 0.5f, 0, 1));
                         PushRect(RenderGroup, EntityTransform, V3(0, 0, Entity->WalkableHeight), Entity->WalkableDim, V4(1, 1, 0, 1));
-                    } break;
-
-                    case EntityType_Sword:
-                    {
-                        PushBitmap(RenderGroup, EntityTransform, GetFirstBitmapFrom(TranState->Assets, Asset_Shadow), 0.5f, V3(0, 0, 0), V4(1, 1, 1, ShadowAlpha));
-                        PushBitmap(RenderGroup, EntityTransform, GetFirstBitmapFrom(TranState->Assets, Asset_Sword), 0.5f, V3(0, 0, 0));
                     } break;
 
                     case EntityType_Familiar:
@@ -1131,7 +1115,7 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
 
                 if(DEBUG_UI_ENABLED)
                 {
-                    debug_id EntityDebugID = DEBUG_POINTER_ID((void *)Entity->StorageIndex.Value);
+                    debug_id EntityDebugID = DEBUG_POINTER_ID((void *)Entity->ID.Value);
 
                     for(uint32 VolumeIndex = 0;
                         VolumeIndex < Entity->Collision->VolumeCount;
@@ -1157,7 +1141,7 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
 
                 if(DEBUG_REQUESTED(EntityDebugID))
                 {
-                    DEBUG_VALUE(Entity->StorageIndex.Value);
+                    DEBUG_VALUE(Entity->ID.Value);
                     DEBUG_VALUE(Entity->Updatable);
                     DEBUG_VALUE(Entity->Type);
                     DEBUG_VALUE(Entity->P);

@@ -1,4 +1,3 @@
-#if !defined(WIN32_HANDMADE_H)
 /* ========================================================================
    $File: $
    $Date: $
@@ -126,6 +125,3 @@ struct win32_thread_startup
     HGLRC OpenGLRC;
     platform_work_queue *Queue;
 };
-
-#define WIN32_HANDMADE_H
-#endif

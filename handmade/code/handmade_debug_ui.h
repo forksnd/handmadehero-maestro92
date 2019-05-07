@@ -1,4 +1,3 @@
-#if !defined(HANDMADE_DEBUG_UI_H)
 /* ========================================================================
    $File: $
    $Date: $
@@ -86,6 +85,3 @@ struct layout_element
     // NOTE(casey): Out
     rectangle2 Bounds;
 };
-
-#define HANDMADE_DEBUG_UI_H
-#endif

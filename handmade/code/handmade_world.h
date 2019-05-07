@@ -1,4 +1,3 @@
-#if !defined(HANDMADE_WORLD_H)
 /* ========================================================================
    $File: $
    $Date: $
@@ -62,6 +61,3 @@ struct world
     world_chunk *FirstFreeChunk;
     world_entity_block *FirstFreeBlock;
 };
-
-#define HANDMADE_WORLD_H
-#endif

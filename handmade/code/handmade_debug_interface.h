@@ -1,4 +1,3 @@
-#if !defined(HANDMADE_DEBUG_INTERFACE_H)
 /* ========================================================================
    $File: $
    $Date: $
@@ -278,15 +277,3 @@ inline debug_id DEBUG_POINTER_ID(void *Pointer) {debug_id NullID = {}; return(Nu
 #define DEBUG_REQUESTED(...) 0
 
 #endif
-
-#define HANDMADE_DEBUG_INTERFACE_H
-#endif
-
-
-
-
-
-
-
-
-

@@ -1,4 +1,3 @@
-#if !defined(HANDMADE_ASSET_H)
 /* ========================================================================
    $File: $
    $Date: $
@@ -42,7 +41,7 @@ struct asset_memory_header
 {
     asset_memory_header *Next;
     asset_memory_header *Prev;
-    
+
     u32 AssetType;
     u32 AssetIndex;
     u32 TotalSize;
@@ -103,27 +102,27 @@ struct asset_memory_block
 struct game_assets
 {
     u32 NextGenerationID;
-    
+
     // TODO(casey): Not thrilled about this back-pointer
     struct transient_state *TranState;
 
     asset_memory_block MemorySentinel;
-    
+
     asset_memory_header LoadedAssetSentinel;
-    
+
     real32 TagRange[Tag_Count];
 
     u32 FileCount;
     asset_file *Files;
-    
+
     uint32 TagCount;
     hha_tag *Tags;
 
     uint32 AssetCount;
     asset *Assets;
-    
+
     asset_type AssetTypes[Asset_Count];
-    
+
     u32 OperationLock;
 
     u32 InFlightGenerationCount;
@@ -174,7 +173,7 @@ inline asset_memory_header *GetAsset(game_assets *Assets, u32 ID, u32 Generation
 {
     Assert(ID <= Assets->AssetCount);
     asset *Asset = Assets->Assets + ID;
-    
+
     asset_memory_header *Result = 0;
 
     BeginAssetLock(Assets);
@@ -194,7 +193,7 @@ inline asset_memory_header *GetAsset(game_assets *Assets, u32 ID, u32 Generation
     }
 
     EndAssetLock(Assets);
-    
+
     return(Result);
 }
 
@@ -319,7 +318,7 @@ BeginGeneration(game_assets *Assets)
     Assets->InFlightGenerations[Assets->InFlightGenerationCount++] = Result;
 
     EndAssetLock(Assets);
-    
+
     return(Result);
 }
 
@@ -342,6 +341,3 @@ EndGeneration(game_assets *Assets, u32 GenerationID)
 
     EndAssetLock(Assets);    
 }
-
-#define HANDMADE_ASSET_H
-#endif

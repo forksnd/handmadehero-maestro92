@@ -1,4 +1,3 @@
-#if !defined(HANDMADE_PLATFORM_H)
 /* ========================================================================
    $File: $
    $Date: $
@@ -659,6 +658,3 @@ inline u32 GetThreadID(void)
 #endif
     
 #include "handmade_debug_interface.h"
-
-#define HANDMADE_PLATFORM_H
-#endif

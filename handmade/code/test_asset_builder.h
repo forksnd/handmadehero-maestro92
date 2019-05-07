@@ -1,4 +1,3 @@
-#if !defined(TEST_ASSET_BUILDER_H)
 /* ========================================================================
    $File: $
    $Date: $
@@ -125,5 +124,3 @@ struct game_assets
     u32 AssetIndex;
 };
 
-#define TEST_ASSET_BUILDER_H
-#endif

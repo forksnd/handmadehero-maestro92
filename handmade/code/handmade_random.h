@@ -1,4 +1,3 @@
-#if !defined(HANDMADE_RANDOM_H)
 /* ========================================================================
    $File: $
    $Date: $
@@ -586,6 +585,3 @@ inline int32 RandomBetween(random_series *Series, int32 Min, int32 Max)
 
     return(Result);
 }
-
-#define HANDMADE_RANDOM_H
-#endif

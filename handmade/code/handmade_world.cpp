@@ -55,7 +55,7 @@ AreInSameChunk(world *World, world_position *A, world_position *B)
 {
     Assert(IsCanonical(World, A->Offset_));
     Assert(IsCanonical(World, B->Offset_));
-    
+
     bool32 Result = ((A->ChunkX == B->ChunkX) &&
                      (A->ChunkY == B->ChunkY) &&
                      (A->ChunkZ == B->ChunkZ));
@@ -82,12 +82,12 @@ GetWorldChunkInternal(world *World, int32 ChunkX, int32 ChunkY, int32 ChunkZ)
     Assert(ChunkX < TILE_CHUNK_SAFE_MARGIN);
     Assert(ChunkY < TILE_CHUNK_SAFE_MARGIN);
     Assert(ChunkZ < TILE_CHUNK_SAFE_MARGIN);
-    
+
     // TODO(casey): BETTER HASH FUNCTION!!!!
     uint32 HashValue = 19*ChunkX + 7*ChunkY + 3*ChunkZ;
     uint32 HashSlot = HashValue & (ArrayCount(World->ChunkHash) - 1);
     Assert(HashSlot < ArrayCount(World->ChunkHash));
-    
+
     world_chunk **Chunk = &World->ChunkHash[HashSlot];
     while(*Chunk &&
            !((ChunkX == (*Chunk)->ChunkX) &&
@@ -117,7 +117,7 @@ GetWorldChunk(world *World, int32 ChunkX, int32 ChunkY, int32 ChunkZ,
         Result->NextInHash = *ChunkPtr;
         *ChunkPtr = Result;
     }
-    
+
     return(Result);
 }
 
@@ -130,7 +130,7 @@ RemoveWorldChunk(world *World, int32 ChunkX, int32 ChunkY, int32 ChunkZ)
     {
         *ChunkPtr = Result->NextInHash;
     }
-    
+
     return(Result);
 }
 
@@ -138,7 +138,7 @@ internal world *
 CreateWorld(v3 ChunkDimInMeters, memory_arena *ParentArena)
 {
     world *World = PushStruct(ParentArena, world);
-    
+
     World->ChunkDimInMeters = ChunkDimInMeters;
     World->FirstFree = 0;
     SubArena(&World->Arena, ParentArena, GetArenaSizeRemaining(ParentArena), NoClear());
@@ -156,7 +156,7 @@ RecanonicalizeCoord(real32 ChunkDim, int32 *Tile, real32 *TileRel)
     // NOTE(casey): Wrapping IS NOT ALLOWED, so all coordinates are assumed to be
     // within the safe margin!
     // TODO(casey): Assert that we are nowhere near the edges of the world.
-    
+
     int32 Offset = RoundReal32ToInt32(*TileRel / ChunkDim);
     *Tile += Offset;
     *TileRel -= Offset*ChunkDim;
@@ -173,7 +173,7 @@ MapIntoChunkSpace(world *World, world_position BasePos, v3 Offset)
     RecanonicalizeCoord(World->ChunkDimInMeters.x, &Result.ChunkX, &Result.Offset_.x);
     RecanonicalizeCoord(World->ChunkDimInMeters.y, &Result.ChunkY, &Result.Offset_.y);
     RecanonicalizeCoord(World->ChunkDimInMeters.z, &Result.ChunkZ, &Result.Offset_.z);
-    
+
     return(Result);
 }
 
@@ -183,7 +183,7 @@ Subtract(world *World, world_position *A, world_position *B)
     v3 dTile = {(real32)A->ChunkX - (real32)B->ChunkX,
                 (real32)A->ChunkY - (real32)B->ChunkY,
                 (real32)A->ChunkZ - (real32)B->ChunkZ};
-    
+
     v3 Result = Hadamard(World->ChunkDimInMeters, dTile) + (A->Offset_ - B->Offset_);
 
     return(Result);
@@ -219,7 +219,7 @@ HasRoomFor(world_entity_block *Block, u32 Size)
 internal void
 PackEntityIntoChunk(world *World, entity *Source, world_chunk *Chunk)
 {
-    u32 PackSize = sizeof(Source);
+    u32 PackSize = sizeof(*Source);
 
     if(!Chunk->FirstBlock || !HasRoomFor(Chunk->FirstBlock, PackSize))
     {
@@ -228,19 +228,20 @@ PackEntityIntoChunk(world *World, entity *Source, world_chunk *Chunk)
             World->FirstFreeBlock = PushStruct(&World->Arena, world_entity_block);
             World->FirstFreeBlock->Next = 0;
         }
-        
+
         Chunk->FirstBlock = World->FirstFreeBlock;
         World->FirstFreeBlock = Chunk->FirstBlock->Next;
 
         ClearWorldEntityBlock(Chunk->FirstBlock);
     }
-    
+
     world_entity_block *Block = Chunk->FirstBlock;
 
     Assert(HasRoomFor(Block, PackSize));
     u8 *Dest = (Block->EntityData + Block->EntityDataSize);
     Block->EntityDataSize += PackSize;
-    
+    ++Block->EntityCount;
+
     *(entity *)Dest = *Source;
 }
 
@@ -248,6 +249,7 @@ internal void
 PackEntityIntoWorld(world *World, entity *Source, world_position At)
 {
     world_chunk *Chunk = GetWorldChunk(World, At.ChunkX, At.ChunkY, At.ChunkZ, &World->Arena);
+    Assert(Chunk);
     PackEntityIntoChunk(World, Source, Chunk);
 }
 

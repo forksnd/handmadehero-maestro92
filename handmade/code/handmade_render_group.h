@@ -1,4 +1,3 @@
-#if !defined(HANDMADE_RENDER_GROUP_H)
 /* ========================================================================
    $File: $
    $Date: $
@@ -195,6 +194,3 @@ DefaultFlatTransform(void)
 
     return(Result);
 }
-
-#define HANDMADE_RENDER_GROUP_H
-#endif
