@@ -135,7 +135,7 @@ AddPlayer(game_mode_world *WorldMode)
 
     if(WorldMode->CameraFollowingEntityIndex.Value == 0)
     {
-        WorldMode->CameraFollowingEntityIndex = Body->ID;
+        WorldMode->CameraFollowingEntityIndex = Head->ID;
     }
     
     entity_id Result = Head->ID;
@@ -753,12 +753,15 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
     sim_region *SimRegion = BeginSim(&TranState->TranArena, WorldMode, WorldMode->World,
                                      SimCenterP, SimBounds, Input->dtForFrame);
 
-    v3 CameraP = Subtract(World, &WorldMode->CameraP, &SimCenterP);
-
-    PushRectOutline(RenderGroup, DefaultFlatTransform(), V3(0.0f, 0.0f, 0.0f), GetDim(ScreenBounds), V4(1.0f, 1.0f, 0.0f, 1));
+    v3 CameraP = Subtract(World, &WorldMode->CameraP, &SimCenterP) + WorldMode->CameraOffset;
+    
+    object_transform WorldTransform = DefaultUprightTransform();
+    WorldTransform.OffsetP -= CameraP;
+    
+    PushRectOutline(RenderGroup, WorldTransform, V3(0.0f, 0.0f, 0.0f), GetDim(ScreenBounds), V4(1.0f, 1.0f, 0.0f, 1));
 //    PushRectOutline(RenderGroup, V3(0.0f, 0.0f, 0.0f), GetDim(CameraBoundsInMeters).xy, V4(1.0f, 1.0f, 1.0f, 1));
-    PushRectOutline(RenderGroup, DefaultFlatTransform(), V3(0.0f, 0.0f, 0.0f), GetDim(SimBounds).xy, V4(0.0f, 1.0f, 1.0f, 1));
-    PushRectOutline(RenderGroup, DefaultFlatTransform(), V3(0.0f, 0.0f, 0.0f), GetDim(SimRegion->Bounds).xy, V4(1.0f, 0.0f, 1.0f, 1));
+    PushRectOutline(RenderGroup, WorldTransform, V3(0.0f, 0.0f, 0.0f), GetDim(SimBounds).xy, V4(0.0f, 1.0f, 1.0f, 1));
+    PushRectOutline(RenderGroup, WorldTransform, V3(0.0f, 0.0f, 0.0f), GetDim(SimRegion->Bounds).xy, V4(1.0f, 0.0f, 1.0f, 1));
 
 
     // TODO(casey): Move this out into handmade_entity.cpp!
@@ -1018,7 +1021,7 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
                 }
 
                 object_transform EntityTransform = DefaultUprightTransform();
-                EntityTransform.OffsetP = GetEntityGroundPoint(Entity);
+                EntityTransform.OffsetP = GetEntityGroundPoint(Entity) - CameraP;
 
                 //
             // NOTE(casey): Post-physics entity work

@@ -43,8 +43,8 @@ struct game_mode_world
     // TODO(casey): Should we allow split-screen?
     entity_id CameraFollowingEntityIndex;
     world_position CameraP;
-    world_position LastCameraP;
-
+    v3 CameraOffset;
+    
     // TODO(casey): Must be power of two
     pairwise_collision_rule *CollisionRuleHash[256];
     pairwise_collision_rule *FirstFreeCollisionRule;
