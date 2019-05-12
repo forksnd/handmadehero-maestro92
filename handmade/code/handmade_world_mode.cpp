@@ -17,7 +17,7 @@ BeginLowEntity(game_mode_world *WorldMode, entity_type Type)
     EntityLow->ID.Value = ++WorldMode->LastUsedEntityStorageIndex;
     EntityLow->Type = Type;
     EntityLow->Collision = WorldMode->NullCollision;
-    
+
     return(EntityLow);
 }
 
@@ -36,7 +36,7 @@ BeginGroundedEntity(game_mode_world *WorldMode, entity_type Type,
 {
     entity *Entity = BeginLowEntity(WorldMode, Type);
     Entity->Collision = Collision;
-    
+
     return(Entity);
 }
 
@@ -59,7 +59,8 @@ ChunkPositionFromTilePosition(world *World, int32 AbsTileX, int32 AbsTileY, int3
 }
 
 internal void
-AddStandardRoom(game_mode_world *WorldMode, u32 AbsTileX, u32 AbsTileY, u32 AbsTileZ)
+AddStandardRoom(game_mode_world *WorldMode, u32 AbsTileX, u32 AbsTileY, u32 AbsTileZ,
+    random_series *Series)
 {
     for(s32 OffsetY = -4;
         OffsetY <= 4;
@@ -71,6 +72,9 @@ AddStandardRoom(game_mode_world *WorldMode, u32 AbsTileX, u32 AbsTileY, u32 AbsT
         {
             world_position P = ChunkPositionFromTilePosition(
                 WorldMode->World, AbsTileX + OffsetX, AbsTileY + OffsetY, AbsTileZ);
+
+            P.Offset_.z = 0.25f*(r32)(OffsetX + OffsetY);
+
             entity *Entity = BeginGroundedEntity(WorldMode, EntityType_Floor,
                 WorldMode->FloorCollision);
             EndEntity(WorldMode, Entity, P);
@@ -137,12 +141,12 @@ AddPlayer(game_mode_world *WorldMode)
     {
         WorldMode->CameraFollowingEntityIndex = Head->ID;
     }
-    
+
     entity_id Result = Head->ID;
-    
+
     EndEntity(WorldMode, Head, P);
     EndEntity(WorldMode, Body, P);
-    
+
     return(Result);
 }
 
@@ -155,7 +159,7 @@ AddMonstar(game_mode_world *WorldMode, uint32 AbsTileX, uint32 AbsTileY, uint32 
     AddFlags(Entity, EntityFlag_Collides|EntityFlag_Moveable);
 
     InitHitPoints(Entity, 3);
-    
+
     EndEntity(WorldMode, Entity, P);
 }
 
@@ -166,7 +170,7 @@ AddFamiliar(game_mode_world *WorldMode, uint32 AbsTileX, uint32 AbsTileY, uint32
     entity *Entity = BeginGroundedEntity(WorldMode, EntityType_Familiar, 
                                                      WorldMode->FamiliarCollision);
     AddFlags(Entity, EntityFlag_Collides|EntityFlag_Moveable);
-    
+
     EndEntity(WorldMode, Entity, P);
 }
 
@@ -340,7 +344,7 @@ internal b32
 GetClosestTraversable(sim_region *SimRegion, v3 FromP, v3 *Result)
 {
     b32 Found = false;
-    
+
     // TODO(casey): Make spatial queries easy for things!
     r32 ClosestDistanceSq = Square(1000.0f);
     entity *TestEntity = SimRegion->Entities;
@@ -357,6 +361,8 @@ GetClosestTraversable(sim_region *SimRegion, v3 FromP, v3 *Result)
                 GetSimSpaceTraversable(TestEntity, PIndex);
 
             v3 HeadToPoint = P.P - FromP;
+            // TODO(casey): What should this value be??
+            HeadToPoint.z = ClampAboveZero(AbsoluteValue(HeadToPoint.z) - 1.0f);
 
             real32 TestDSq = LengthSq(HeadToPoint);            
             if(ClosestDistanceSq > TestDSq)
@@ -367,7 +373,7 @@ GetClosestTraversable(sim_region *SimRegion, v3 FromP, v3 *Result)
             }
         }
     }
-    
+
     return(Found);
 }
 
@@ -429,7 +435,7 @@ PlayWorld(game_state *GameState, transient_state *TranState)
     bool32 DoorUp = false;
     bool32 DoorDown = false;
     for(uint32 ScreenIndex = 0;
-        ScreenIndex < 8;
+        ScreenIndex < 1;
         ++ScreenIndex)
     {
 #if 0
@@ -463,7 +469,7 @@ PlayWorld(game_state *GameState, transient_state *TranState)
         AddStandardRoom(WorldMode,
                         ScreenX*TilesPerWidth + TilesPerWidth/2,
                         ScreenY*TilesPerHeight + TilesPerHeight/2,
-                        AbsTileZ);
+                        AbsTileZ, &Series);
 
         for(uint32 TileY = 0;
             TileY < TilesPerHeight;
@@ -497,6 +503,11 @@ PlayWorld(game_state *GameState, transient_state *TranState)
                     ShouldBeDoor = true;
                 }
 
+                if(TileX == 14)
+                {
+                    AddWall(WorldMode, AbsTileX, AbsTileY, AbsTileZ);
+                }
+                
                 if(ShouldBeDoor)
                 {
                     AddWall(WorldMode, AbsTileX, AbsTileY, AbsTileZ);
@@ -692,7 +703,7 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
                         ConHero->ddP.y = -1.0f;
                     }
                 } 
-                
+
                 if(!IsDown(Controller->MoveUp) &&
                    !IsDown(Controller->MoveDown))
                 {
@@ -746,7 +757,7 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
 
     // TODO(casey): How big do we actually want to expand here?
     // TODO(casey): Do we want to simulate upper floors, etc.?
-    v3 SimBoundsExpansion = {15.0f, 15.0f, 0.0f};
+    v3 SimBoundsExpansion = {15.0f, 15.0f, 15.0f};
     rectangle3 SimBounds = AddRadiusTo(CameraBoundsInMeters, SimBoundsExpansion);
     temporary_memory SimMemory = BeginTemporaryMemory(&TranState->TranArena);
     world_position SimCenterP = WorldMode->CameraP;
@@ -754,10 +765,10 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
                                      SimCenterP, SimBounds, Input->dtForFrame);
 
     v3 CameraP = Subtract(World, &WorldMode->CameraP, &SimCenterP) + WorldMode->CameraOffset;
-    
+
     object_transform WorldTransform = DefaultUprightTransform();
     WorldTransform.OffsetP -= CameraP;
-    
+
     PushRectOutline(RenderGroup, WorldTransform, V3(0.0f, 0.0f, 0.0f), GetDim(ScreenBounds), V4(1.0f, 1.0f, 0.0f, 1));
 //    PushRectOutline(RenderGroup, V3(0.0f, 0.0f, 0.0f), GetDim(CameraBoundsInMeters).xy, V4(1.0f, 1.0f, 1.0f, 1));
     PushRectOutline(RenderGroup, WorldTransform, V3(0.0f, 0.0f, 0.0f), GetDim(SimBounds).xy, V4(0.0f, 1.0f, 1.0f, 1));
@@ -773,7 +784,7 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
             ++EntityIndex)
         {
             entity *Entity = SimRegion->Entities + EntityIndex;
-            
+
             // TODO(casey): Set this at construction
             Entity->XAxis = V2(1, 0);
             Entity->YAxis = V2(0, 1);
@@ -827,6 +838,7 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
                 {
                     case EntityType_HeroHead:
                     {
+
                         // TODO(casey): Now that we have some real usage examples, let's solidify
                     // the positioning system!
                         for(uint32 ControlIndex = 0;
@@ -838,7 +850,7 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
                             if(Entity->ID.Value == ConHero->EntityIndex.Value)
                             {
                                 ConHero->RecenterTimer = ClampAboveZero(ConHero->RecenterTimer - dt);
-                                
+
                                 if(ConHero->dZ != 0.0f)
                                 {
                                     Entity->dP.z = ConHero->dZ;
@@ -849,7 +861,7 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
                                 MoveSpec.Drag = 8.0f;
 
                                 ddP = V3(ConHero->ddP, 0);
-                                
+
                                 // TODO(casey): Change to using the acceleration vector
                                 if((ConHero->dSword.x == 0.0f) && (ConHero->dSword.y == 0.0f))
                                 {
@@ -882,7 +894,7 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
                                     }
                                     Entity->dP += dt*ddP2;
                                 }
-                                
+
                                 if(ConHero->Exited)
                                 {
                                     ConHero->Exited = false;
@@ -902,21 +914,21 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
                             b32 Found = GetClosestTraversable(SimRegion, Head->P, &ClosestP);
                             v3 BodyDelta = ClosestP - Entity->P;
                             r32 BodyDistance = LengthSq(BodyDelta);
-                            
+
                             Entity->FacingDirection = Head->FacingDirection;
                             Entity->dP = V3(0, 0, 0);
-                            
+
                             r32 ddtBob = 0.0f;
-                            
+
                             v3 HeadDelta = Head->P - Entity->P;
-                            
-                            
+
+
                             r32 HeadDistance = Length(HeadDelta);
                             r32 MaxHeadDistance = 0.5f;
                             r32 tHeadDistance = Clamp01MapToRange(0.0f, HeadDistance, MaxHeadDistance);
-                            
+
                             Entity->FloorDisplace = (0.25f*HeadDelta).xy;
-                            
+
                             switch(Entity->MovementMode)
                             {
                                 case MovementMode_Planted:
@@ -928,7 +940,7 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
                                         Entity->MovementTo = ClosestP;
                                         Entity->MovementMode = MovementMode_Hopping;
                                     }
-                                    
+
                                     ddtBob = -20.0f*tHeadDistance;
                                 } break;
 
@@ -937,12 +949,12 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
                                     r32 tJump = 0.1f;
                                     r32 tThrust = 0.2f;
                                     r32 tLand = 0.9f;
-                                    
+
                                     if(Entity->tMovement < tThrust)
                                     {
                                         ddtBob = 30.0f;
                                     }    
-                                    
+
                                     if(Entity->tMovement < tLand)
                                     {
                                         r32 t = Clamp01MapToRange(tJump, Entity->tMovement, tLand);
@@ -950,14 +962,14 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
                                         v3 b = (Entity->MovementTo - Entity->MovementFrom) - a;
                                         Entity->P = a*t*t + b*t + Entity->MovementFrom;
                                     }
-                                    
+
                                     if(Entity->tMovement >= 1.0f)
                                     {
                                         Entity->P = Entity->MovementTo;
                                         Entity->MovementMode = MovementMode_Planted;
                                         Entity->dtBob = -2.0f;
                                     }
-                                    
+
                                     Entity->tMovement += 4.0f*dt;
                                     if(Entity->tMovement > 1.0f) 
                                     {
@@ -965,18 +977,18 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
                                     }
                                 } break;
                             }
-                            
+
                             r32 Cp = 100.0f;
                             r32 Cv = 10.0f;
                             ddtBob += Cp*(0.0f - Entity->tBob) + Cv*(0.0f - Entity->dtBob);
                             Entity->tBob += ddtBob*dt*dt + Entity->dtBob*dt;
                             Entity->dtBob += ddtBob*dt;
-                            
+
                             Entity->YAxis = V2(0, 1) + 0.5f*HeadDelta.xy;
                             // Entity->XAxis = Perp(Entity->YAxis);
                         }
                     } break;
-                    
+
                     case EntityType_Familiar:
                     {
                         entity *ClosestHero = 0;
@@ -1084,6 +1096,7 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
 
                     case EntityType_Monstar:
                     {
+                        DEBUG_VALUE(CameraRelativeGroundP);
                         PushBitmap(RenderGroup, EntityTransform, GetFirstBitmapFrom(TranState->Assets, Asset_Shadow), 4.5f, V3(0, 0, 0), V4(1, 1, 1, ShadowAlpha));
                         PushBitmap(RenderGroup, EntityTransform, HeroBitmaps.Torso, 4.5f, V3(0, 0, 0));
 
