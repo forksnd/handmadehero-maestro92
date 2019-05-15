@@ -17,6 +17,7 @@ enum entity_type
     
     EntityType_Wall,
     EntityType_Floor,
+    EntityType_FloatyThingForNow,
     EntityType_Familiar,
     EntityType_Monstar,
     EntityType_Stairwell,
@@ -39,6 +40,20 @@ union entity_reference
     entity *Ptr;
     entity_id Index;
 };
+
+struct traversable_reference
+{
+    entity_reference Entity;
+    u32 Index;
+};
+inline b32 IsEqual(traversable_reference A, traversable_reference B)
+{
+    b32 Result = ((A.Entity.Ptr == B.Entity.Ptr) &&
+                  (A.Entity.Index.Value == B.Entity.Index.Value) &&
+                  (A.Index == B.Index));
+    
+    return(Result);
+}
 
 enum entity_flags
 {
@@ -113,8 +128,8 @@ struct entity
 
     entity_movement_mode MovementMode;
     r32 tMovement;
-    v3 MovementFrom;
-    v3 MovementTo;
+    traversable_reference StandingOn;
+    traversable_reference MovingTo;
 
     v2 XAxis;
     v2 YAxis;

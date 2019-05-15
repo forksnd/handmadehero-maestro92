@@ -159,7 +159,7 @@ RecanonicalizeCoord(real32 ChunkDim, int32 *Tile, real32 *TileRel)
 
     int32 Offset = RoundReal32ToInt32(*TileRel / ChunkDim);
     *Tile += Offset;
-    *TileRel -= Offset*ChunkDim;
+    *TileRel -= (r32)Offset*ChunkDim;
 
     Assert(IsCanonical(ChunkDim, *TileRel));
 }
@@ -170,6 +170,7 @@ MapIntoChunkSpace(world *World, world_position BasePos, v3 Offset)
     world_position Result = BasePos;
 
     Result.Offset_ += Offset;
+    
     RecanonicalizeCoord(World->ChunkDimInMeters.x, &Result.ChunkX, &Result.Offset_.x);
     RecanonicalizeCoord(World->ChunkDimInMeters.y, &Result.ChunkY, &Result.Offset_.y);
     RecanonicalizeCoord(World->ChunkDimInMeters.z, &Result.ChunkZ, &Result.Offset_.z);
@@ -189,31 +190,26 @@ Subtract(world *World, world_position *A, world_position *B)
     return(Result);
 }
 
-inline world_position
-CenteredChunkPoint(uint32 ChunkX, uint32 ChunkY, uint32 ChunkZ)
-{
-    world_position Result = {};
-
-    Result.ChunkX = ChunkX;
-    Result.ChunkY = ChunkY;
-    Result.ChunkZ = ChunkZ;
-
-    return(Result);
-}
-
-inline world_position
-CenteredChunkPoint(world_chunk *Chunk)
-{
-    world_position Result = CenteredChunkPoint(Chunk->ChunkX, Chunk->ChunkY, Chunk->ChunkZ);
-
-    return(Result);
-}
-
 inline b32
 HasRoomFor(world_entity_block *Block, u32 Size)
 {
     b32 Result = ((Block->EntityDataSize + Size) <= sizeof(Block->EntityData));
     return(Result);
+}
+
+inline void
+PackEntityReference(entity_reference *Ref)
+{
+    if(Ref->Ptr != 0)
+    {
+        Ref->Index = Ref->Ptr->ID;
+    }
+}
+
+inline void
+PackTraversableReference(traversable_reference *Ref)
+{
+    PackEntityReference(&Ref->Entity);
 }
 
 internal void
@@ -242,7 +238,11 @@ PackEntityIntoChunk(world *World, entity *Source, world_chunk *Chunk)
     Block->EntityDataSize += PackSize;
     ++Block->EntityCount;
 
-    *(entity *)Dest = *Source;
+    entity *DestE = (entity *)Dest;
+    *DestE = *Source;
+    PackTraversableReference(&DestE->StandingOn);
+    PackTraversableReference(&DestE->MovingTo);
+    PackEntityReference(&DestE->Head);
 }
 
 internal void

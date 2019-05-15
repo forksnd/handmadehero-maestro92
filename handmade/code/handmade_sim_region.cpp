@@ -18,6 +18,14 @@ GetSimSpaceTraversable(entity *Entity, u32 Index)
     return(Result);
 }
 
+inline entity_traversable_point
+GetSimSpaceTraversable(traversable_reference Reference)
+{
+    entity_traversable_point Result = 
+        GetSimSpaceTraversable(Reference.Entity.Ptr, Reference.Index);
+    return(Result);
+}
+
 internal entity_hash *
 GetHashFromID(sim_region *SimRegion, entity_id StorageIndex)
 {
@@ -62,12 +70,9 @@ LoadEntityReference(sim_region *SimRegion, entity_reference *Ref)
 }
 
 inline void
-StoreEntityReference(entity_reference *Ref)
+LoadTraversableReference(sim_region *SimRegion, traversable_reference *Ref)
 {
-    if(Ref->Ptr != 0)
-    {
-        Ref->Index = Ref->Ptr->ID;
-    }
+    LoadEntityReference(SimRegion, &Ref->Entity);
 }
 
 internal entity *
@@ -114,9 +119,7 @@ AddEntity(game_mode_world *WorldMode, sim_region *SimRegion, entity *Source, v3 
 
         Dest->ID = ID;
         Dest->P += ChunkDelta;
-        Dest->MovementFrom += ChunkDelta;
-        Dest->MovementTo += ChunkDelta;
-
+        
         Dest->Updatable = EntityOverlapsRectangle(Dest->P, Dest->Collision->TotalVolume, SimRegion->UpdatableBounds);
     }            
     else
@@ -134,6 +137,8 @@ ConnectEntityPointers(sim_region *SimRegion)
     {
         entity *Entity = SimRegion->Entities + EntityIndex;
         LoadEntityReference(SimRegion, &Entity->Head);
+        LoadTraversableReference(SimRegion, &Entity->StandingOn);
+        LoadTraversableReference(SimRegion, &Entity->MovingTo);
     }
 }
 
@@ -171,6 +176,11 @@ BeginSim(memory_arena *SimArena, game_mode_world *WorldMode, world *World, world
     world_position MinChunkP = MapIntoChunkSpace(World, SimRegion->Origin, GetMinCorner(SimRegion->Bounds));
     world_position MaxChunkP = MapIntoChunkSpace(World, SimRegion->Origin, GetMaxCorner(SimRegion->Bounds));
     
+    DEBUG_VALUE(SimRegion->Origin.ChunkX);
+    DEBUG_VALUE(SimRegion->Origin.ChunkY);
+    DEBUG_VALUE(SimRegion->Origin.ChunkZ);
+    DEBUG_VALUE(SimRegion->Origin.Offset_);
+    
     for(int32 ChunkZ = MinChunkP.ChunkZ;
         ChunkZ <= MaxChunkP.ChunkZ;
         ++ChunkZ)
@@ -186,6 +196,9 @@ BeginSim(memory_arena *SimArena, game_mode_world *WorldMode, world *World, world
                 world_chunk *Chunk = RemoveWorldChunk(World, ChunkX, ChunkY, ChunkZ);
                 if(Chunk)
                 {
+                    Assert(Chunk->ChunkX == ChunkX);
+                    Assert(Chunk->ChunkY == ChunkY);
+                    Assert(Chunk->ChunkZ == ChunkZ);
                     world_position ChunkPosition = {ChunkX, ChunkY, ChunkZ};
                     v3 ChunkDelta = Subtract(SimRegion->World, &ChunkPosition, &SimRegion->Origin);
                     world_entity_block *Block = Chunk->FirstBlock;
@@ -246,7 +259,7 @@ EndSim(sim_region *Region, game_mode_world *WorldMode)
             world_position ChunkP = EntityP;
             ChunkP.Offset_ = V3(0, 0, 0);
             
-            v3 ChunkDelta = -Subtract(Region->World, &ChunkP, &Region->Origin);
+            v3 ChunkDelta = EntityP.Offset_ - Entity->P;
 
             // TODO(casey): Save state back to the stored entity, once high entities
             // do state decompression, etc.
@@ -325,11 +338,13 @@ EndSim(sim_region *Region, game_mode_world *WorldMode)
                 WorldMode->CameraP = NewCameraP;
             }
 
+            v3 OldEntityP = Entity->P;
             Entity->P += ChunkDelta;
-            Entity->MovementFrom += ChunkDelta;
-            Entity->MovementTo += ChunkDelta;
-            StoreEntityReference(&Entity->Head);
-            PackEntityIntoWorld(World, Entity, EntityP);
+            PackEntityIntoWorld(World, Entity, ChunkP);
+            
+            //v3 ReverseChunkDelta = Subtract(Region->World, &ChunkP, &Region->Origin);
+            //v3 TestP = Entity->P + ReverseChunkDelta;
+            //Assert(OldEntityP.z == TestP.z);
         }
     }
 }
@@ -706,4 +721,49 @@ MoveEntity(game_mode_world *WorldMode, sim_region *SimRegion, entity *Entity, re
         Entity->FacingDirection = ATan2(Entity->dP.y, Entity->dP.x);
     }
 #endif
+}
+
+internal b32
+GetClosestTraversable(sim_region *SimRegion, v3 FromP, traversable_reference *Result)
+{
+    b32 Found = false;
+    
+    // TODO(casey): Make spatial queries easy for things!
+    r32 ClosestDistanceSq = Square(1000.0f);
+    entity *TestEntity = SimRegion->Entities;
+    for(uint32 TestEntityIndex = 0;
+        TestEntityIndex < SimRegion->EntityCount;
+        ++TestEntityIndex, ++TestEntity)
+    {
+        entity_collision_volume_group *VolGroup = TestEntity->Collision;
+        for(u32 PIndex = 0;
+            PIndex < VolGroup->TraversableCount;
+            ++PIndex)
+        {
+            entity_traversable_point P = 
+                GetSimSpaceTraversable(TestEntity, PIndex);
+
+            v3 ToPoint = P.P - FromP;
+            // TODO(casey): What should this value be??
+            //ToPoint.z = ClampAboveZero(AbsoluteValue(ToPoint.z) - 1.0f);
+
+            real32 TestDSq = LengthSq(ToPoint);            
+            if(ClosestDistanceSq > TestDSq)
+            {
+                // P.P;
+                Result->Entity.Ptr = TestEntity;
+                Result->Index = PIndex;
+                ClosestDistanceSq = TestDSq;
+                Found = true;
+            }
+        }
+    }
+
+    if(!Found)
+    {
+        Result->Entity.Ptr = 0;
+        Result->Index = 0;
+    }
+    
+    return(Found);
 }
