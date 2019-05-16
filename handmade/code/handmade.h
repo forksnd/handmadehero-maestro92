@@ -309,6 +309,7 @@ struct controlled_hero
     real32 dZ;
     r32 RecenterTimer;
     b32 Exited;
+    b32 DebugSpawn;
 };
 
 struct hero_bitmap_ids
