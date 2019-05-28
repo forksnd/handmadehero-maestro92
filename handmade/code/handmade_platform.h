@@ -422,6 +422,7 @@ typedef struct game_controller_input
     };
 } game_controller_input;
 
+#define MAX_CONTROLLER_COUNT 5
 enum game_input_mouse_button
 {
     PlatformMouseButton_Left,
@@ -436,7 +437,7 @@ typedef struct game_input
 {
     r32 dtForFrame;
 
-    game_controller_input Controllers[5];
+    game_controller_input Controllers[MAX_CONTROLLER_COUNT];
 
     // NOTE(casey): Signals back to the platform layer
     b32 QuitRequested;

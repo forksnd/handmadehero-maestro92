@@ -6,6 +6,11 @@ reverting the work done on day 286 and the relationship structs
 mentions that he wants to try this new architecture he thought of for the entity system of handmade hero 
 which is to add controller to each entity. 
 
+The controller will control the logic that operates across multiple entities as oppose to iterating through 
+each entity and then determine entity logic
+
+created a BrainHash
+
 starting to implement this entity system 
 
 renamed controllers for entities as "brains"
@@ -50,12 +55,17 @@ and Casey thought of a way to accomplish it.
 Casey mentions the idea of having "controller templates"
 what Casey meant by templates is not the C++ templates, but more of an idea of what a controller can be
 
-once example of a controller template could be the Hero template, which can have a slot for the Body and 
+one example of a controller template could be the Hero Controller, which can have a slot for the Body and 
 another slot for the Head 
 
     Head 
         Body 
         Head 
+
+
+[so this Hero Controller can have a list of entities that it will control. So the body entity will take up one slot 
+in the array, the head will also take up one slot in the array[;]
+
 
 
 any entity in our system, when it is packed into the chunk, would have a "controller tag"
@@ -78,9 +88,13 @@ for example: the hero controller, the snake controller.
 
 
 10:10
-they also get an instance ID, which tells what group is this actually associated with 
-for example, if I create a Hero, each of the pieces of that hero would have a template type of a hero controller
+they also get an instance ID, which is the id of the controller. All the entities being controlled 
+by the controller will have share that controller Id
+
+for example, if I create a Hero, and the hero has two pieces: a "Body" entity and a "Head" entity
+each of the pieces of that hero would have a template type of a hero controller.
 then the instance id is an id that all of them share 
+
 
 when they get unpacked, we have a separate hash table for the instance ID. we look up into 
 this hash table to see if we already have a controller at that instance id. if we do insert that entity 
@@ -313,39 +327,6 @@ the entity also remembers the ControllerId (BrainId);
 
                     return(BrainID);
                 }
-
-
-
-46:40
-Now in our main loop, Casey will have to loop through all of our controller script
-
-                
-                handmade_world_mode.cpp
-
-                internal b32 UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transient_state *TranState,
-                                     game_input *Input, render_group *RenderGroup, loaded_bitmap *DrawBuffer)
-                {
-
-                    ...
-                    ...
-
-                    b32 HeroesExist = false;
-                    b32 QuitRequested = false;
-
-                    for(u32 ControllerIndex = 0; ControllerIndex < ArrayCount(Input->Controllers); ++ControllerIndex)
-                    {
-                        game_controller_input *Controller = GetController(Input, ControllerIndex);
-                        controlled_hero *ConHero = GameState->ControlledHeroes + ControllerIndex;
-                        if(ConHero->EntityIndex.Value == 0)
-                        {
-                            ...
-                            ...
-
-                        }
-                    }
-                }
-
-
 
 
 Q/A

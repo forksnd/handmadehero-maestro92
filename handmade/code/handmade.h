@@ -302,14 +302,7 @@ Copy(memory_index Size, void *SourceInit, void *DestInit)
 struct controlled_hero
 {
     brain_id BrainID;
-    
-    // NOTE(casey): These are the controller requests for simulation
-    v2 ddP;
-    v2 dSword;
-    real32 dZ;
     r32 RecenterTimer;
-    b32 Exited;
-    b32 DebugSpawn;
 };
 
 struct hero_bitmap_ids

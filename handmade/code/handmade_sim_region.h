@@ -19,11 +19,6 @@ struct entity_hash
     entity_id Index; // TODO(casey): Why are we storing these in the hash??
 };
 
-struct brain
-{
-    brain_id ID;
-    brain_type Type;
-};
 struct brain_hash
 {
     brain *Ptr;

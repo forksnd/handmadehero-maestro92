@@ -81,7 +81,7 @@ AddStandardRoom(game_mode_world *WorldMode, u32 AbsTileX, u32 AbsTileY, u32 AbsT
                 WorldMode->World, AbsTileX + OffsetX, AbsTileY + OffsetY, AbsTileZ);
 
  //           P.Offset_.z = 0.25f*(r32)(OffsetX + OffsetY);
-            
+
             if((OffsetX == 2) && (OffsetY == 2))
             {
                 entity *Entity = BeginGroundedEntity(WorldMode, EntityType_FloatyThingForNow,
@@ -141,8 +141,9 @@ InitHitPoints(entity *EntityLow, uint32 HitPointCount)
     }
 }
 
-internal brain_id
-AddPlayer(game_mode_world *WorldMode, sim_region *SimRegion, traversable_reference StandingOn)
+internal void
+AddPlayer(game_mode_world *WorldMode, sim_region *SimRegion, traversable_reference StandingOn,
+          brain_id BrainID)
 {
     world_position P = MapIntoChunkSpace(SimRegion->World, SimRegion->Origin, 
                                          GetSimSpaceTraversable(StandingOn).P);
@@ -160,13 +161,12 @@ AddPlayer(game_mode_world *WorldMode, sim_region *SimRegion, traversable_referen
     // TODO(casey): We will probably need a creation-time system for
     // guaranteeing now overlapping occupation.
     Body->Occupying = StandingOn;
-    
-    brain_id BrainID = AddBrain(WorldMode);
+
     Body->BrainType = Brain_Hero;
-    Body->BrainSlot.Index = 0;
+    Body->BrainSlot = BrainSlotFor(brain_hero_parts, Body);
     Body->BrainID = BrainID;
     Head->BrainType = Brain_Hero;
-    Head->BrainSlot.Index = 1;
+    Head->BrainSlot = BrainSlotFor(brain_hero_parts, Head);
     Head->BrainID = BrainID;
 
     if(WorldMode->CameraFollowingEntityIndex.Value == 0)
@@ -178,8 +178,6 @@ AddPlayer(game_mode_world *WorldMode, sim_region *SimRegion, traversable_referen
 
     EndEntity(WorldMode, Head, P);
     EndEntity(WorldMode, Body, P);
-
-    return(BrainID);
 }
 
 internal void
@@ -343,7 +341,7 @@ MakeSimpleFloorCollision(game_mode_world *WorldMode, real32 DimX, real32 DimY, r
     Group->VolumeCount = 0;
     Group->TotalVolume.OffsetP = V3(0, 0, 0);
     Group->TotalVolume.Dim = V3(DimX, DimY, DimZ);
-    
+
 #if 0
     Group->VolumeCount = 1;
     Group->Volumes = PushArray(&WorldMode->World->Arena, Group->VolumeCount, entity_collision_volume);
@@ -379,6 +377,8 @@ PlayWorld(game_state *GameState, transient_state *TranState)
     uint32 TilesPerWidth = 17;
     uint32 TilesPerHeight = 9;
 
+    WorldMode->LastUsedEntityStorageIndex = ReservedBrainID_FirstFree;
+    
     WorldMode->EffectsEntropy = RandomSeed(1234);
     WorldMode->TypicalFloorHeight = 3.0f;
 
@@ -462,7 +462,7 @@ PlayWorld(game_state *GameState, transient_state *TranState)
                         ScreenX*TilesPerWidth + TilesPerWidth/2,
                         ScreenY*TilesPerHeight + TilesPerHeight/2,
                         AbsTileZ, &Series);
-                    
+
         for(uint32 TileY = 0;
             TileY < TilesPerHeight;
             ++TileY)
@@ -499,7 +499,7 @@ PlayWorld(game_state *GameState, transient_state *TranState)
                 {
                     AddWall(WorldMode, AbsTileX, AbsTileY, AbsTileZ);
                 }
-                
+
                 if(ShouldBeDoor)
                 {
                     AddWall(WorldMode, AbsTileX, AbsTileY, AbsTileZ);
@@ -644,6 +644,45 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
     b32 QuitRequested = false;
     real32 dt = Input->dtForFrame;
 
+    //
+    // NOTE(casey): Look to see if any players are trying to join
+    //
+
+    for(u32 ControllerIndex = 0;
+        ControllerIndex < ArrayCount(Input->Controllers);
+        ++ControllerIndex)
+    {
+        game_controller_input *Controller = GetController(Input, ControllerIndex);
+        controlled_hero *ConHero = GameState->ControlledHeroes + ControllerIndex;
+        if(ConHero->BrainID.Value == 0)
+        {
+            if(WasPressed(Controller->Back))
+            {
+                QuitRequested = true;
+            }
+            else if(WasPressed(Controller->Start))
+            {
+                *ConHero = {};
+                traversable_reference Traversable;
+                if(GetClosestTraversable(SimRegion, CameraP, &Traversable))
+                {
+                    HeroesExist = true;
+                    ConHero->BrainID = {ReservedBrainID_FirstHero + ControllerIndex};
+                    AddPlayer(WorldMode, SimRegion, Traversable, ConHero->BrainID);
+                }
+                else
+                {
+                    // TODO(casey): GameUI that tells you there's no safe place...
+                    // maybe keep trying on subsequent frames?
+                }
+            }
+        }
+    }
+
+    //
+    // NOTE(casey): Run all brains
+    //
+
     for(u32 BrainIndex = 0;
         BrainIndex < SimRegion->BrainCount;
         ++BrainIndex)
@@ -653,65 +692,158 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
         {
             case Brain_Hero:
             {
-                controlled_hero ConHero_ = {};
-                ConHero_.ddP.x = 1.0f;
-
-                // TODO(casey): Fill these in from the brain!
                 // TODO(casey): Check that they're not deleted when we do?
-                entity *Head = 0;
-                entity *Body = 0;
+                brain_hero_parts *Parts = &Brain->Hero;
+                entity *Head = Parts->Head;
+                entity *Body = Parts->Body;
+                
+                u32 ControllerIndex = Brain->ID.Value - ReservedBrainID_FirstHero;
+                game_controller_input *Controller = GetController(Input, ControllerIndex);
+                controlled_hero *ConHero = GameState->ControlledHeroes + ControllerIndex;
 
-                controlled_hero *ConHero = &ConHero_;
-                for(uint32 ControlIndex = 0;
-                    ControlIndex < ArrayCount(GameState->ControlledHeroes);
-                    ++ControlIndex)
+                HeroesExist = true;
+
+                v2 dSword = {};
+                r32 dZ = 0.0f;
+                b32 Exited = false;
+                b32 DebugSpawn = false;
+                v2 ddP = {};
+                
+                if(Controller->IsAnalog)
                 {
-                    controlled_hero *TestHero = 
-                        GameState->ControlledHeroes + ControlIndex;
-                    if(Brain->ID.Value == TestHero->BrainID.Value)
+                    // NOTE(casey): Use analog movement tuning
+                    ddP = V2(Controller->StickAverageX, Controller->StickAverageY);
+                }
+                else
+                {
+                    // NOTE(casey): Use digital movement tuning
+                    r32 Recenter = 0.5f;
+                    if(WasPressed(Controller->MoveUp))
                     {
-                        ConHero = TestHero;
+                        ddP.x = 0.0f;
+                        ddP.y = 1.0f;
+                        ConHero->RecenterTimer = Recenter;
+                    }
+                    if(WasPressed(Controller->MoveDown))
+                    {
+                        ddP.x = 0.0f;
+                        ddP.y = -1.0f;
+                        ConHero->RecenterTimer = Recenter;
+                    }
+                    if(WasPressed(Controller->MoveLeft))
+                    {
+                        ddP.x = -1.0f;
+                        ddP.y = 0.0f;
+                        ConHero->RecenterTimer = Recenter;
+                    }
+                    if(WasPressed(Controller->MoveRight))
+                    {
+                        ddP.x = 1.0f;
+                        ddP.y = 0.0f;
+                        ConHero->RecenterTimer = Recenter;
+                    }
 
-                        if(ConHero->DebugSpawn && Head)
+                    if(!IsDown(Controller->MoveLeft) &&
+                       !IsDown(Controller->MoveRight))
+                    {
+                        ddP.x = 0.0f;
+                        if(IsDown(Controller->MoveUp))
                         {
-                            traversable_reference Traversable;
-                            if(GetClosestTraversable(SimRegion, Head->P, &Traversable, 
-                                                     TraversableSearch_Unoccupied))
-                            {
-                                AddPlayer(WorldMode, SimRegion, Traversable);
-                            }
-                            else
-                            {
-                                // TODO(casey): GameUI that tells you there's no safe place...
-                                // maybe keep trying on subsequent frames?
-                            }
-
-                            ConHero->DebugSpawn = false;
+                            ddP.y = 1.0f;
                         }
+                        if(IsDown(Controller->MoveDown))
+                        {
+                            ddP.y = -1.0f;
+                        }
+                    } 
+
+                    if(!IsDown(Controller->MoveUp) &&
+                       !IsDown(Controller->MoveDown))
+                    {
+                        ddP.y = 0.0f;
+                        if(IsDown(Controller->MoveLeft))
+                        {
+                            ddP.x = -1.0f;
+                        }
+                        if(IsDown(Controller->MoveRight))
+                        {
+                            ddP.x = 1.0f;
+                        }
+                    }
+
+                    if(WasPressed(Controller->Start))
+                    {
+                        DebugSpawn = true;
                     }
                 }
 
+#if 0
+                if(Controller->Start.EndedDown)
+                {
+                    ConHero->dZ = 3.0f;
+                }
+#endif
+
+                dSword = {};
+                if(Controller->ActionUp.EndedDown)
+                {
+                    ChangeVolume(&GameState->AudioState, GameState->Music, 10.0f, V2(1.0f, 1.0f));
+                    dSword = V2(0.0f, 1.0f);
+                }
+                if(Controller->ActionDown.EndedDown)
+                {
+                    ChangeVolume(&GameState->AudioState, GameState->Music, 10.0f, V2(0.0f, 0.0f));
+                    dSword = V2(0.0f, -1.0f);
+                }
+                if(Controller->ActionLeft.EndedDown)
+                {
+                    ChangeVolume(&GameState->AudioState, GameState->Music, 5.0f, V2(1.0f, 0.0f));
+                    dSword = V2(-1.0f, 0.0f);
+                }
+                if(Controller->ActionRight.EndedDown)
+                {
+                    ChangeVolume(&GameState->AudioState, GameState->Music, 5.0f, V2(0.0f, 1.0f));
+                    dSword = V2(1.0f, 0.0f);
+                }
+
+                if(WasPressed(Controller->Back))
+                {
+                    Exited = true;
+                }
+
+#if 0
+                if(ConHero->DebugSpawn && Head)
+                {
+                    traversable_reference Traversable;
+                    if(GetClosestTraversable(SimRegion, Head->P, &Traversable, 
+                                             TraversableSearch_Unoccupied))
+                    {
+                        AddPlayer(WorldMode, SimRegion, Traversable);
+                    }
+                    else
+                    {
+                        // TODO(casey): GameUI that tells you there's no safe place...
+                        // maybe keep trying on subsequent frames?
+                        }
+
+                    ConHero->DebugSpawn = false;
+                }
+#endif
+
                 ConHero->RecenterTimer = ClampAboveZero(ConHero->RecenterTimer - dt);
-                
+
                 if(Head)
                 {
-                    if(ConHero->dZ != 0.0f)
-                    {
-                        Head->dP.z = ConHero->dZ;
-                    }
-
                     // TODO(casey): Change to using the acceleration vector
-                    if((ConHero->dSword.x == 0.0f) && (ConHero->dSword.y == 0.0f))
+                    if((dSword.x == 0.0f) && (dSword.y == 0.0f))
                     {
                         // NOTE(casey): Leave FacingDirection whatever it was
                     }
                     else
                     {
-                        Head->FacingDirection = ATan2(ConHero->dSword.y, ConHero->dSword.x);
+                        Head->FacingDirection = ATan2(dSword.y, dSword.x);
                     }
                 }
-
-                v3 ddP = V3(ConHero->ddP, 0);
 
                 traversable_reference Traversable;
                 if(Head && GetClosestTraversable(SimRegion, Head->P, &Traversable))
@@ -773,161 +905,22 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
                     Body->YAxis = V2(0, 1) + 0.5f*HeadDelta.xy;
                 }
 
-                if(ConHero->Exited)
+                if(Exited)
                 {
-                    ConHero->Exited = false;
                     DeleteEntity(SimRegion, Head);
                     DeleteEntity(SimRegion, Body);
                     ConHero->BrainID.Value = 0;
                 }
             } break;
-            
+
             case Brain_Snake:
             {
             } break;
-            
+
             InvalidDefaultCase;
         }
     }
-    
-    for(u32 ControllerIndex = 0;
-        ControllerIndex < ArrayCount(Input->Controllers);
-        ++ControllerIndex)
-    {
-        game_controller_input *Controller = GetController(Input, ControllerIndex);
-        controlled_hero *ConHero = GameState->ControlledHeroes + ControllerIndex;
-        if(ConHero->BrainID.Value == 0)
-        {
-            if(WasPressed(Controller->Back))
-            {
-                QuitRequested = true;
-            }
-            else if(WasPressed(Controller->Start))
-            {
-                *ConHero = {};
-                traversable_reference Traversable;
-                if(GetClosestTraversable(SimRegion, CameraP, &Traversable))
-                {
-                    HeroesExist = true;
-                    ConHero->BrainID = AddPlayer(WorldMode, SimRegion, Traversable);
-                }
-                else
-                {
-                    // TODO(casey): GameUI that tells you there's no safe place...
-                    // maybe keep trying on subsequent frames?
-                }
-            }
-        }
-        else //if(ConHero->EntityIndex.Value)
-        {
-            HeroesExist = true;
-            
-            ConHero->dZ = 0.0f;
-            ConHero->dSword = {};
 
-            if(Controller->IsAnalog)
-            {
-                // NOTE(casey): Use analog movement tuning
-                ConHero->ddP = V2(Controller->StickAverageX, Controller->StickAverageY);
-            }
-            else
-            {
-                // NOTE(casey): Use digital movement tuning
-                r32 Recenter = 0.5f;
-                if(WasPressed(Controller->MoveUp))
-                {
-                    ConHero->ddP.x = 0.0f;
-                    ConHero->ddP.y = 1.0f;
-                    ConHero->RecenterTimer = Recenter;
-                }
-                if(WasPressed(Controller->MoveDown))
-                {
-                    ConHero->ddP.x = 0.0f;
-                    ConHero->ddP.y = -1.0f;
-                    ConHero->RecenterTimer = Recenter;
-                }
-                if(WasPressed(Controller->MoveLeft))
-                {
-                    ConHero->ddP.x = -1.0f;
-                    ConHero->ddP.y = 0.0f;
-                    ConHero->RecenterTimer = Recenter;
-                }
-                if(WasPressed(Controller->MoveRight))
-                {
-                    ConHero->ddP.x = 1.0f;
-                    ConHero->ddP.y = 0.0f;
-                    ConHero->RecenterTimer = Recenter;
-                }
-
-                if(!IsDown(Controller->MoveLeft) &&
-                   !IsDown(Controller->MoveRight))
-                {
-                    ConHero->ddP.x = 0.0f;
-                    if(IsDown(Controller->MoveUp))
-                    {
-                        ConHero->ddP.y = 1.0f;
-                    }
-                    if(IsDown(Controller->MoveDown))
-                    {
-                        ConHero->ddP.y = -1.0f;
-                    }
-                } 
-
-                if(!IsDown(Controller->MoveUp) &&
-                   !IsDown(Controller->MoveDown))
-                {
-                    ConHero->ddP.y = 0.0f;
-                    if(IsDown(Controller->MoveLeft))
-                    {
-                        ConHero->ddP.x = -1.0f;
-                    }
-                    if(IsDown(Controller->MoveRight))
-                    {
-                        ConHero->ddP.x = 1.0f;
-                    }
-                }
-                
-                if(WasPressed(Controller->Start))
-                {
-                    ConHero->DebugSpawn = true;
-                }
-            }
-
-#if 0
-            if(Controller->Start.EndedDown)
-            {
-                ConHero->dZ = 3.0f;
-            }
-#endif
-
-            ConHero->dSword = {};
-            if(Controller->ActionUp.EndedDown)
-            {
-                ChangeVolume(&GameState->AudioState, GameState->Music, 10.0f, V2(1.0f, 1.0f));
-                ConHero->dSword = V2(0.0f, 1.0f);
-            }
-            if(Controller->ActionDown.EndedDown)
-            {
-                ChangeVolume(&GameState->AudioState, GameState->Music, 10.0f, V2(0.0f, 0.0f));
-                ConHero->dSword = V2(0.0f, -1.0f);
-            }
-            if(Controller->ActionLeft.EndedDown)
-            {
-                ChangeVolume(&GameState->AudioState, GameState->Music, 5.0f, V2(1.0f, 0.0f));
-                ConHero->dSword = V2(-1.0f, 0.0f);
-            }
-            if(Controller->ActionRight.EndedDown)
-            {
-                ChangeVolume(&GameState->AudioState, GameState->Music, 5.0f, V2(0.0f, 1.0f));
-                ConHero->dSword = V2(1.0f, 0.0f);
-            }
-
-            if(WasPressed(Controller->Back))
-            {
-                ConHero->Exited = true;
-            }
-        }
-    }
 
     // TODO(casey): Move this out into handmade_entity.cpp!
     {
@@ -1002,7 +995,7 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
                         //Entity->P.z += 0.05f*Cos(Entity->tBob);
                         //Entity->tBob += dt;
                     } break;
-                    
+
                     case EntityType_Familiar:
                     {
                         entity *ClosestHero = 0;
@@ -1041,7 +1034,6 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
                     } break;
                 }
 
-#if 0
                 //
                 // NOTE(casey): Handle the entity's movement mode
                 //
@@ -1050,6 +1042,7 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
                 {
                     case MovementMode_Planted:
                     {
+#if 0
                         r32 HeadDistance = 0.0f;
                         for(u32 PairedEntityIndex = 0;
                             PairedEntityIndex < Entity->PairedEntityCount;
@@ -1062,10 +1055,11 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
                             }
                         }
                         HeadDistance = SquareRoot(HeadDistance);
-                        
+
                         r32 MaxHeadDistance = 0.5f;
                         r32 tHeadDistance = Clamp01MapToRange(0.0f, HeadDistance, MaxHeadDistance);
                         ddtBob = -20.0f*tHeadDistance;
+#endif
                     } break;
 
                     case MovementMode_Hopping:
@@ -1111,8 +1105,7 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
                 ddtBob += Cp*(0.0f - Entity->tBob) + Cv*(0.0f - Entity->dtBob);
                 Entity->tBob += ddtBob*dt*dt + Entity->dtBob*dt;
                 Entity->dtBob += ddtBob*dt;
-#endif
-                
+
                 if(IsSet(Entity, EntityFlag_Moveable))
                 {
                     MoveEntity(WorldMode, SimRegion, Entity, Input->dtForFrame, &MoveSpec, ddP);
