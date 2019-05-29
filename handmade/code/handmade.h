@@ -292,6 +292,7 @@ Copy(memory_index Size, void *SourceInit, void *DestInit)
 }
 
 #include "handmade_world.h"
+#include "handmade_brain.h"
 #include "handmade_entity.h"
 #include "handmade_sim_region.h"
 #include "handmade_world_mode.h"
@@ -303,6 +304,7 @@ struct controlled_hero
 {
     brain_id BrainID;
     r32 RecenterTimer;
+    v2 ddP;
 };
 
 struct hero_bitmap_ids
@@ -328,7 +330,7 @@ struct game_state
     memory_arena ModeArena;
     memory_arena AudioArena; // TODO(casey): Move this into the audio system proper!
 
-    controlled_hero ControlledHeroes[ArrayCount(((game_input *)0)->Controllers)];
+    controlled_hero ControlledHeroes[MAX_CONTROLLER_COUNT];
 
     loaded_bitmap TestDiffuse; // TODO(casey): Re-fill this guy with gray.
     loaded_bitmap TestNormal;

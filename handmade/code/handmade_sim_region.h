@@ -6,13 +6,6 @@
    $Notice: (C) Copyright 2015 by Molly Rocket, Inc. All Rights Reserved. $
    ======================================================================== */
 
-struct move_spec
-{
-    bool32 UnitMaxAccelVector;
-    real32 Speed;
-    real32 Drag;
-};
-
 struct entity_hash
 {
     entity *Ptr;
