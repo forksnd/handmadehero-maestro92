@@ -14,34 +14,35 @@ AddBrain(game_mode_world *WorldMode)
 }
 
 internal entity *
-BeginLowEntity(game_mode_world *WorldMode, entity_type Type)
+BeginEntity(game_mode_world *WorldMode)
 {
     Assert(WorldMode->CreationBufferIndex < ArrayCount(WorldMode->CreationBuffer));
-    entity *EntityLow = WorldMode->CreationBuffer + WorldMode->CreationBufferIndex++;
+    entity *Entity = WorldMode->CreationBuffer + WorldMode->CreationBufferIndex++;
     // TODO(casey): Worry about this taking awhile once the entities are large (sparse clear?)
-    ZeroStruct(*EntityLow);
+    ZeroStruct(*Entity);
 
-    EntityLow->ID.Value = ++WorldMode->LastUsedEntityStorageIndex;
-    EntityLow->Type = Type;
-    EntityLow->Collision = WorldMode->NullCollision;
+    Entity->XAxis = V2(1, 0);
+    Entity->YAxis = V2(0, 1);
 
-    return(EntityLow);
+    Entity->ID.Value = ++WorldMode->LastUsedEntityStorageIndex;
+    Entity->Collision = WorldMode->NullCollision;
+
+    return(Entity);
 }
 
 internal void
-EndEntity(game_mode_world *WorldMode, entity *EntityLow, world_position P)
+EndEntity(game_mode_world *WorldMode, entity *Entity, world_position P)
 {
     --WorldMode->CreationBufferIndex;
-    Assert(EntityLow == (WorldMode->CreationBuffer + WorldMode->CreationBufferIndex));
-    EntityLow->P = P.Offset_;
-    PackEntityIntoWorld(WorldMode->World, 0, EntityLow, P);
+    Assert(Entity == (WorldMode->CreationBuffer + WorldMode->CreationBufferIndex));
+    Entity->P = P.Offset_;
+    PackEntityIntoWorld(WorldMode->World, 0, Entity, P);
 }
 
 internal entity *
-BeginGroundedEntity(game_mode_world *WorldMode, entity_type Type,
-    entity_collision_volume_group *Collision)
+BeginGroundedEntity(game_mode_world *WorldMode, entity_collision_volume_group *Collision)
 {
-    entity *Entity = BeginLowEntity(WorldMode, Type);
+    entity *Entity = BeginEntity(WorldMode);
     Entity->Collision = Collision;
 
     return(Entity);
@@ -84,8 +85,7 @@ AddStandardRoom(game_mode_world *WorldMode, u32 AbsTileX, u32 AbsTileY, u32 AbsT
 
             if((OffsetX == 2) && (OffsetY == 2))
             {
-                entity *Entity = BeginGroundedEntity(WorldMode, EntityType_FloatyThingForNow,
-                    WorldMode->FloorCollision);
+                entity *Entity = BeginGroundedEntity(WorldMode, WorldMode->FloorCollision);
                 Entity->TraversableCount = 1;
                 Entity->Traversables[0].P = V3(0, 0, 0);
                 Entity->Traversables[0].Occupier = 0;
@@ -93,8 +93,7 @@ AddStandardRoom(game_mode_world *WorldMode, u32 AbsTileX, u32 AbsTileY, u32 AbsT
             }
             else
             {
-                entity *Entity = BeginGroundedEntity(WorldMode, EntityType_Floor,
-                    WorldMode->FloorCollision);
+                entity *Entity = BeginGroundedEntity(WorldMode, WorldMode->FloorCollision);
                 Entity->TraversableCount = 1;
                 Entity->Traversables[0].P = V3(0, 0, 0);
                 Entity->Traversables[0].Occupier = 0;
@@ -105,24 +104,25 @@ AddStandardRoom(game_mode_world *WorldMode, u32 AbsTileX, u32 AbsTileY, u32 AbsT
 }
 
 internal void
-AddPiece(entity *Entity, asset_type_id AssetType, r32 Height, v4 Color)
+AddPiece(entity *Entity, asset_type_id AssetType, r32 Height, v3 Offset, v4 Color, u32 Flags = 0)
 {
     Assert(Entity->PieceCount < ArrayCount(Entity->Pieces));
     entity_visible_piece *Piece = Entity->Pieces + Entity->PieceCount++;
     Piece->AssetType = AssetType;
     Piece->Height = Height;
+    Piece->Offset = Offset;
     Piece->Color = Color;
+    Piece->Flags = Flags;
 }
 
 internal void
 AddWall(game_mode_world *WorldMode, uint32 AbsTileX, uint32 AbsTileY, uint32 AbsTileZ)
 {
     world_position P = ChunkPositionFromTilePosition(WorldMode->World, AbsTileX, AbsTileY, AbsTileZ);
-    entity *Entity = BeginGroundedEntity(WorldMode, EntityType_Wall,
-        WorldMode->WallCollision);
+    entity *Entity = BeginGroundedEntity(WorldMode, WorldMode->WallCollision);
     AddFlags(Entity, EntityFlag_Collides);
 
-    AddPiece(Entity, Asset_Tree, 2.5f, V4(1, 1, 1, 1));
+    AddPiece(Entity, Asset_Tree, 2.5f, V3(0, 0, 0), V4(1, 1, 1, 1));
     
     EndEntity(WorldMode, Entity, P);
 }
@@ -131,8 +131,7 @@ internal void
 AddStair(game_mode_world *WorldMode, uint32 AbsTileX, uint32 AbsTileY, uint32 AbsTileZ)
 {
     world_position P = ChunkPositionFromTilePosition(WorldMode->World, AbsTileX, AbsTileY, AbsTileZ);
-    entity *Entity = BeginGroundedEntity(WorldMode, EntityType_Stairwell,
-        WorldMode->StairCollision);
+    entity *Entity = BeginGroundedEntity(WorldMode, WorldMode->StairCollision);
     AddFlags(Entity, EntityFlag_Collides);
     Entity->WalkableDim = Entity->Collision->TotalVolume.Dim.xy;
     Entity->WalkableHeight = WorldMode->TypicalFloorHeight;
@@ -140,19 +139,23 @@ AddStair(game_mode_world *WorldMode, uint32 AbsTileX, uint32 AbsTileY, uint32 Ab
 }
 
 internal void
-InitHitPoints(entity *EntityLow, uint32 HitPointCount)
+InitHitPoints(entity *Entity, uint32 HitPointCount)
 {
-    Assert(HitPointCount <= ArrayCount(EntityLow->HitPoint));
-    EntityLow->HitPointMax = HitPointCount;
+    Assert(HitPointCount <= ArrayCount(Entity->HitPoint));
+    Entity->HitPointMax = HitPointCount;
     for(uint32 HitPointIndex = 0;
-        HitPointIndex < EntityLow->HitPointMax;
+        HitPointIndex < Entity->HitPointMax;
         ++HitPointIndex)
     {
-        hit_point *HitPoint = EntityLow->HitPoint + HitPointIndex;
+        hit_point *HitPoint = Entity->HitPoint + HitPointIndex;
         HitPoint->Flags = 0;
         HitPoint->FilledAmount = HIT_POINT_SUB_COUNT;
     }
 }
+
+// TODO(casey): Shadows should be handled specially, because they need their own
+// pass technically as well...
+#define ShadowAlpha 0.5f
 
 internal void
 AddPlayer(game_mode_world *WorldMode, sim_region *SimRegion, traversable_reference StandingOn,
@@ -161,12 +164,10 @@ AddPlayer(game_mode_world *WorldMode, sim_region *SimRegion, traversable_referen
     world_position P = MapIntoChunkSpace(SimRegion->World, SimRegion->Origin, 
                                          GetSimSpaceTraversable(StandingOn).P);
 
-    entity *Body = BeginGroundedEntity(WorldMode, EntityType_HeroBody,
-        WorldMode->HeroBodyCollision);
+    entity *Body = BeginGroundedEntity(WorldMode, WorldMode->HeroBodyCollision);
     AddFlags(Body, EntityFlag_Collides|EntityFlag_Moveable);
 
-    entity *Head = BeginGroundedEntity(WorldMode, EntityType_HeroHead,
-        WorldMode->HeroHeadCollision);
+    entity *Head = BeginGroundedEntity(WorldMode, WorldMode->HeroHeadCollision);
     AddFlags(Head, EntityFlag_Collides|EntityFlag_Moveable);
 
     InitHitPoints(Body, 3);
@@ -175,11 +176,9 @@ AddPlayer(game_mode_world *WorldMode, sim_region *SimRegion, traversable_referen
     // guaranteeing now overlapping occupation.
     Body->Occupying = StandingOn;
 
-    Body->BrainType = Brain_Hero;
-    Body->BrainSlot = BrainSlotFor(brain_hero_parts, Body);
+    Body->BrainSlot = BrainSlotFor(brain_hero, Body);
     Body->BrainID = BrainID;
-    Head->BrainType = Brain_Hero;
-    Head->BrainSlot = BrainSlotFor(brain_hero_parts, Head);
+    Head->BrainSlot = BrainSlotFor(brain_hero, Head);
     Head->BrainID = BrainID;
 
     if(WorldMode->CameraFollowingEntityIndex.Value == 0)
@@ -189,6 +188,14 @@ AddPlayer(game_mode_world *WorldMode, sim_region *SimRegion, traversable_referen
 
     entity_id Result = Head->ID;
 
+    v4 Color = {1, 1, 1, 1};
+    real32 HeroSizeC = 3.0f;
+    AddPiece(Body, Asset_Shadow, HeroSizeC*1.0f, V3(0, 0, 0), V4(1, 1, 1, ShadowAlpha));
+    AddPiece(Body, Asset_Torso, HeroSizeC*1.2f, V3(0, 0.0f, -0.002f), Color, PieceMove_AxesDeform); 
+    AddPiece(Body, Asset_Cape, HeroSizeC*1.2f, V3(0, -0.1f, -0.001f), Color, PieceMove_AxesDeform|PieceMove_BobOffset);
+
+    AddPiece(Head, Asset_Head, HeroSizeC*1.2f, V3(0, -0.7f, 0), Color);
+    
     EndEntity(WorldMode, Head, P);
     EndEntity(WorldMode, Body, P);
 }
@@ -197,11 +204,16 @@ internal void
 AddMonstar(game_mode_world *WorldMode, uint32 AbsTileX, uint32 AbsTileY, uint32 AbsTileZ)
 {
     world_position P = ChunkPositionFromTilePosition(WorldMode->World, AbsTileX, AbsTileY, AbsTileZ);
-    entity *Entity = BeginGroundedEntity(WorldMode, EntityType_Monstar, 
-                                                     WorldMode->MonstarCollision);
+    entity *Entity = BeginGroundedEntity(WorldMode, WorldMode->MonstarCollision);
     AddFlags(Entity, EntityFlag_Collides|EntityFlag_Moveable);
 
+    Entity->BrainSlot = BrainSlotFor(brain_monstar, Body);
+    Entity->BrainID = AddBrain(WorldMode);
+
     InitHitPoints(Entity, 3);
+
+    AddPiece(Entity, Asset_Shadow, 4.5f, V3(0, 0, 0), V4(1, 1, 1, ShadowAlpha));
+    AddPiece(Entity, Asset_Torso, 4.5f, V3(0, 0, 0), V4(1, 1, 1, 1));
 
     EndEntity(WorldMode, Entity, P);
 }
@@ -210,9 +222,14 @@ internal void
 AddFamiliar(game_mode_world *WorldMode, uint32 AbsTileX, uint32 AbsTileY, uint32 AbsTileZ)
 {
     world_position P = ChunkPositionFromTilePosition(WorldMode->World, AbsTileX, AbsTileY, AbsTileZ);
-    entity *Entity = BeginGroundedEntity(WorldMode, EntityType_Familiar, 
-                                                     WorldMode->FamiliarCollision);
+    entity *Entity = BeginGroundedEntity(WorldMode, WorldMode->FamiliarCollision);
     AddFlags(Entity, EntityFlag_Collides|EntityFlag_Moveable);
+
+    Entity->BrainSlot = BrainSlotFor(brain_familiar, Head);
+    Entity->BrainID = AddBrain(WorldMode);
+
+    AddPiece(Entity, Asset_Shadow, 2.5f, V3(0, 0, 0), V4(1, 1, 1, ShadowAlpha));
+    AddPiece(Entity, Asset_Head, 2.5f, V3(0, 0, 0), V4(1, 1, 1, 1), PieceMove_BobOffset);
 
     EndEntity(WorldMode, Entity, P);
 }
@@ -410,10 +427,10 @@ PlayWorld(game_state *GameState, transient_state *TranState)
                                                             TileSideInMeters,
                                                             2.0f*TileSideInMeters,
                                                             1.1f*TileDepthInMeters);
-    WorldMode->HeroHeadCollision = MakeSimpleGroundedCollision(WorldMode, 1.0f, 0.5f, 0.5f, 0.7f);
-    WorldMode->HeroBodyCollision = MakeSimpleGroundedCollision(WorldMode, 1.0f, 0.5f, 0.6f);
-    WorldMode->MonstarCollision = MakeSimpleGroundedCollision(WorldMode, 1.0f, 0.5f, 0.5f);
-    WorldMode->FamiliarCollision = MakeSimpleGroundedCollision(WorldMode, 1.0f, 0.5f, 0.5f);
+    WorldMode->HeroHeadCollision = WorldMode->NullCollision; // MakeSimpleGroundedCollision(WorldMode, 1.0f, 0.5f, 0.5f, 0.7f);
+    WorldMode->HeroBodyCollision = WorldMode->NullCollision; // MakeSimpleGroundedCollision(WorldMode, 1.0f, 0.5f, 0.6f);
+    WorldMode->MonstarCollision = WorldMode->NullCollision; // MakeSimpleGroundedCollision(WorldMode, 1.0f, 0.5f, 0.5f);
+    WorldMode->FamiliarCollision = WorldMode->NullCollision; // MakeSimpleGroundedCollision(WorldMode, 1.0f, 0.5f, 0.5f);
     WorldMode->WallCollision = MakeSimpleGroundedCollision(WorldMode,
                                                            TileSideInMeters,
                                                            TileSideInMeters,
@@ -700,10 +717,6 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
     {
         entity *Entity = SimRegion->Entities + EntityIndex;
 
-        // TODO(casey): Set this at construction
-        Entity->XAxis = V2(1, 0);
-        Entity->YAxis = V2(0, 1);
-
         // TODO(casey): We don't really have a way to unique-ify these :(
         debug_id EntityDebugID = DEBUG_POINTER_ID((void *)Entity->ID.Value);
         if(DEBUG_REQUESTED(EntityDebugID))
@@ -713,13 +726,6 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
 
         if(Entity->Updatable)
         {
-            // TODO(casey): This is incorrect, should be computed after update!!!!
-            real32 ShadowAlpha = 1.0f - 0.5f*Entity->P.z;
-            if(ShadowAlpha < 0)
-            {
-                ShadowAlpha = 0.0f;
-            }
-
             // TODO(casey): Probably indicates we want to separate update and render
             // for entities sometime soon?
             v3 CameraRelativeGroundP = GetEntityGroundPoint(Entity) - CameraP;
@@ -734,8 +740,9 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
             }
 
             //
-            // NOTE(casey): Handle the entity's movement mode
+            // NOTE(casey): "Physics"
             //
+            
             switch(Entity->MovementMode)
             {
                 case MovementMode_Planted:
@@ -798,59 +805,11 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
             // NOTE(casey): Rendering
             //            
 
-            //
-            // NOTE(casey): Pre-physics entity work
-            //
-            hero_bitmap_ids HeroBitmaps = {};
             asset_vector MatchVector = {};
             MatchVector.E[Tag_FacingDirection] = Entity->FacingDirection;
             asset_vector WeightVector = {};
             WeightVector.E[Tag_FacingDirection] = 1.0f;
-            HeroBitmaps.Head = GetBestMatchBitmapFrom(TranState->Assets, Asset_Head, &MatchVector, &WeightVector);
-            HeroBitmaps.Cape = GetBestMatchBitmapFrom(TranState->Assets, Asset_Cape, &MatchVector, &WeightVector);
-            HeroBitmaps.Torso = GetBestMatchBitmapFrom(TranState->Assets, Asset_Torso, &MatchVector, &WeightVector);
             
-            real32 HeroSizeC = 3.0f;
-            switch(Entity->Type)
-            {
-                case EntityType_HeroBody:
-                {
-                    v4 Color = {1, 1, 1, 1};
-                    v2 XAxis = Entity->XAxis;
-                    v2 YAxis = Entity->YAxis;
-                    v3 Offset = V3(Entity->FloorDisplace, 0.0f);
-                    PushBitmap(RenderGroup, EntityTransform, GetFirstBitmapFrom(TranState->Assets, Asset_Shadow), HeroSizeC*1.0f, V3(0, 0, 0), V4(1, 1, 1, ShadowAlpha));
-                    PushBitmap(RenderGroup, EntityTransform, HeroBitmaps.Torso, HeroSizeC*1.2f, V3(0, 0.0f, -0.002f), Color, 1.0f, XAxis, YAxis);
-                    PushBitmap(RenderGroup, EntityTransform, HeroBitmaps.Cape, HeroSizeC*1.2f, Offset + V3(0, Entity->tBob - 0.1f, -0.001f), Color, 1.0f, XAxis, YAxis);
-                    DrawHitpoints(Entity, RenderGroup, EntityTransform);
-                } break;
-
-                case EntityType_HeroHead:
-                {                    
-                    // TODO(casey): Z!!!
-                    PushBitmap(RenderGroup, EntityTransform, HeroBitmaps.Head, HeroSizeC*1.2f, V3(0, -0.7f, 0));
-                } break;
-
-                case EntityType_Familiar:
-                {
-                    bitmap_id BID = HeroBitmaps.Head;
-                    Entity->tBob += dt;
-                    if(Entity->tBob > Tau32)
-                    {
-                        Entity->tBob -= Tau32;
-                    }
-                    real32 BobSin = Sin(2.0f*Entity->tBob);
-                    PushBitmap(RenderGroup, EntityTransform, GetFirstBitmapFrom(TranState->Assets, Asset_Shadow), 2.5f, V3(0, 0, 0), V4(1, 1, 1, (0.5f*ShadowAlpha) + 0.2f*BobSin));
-                    PushBitmap(RenderGroup, EntityTransform, BID, 2.5f, V3(0, 0, 0.25f*BobSin));
-                } break;
-
-                case EntityType_Monstar:
-                {
-                    PushBitmap(RenderGroup, EntityTransform, GetFirstBitmapFrom(TranState->Assets, Asset_Shadow), 4.5f, V3(0, 0, 0), V4(1, 1, 1, ShadowAlpha));
-                    PushBitmap(RenderGroup, EntityTransform, HeroBitmaps.Torso, 4.5f, V3(0, 0, 0));
-                } break;
-            }
-
             for(u32 PieceIndex = 0;
                 PieceIndex < Entity->PieceCount;
                 ++PieceIndex)
@@ -859,7 +818,25 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
                 bitmap_id BitmapID = 
                     GetBestMatchBitmapFrom(TranState->Assets, 
                                            Piece->AssetType, &MatchVector, &WeightVector);
-                PushBitmap(RenderGroup, EntityTransform, BitmapID, Piece->Height, V3(0, 0, 0), Piece->Color);
+
+                v2 XAxis = {1, 0};
+                v2 YAxis = {0, 1};
+                if(Piece->Flags & PieceMove_AxesDeform)
+                {
+                    XAxis = Entity->XAxis;
+                    YAxis = Entity->YAxis;
+                }
+               
+                r32 tBob = 0.0f;
+                v3 Offset = {};
+                if(Piece->Flags & PieceMove_BobOffset)
+                {
+                    tBob = Entity->tBob;
+                    Offset = V3(Entity->FloorDisplace, 0.0f);
+                    Offset.y += Entity->tBob;
+                }
+
+                PushBitmap(RenderGroup, EntityTransform, BitmapID, Piece->Height, Offset + Piece->Offset, Piece->Color, 1.0f, XAxis, YAxis);
             }
             
             DrawHitpoints(Entity, RenderGroup, EntityTransform);
@@ -912,7 +889,6 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
             {
                 DEBUG_VALUE(Entity->ID.Value);
                 DEBUG_VALUE(Entity->Updatable);
-                DEBUG_VALUE(Entity->Type);
                 DEBUG_VALUE(Entity->P);
                 DEBUG_VALUE(Entity->dP);
                 DEBUG_VALUE(Entity->DistanceLimit);
@@ -969,6 +945,12 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
 
     return(Result);
 }
+
+
+//
+// NOTE(casey): Old code down below!
+//
+
 
 
 #if 0

@@ -8,42 +8,62 @@
 
 struct entity;
 
+//
+// NOTE(casey): Brain types
+//
+
+struct brain_hero
+{
+    entity *Head;
+    entity *Body;
+};
+
+struct brain_monstar
+{
+    entity *Body;
+};
+
+struct brain_familiar
+{
+    entity *Head;
+};
+
+//
+// NOTE(casey): Brain
+//
+
 enum brain_type
 {
-    Brain_Hero,
-    
-    // NOTE(casey): Test brains!
-    Brain_Snake,
-    Brain_Familiar,
-    Brain_FloatyThingForNow,
-    Brain_Monstar,
+    Type_brain_hero,
 
-    Brain_Count,
+    // NOTE(casey): Test brains!
+    Type_brain_snake,
+    Type_brain_familiar,
+    Type_brain_floaty_thing_for_now,
+    Type_brain_monstar,
+
+    Type_brain_count,
 };
 
 struct brain_slot 
 {
-    u32 Index;
+    u16 Type;
+    u16 Index;
 };
+#define BrainSlotFor(type, Member) BrainSlotFor_(Type_##type, &(((type *)0)->Member) - (entity **)0)
+inline brain_slot
+BrainSlotFor_(brain_type Type, u16 PackValue)
+{
+    brain_slot Result = {(u16)Type, PackValue};
+
+    return(Result);
+}
 
 struct brain_id
 {
     u32 Value;
 };
-
-struct brain_hero_parts
-{
-    entity *Head;
-    entity *Body;
-};
-#define BrainSlotFor(type, Member) BrainSlotFor_(&(((type *)0)->Member) - (entity **)0)
-inline brain_slot
-BrainSlotFor_(u32 PackValue)
-{
-    brain_slot Result = {PackValue};
-    
-    return(Result);
-}
+inline brain_id NoBrain(void) {brain_id Result = {}; return(Result);}
 
 struct brain
 {
@@ -52,7 +72,10 @@ struct brain
     
     union
     {
-        brain_hero_parts Hero;
+        brain_hero Hero;
+        brain_monstar Monstar;
+        brain_familiar Familiar;
+        
         entity *Array[16];
     };
 };
