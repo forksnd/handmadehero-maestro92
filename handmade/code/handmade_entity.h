@@ -64,8 +64,7 @@ inline b32 IsEqual(traversable_reference A, traversable_reference B)
 enum entity_flags
 {
     EntityFlag_Collides = (1 << 0),
-    EntityFlag_Moveable = (1 << 1),
-    EntityFlag_Deleted = (1 << 2),
+    EntityFlag_Deleted = (1 << 1),
 };
 
 struct entity_collision_volume
@@ -163,7 +162,6 @@ struct entity
     r32 WalkableHeight;
 
     entity_movement_mode MovementMode;
-    move_spec MoveSpec; // TODO(casey): Do not pack this!
     r32 tMovement;
     traversable_reference Occupying;
     traversable_reference CameFrom;

@@ -7,14 +7,13 @@
    ======================================================================== */
 
 inline void
-ExecuteBrain(game_state *GameState, game_input *Input, 
+ExecuteBrain(game_state *GameState, game_mode_world *WorldMode, game_input *Input, 
              sim_region *SimRegion, brain *Brain, r32 dt)
 {
     switch(Brain->Type)
     {
         case Type_brain_hero:
         {
-            // TODO(casey): Check that they're not deleted when we do?
             brain_hero *Parts = &Brain->Hero;
             entity *Head = Parts->Head;
             entity *Body = Parts->Body;
@@ -131,22 +130,18 @@ ExecuteBrain(game_state *GameState, game_input *Input,
             dSword = {};
             if(Controller->ActionUp.EndedDown)
             {
-                ChangeVolume(&GameState->AudioState, GameState->Music, 10.0f, V2(1.0f, 1.0f));
                 dSword = V2(0.0f, 1.0f);
             }
             if(Controller->ActionDown.EndedDown)
             {
-                ChangeVolume(&GameState->AudioState, GameState->Music, 10.0f, V2(0.0f, 0.0f));
                 dSword = V2(0.0f, -1.0f);
             }
             if(Controller->ActionLeft.EndedDown)
             {
-                ChangeVolume(&GameState->AudioState, GameState->Music, 5.0f, V2(1.0f, 0.0f));
                 dSword = V2(-1.0f, 0.0f);
             }
             if(Controller->ActionRight.EndedDown)
             {
-                ChangeVolume(&GameState->AudioState, GameState->Music, 5.0f, V2(0.0f, 1.0f));
                 dSword = V2(1.0f, 0.0f);
             }
 
@@ -154,27 +149,6 @@ ExecuteBrain(game_state *GameState, game_input *Input,
             {
                 Exited = true;
             }
-
-#if 0
-            if(ConHero->DebugSpawn && Head)
-            {
-                traversable_reference Traversable;
-                if(GetClosestTraversable(SimRegion, Head->P, &Traversable, 
-                                         TraversableSearch_Unoccupied))
-                {
-                    AddPlayer(WorldMode, SimRegion, Traversable);
-                }
-                else
-                {
-                    // TODO(casey): GameUI that tells you there's no safe place...
-                    // maybe keep trying on subsequent frames?
-                }
-
-                ConHero->DebugSpawn = false;
-            }
-#endif
-
-            ConHero->RecenterTimer = ClampAboveZero(ConHero->RecenterTimer - dt);
 
             if(Head)
             {
@@ -210,28 +184,43 @@ ExecuteBrain(game_state *GameState, game_input *Input,
 
                 v3 ClosestP = GetSimSpaceTraversable(Traversable).P;
 
+                v3 ddP = V3(ConHero->ddP, 0);
+                real32 ddPLength = LengthSq(ddP);
+                if(ddPLength > 1.0f)
+                {
+                    ddP *= (1.0f / SquareRoot(ddPLength));
+                }
+                r32 MovementSpeed = 30.0f;
+                r32 Drag = 8.0f;
+                ddP *= MovementSpeed;
+
                 b32 TimerIsUp = (ConHero->RecenterTimer == 0.0f);
                 b32 NoPush = (LengthSq(ConHero->ddP) < 0.1f);
                 r32 Cp = NoPush ? 300.0f : 25.0f;
-                v3 ddP2 = V3(ConHero->ddP, 0);
+                b32 Recenter[3] = {};
                 for(u32 E = 0;
                     E < 3;
                     ++E)
                 {
 #if 1
-                    if(NoPush || (TimerIsUp && (Square(ddP2.E[E]) < 0.1f)))
+                    if(NoPush || (TimerIsUp && (Square(ddP.E[E]) < 0.1f)))
 #else
                     if(NoPush)
 #endif
                     {
-                        ddP2.E[E] = Cp*(ClosestP.E[E] - Head->P.E[E]) - 30.0f*Head->dP.E[E];
+                        Recenter[E] = true;
+                        ddP.E[E] = Cp*(ClosestP.E[E] - Head->P.E[E]) - 30.0f*Head->dP.E[E];
+                    }
+                    else
+                    {
+                        // TODO(casey): ODE here!
+                        ddP.E[E] += -Drag*Head->dP.E[E];
                     }
                 }
+
+                ConHero->RecenterTimer = ClampAboveZero(ConHero->RecenterTimer - dt);
                 
-                Head->MoveSpec.UnitMaxAccelVector = true;
-                Head->MoveSpec.Speed = 30.0f;
-                Head->MoveSpec.Drag = 8.0f;
-                Head->ddP = ddP2;
+                Head->ddP = ddP;
             }
 
             if(Body)
@@ -309,10 +298,6 @@ ExecuteBrain(game_state *GameState, game_input *Input,
                 real32 OneOverLength = Acceleration / SquareRoot(ClosestHeroDSq);
                 Head->ddP = OneOverLength*(ClosestHero->P - Head->P);
             }
-            
-            Head->MoveSpec.UnitMaxAccelVector = true;
-            Head->MoveSpec.Speed = 50.0f;
-            Head->MoveSpec.Drag = 8.0f;
         } break;
         
         case Type_brain_floaty_thing_for_now:
@@ -325,7 +310,30 @@ ExecuteBrain(game_state *GameState, game_input *Input,
         
         case Type_brain_monstar:
         {
-            
+            brain_monstar *Parts = &Brain->Monstar;
+            entity *Body = Parts->Body;
+            if(Body)
+            {
+                v3 Delta = {RandomBilateral(&WorldMode->GameEntropy),
+                    RandomBilateral(&WorldMode->GameEntropy),
+                    0.0f};
+                traversable_reference Traversable;
+                if(GetClosestTraversable(SimRegion, Body->P + Delta, &Traversable))
+                {
+                    if(Body->MovementMode == MovementMode_Planted)
+                    {
+                        if(!IsEqual(Traversable, Body->Occupying))
+                        {
+                            Body->CameFrom = Body->Occupying;
+                            if(TransactionalOccupy(Body, &Body->Occupying, Traversable))
+                            {
+                                Body->tMovement = 0.0f;
+                                Body->MovementMode = MovementMode_Hopping;
+                            }
+                        }
+                    }
+                }
+            }
         } break;
         
         InvalidDefaultCase;

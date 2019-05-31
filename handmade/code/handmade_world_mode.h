@@ -60,6 +60,7 @@ struct game_mode_world
 
     real32 Time;
 
+    random_series GameEntropy; // NOTE(casey): This is entropy that DOES affect the gameplay
     random_series EffectsEntropy; // NOTE(casey): This is entropy that doesn't affect the gameplay
     real32 tSine;
 
