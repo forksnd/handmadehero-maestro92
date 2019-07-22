@@ -262,41 +262,94 @@ ExecuteBrain(game_state *GameState, game_mode_world *WorldMode, game_input *Inpu
 
         case Type_brain_snake:
         {
+            brain_snake *Parts = &Brain->Snake;
+            
+            entity *Head = Parts->Segments[0];
+            if(Head)
+            {
+                v3 Delta = {RandomBilateral(&WorldMode->GameEntropy),
+                            RandomBilateral(&WorldMode->GameEntropy),
+                            0.0f};
+                traversable_reference Traversable;
+                if(GetClosestTraversable(SimRegion, Head->P + Delta, &Traversable))
+                {
+                    if(Head->MovementMode == MovementMode_Planted)
+                    {
+                        if(!IsEqual(Traversable, Head->Occupying))
+                        {
+                            traversable_reference LastOccupying = Head->Occupying;
+                            Head->CameFrom = Head->Occupying;
+                            if(TransactionalOccupy(Head, &Head->Occupying, Traversable))
+                            {
+                                Head->tMovement = 0.0f;
+                                Head->MovementMode = MovementMode_Hopping;
+                                
+                                for(u32 SegmentIndex = 1;
+                                    SegmentIndex < ArrayCount(Parts->Segments);
+                                    ++SegmentIndex)
+                                {
+                                    entity *Segment = Parts->Segments[SegmentIndex];
+                                    if(Segment)
+                                    {
+                                        Segment->CameFrom  = Segment->Occupying;
+                                        TransactionalOccupy(Segment, &Segment->Occupying, LastOccupying);
+                                        LastOccupying = Segment->CameFrom;
+                                        
+                                        Segment->tMovement = 0.0f;
+                                        Segment->MovementMode = MovementMode_Hopping;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         } break;
         
         case Type_brain_familiar:
         {
             brain_familiar *Parts = &Brain->Familiar;
             entity *Head = Parts->Head;
-            
-            entity *ClosestHero = 0;
-            real32 ClosestHeroDSq = Square(10.0f); // NOTE(casey): Ten meter maximum search!
-
-            if(Global_AI_Familiar_FollowsHero)
+            if(Head)
             {
-                // TODO(casey): Make spatial queries easy for things!
-                entity *TestEntity = SimRegion->Entities;
-                for(uint32 TestEntityIndex = 0;
-                    TestEntityIndex < SimRegion->EntityCount;
-                    ++TestEntityIndex, ++TestEntity)
+                b32 Blocked = true;
+                
+                traversable_reference Traversable;
+                if(GetClosestTraversable(SimRegion, Head->P, &Traversable))
                 {
-                    if(TestEntity->BrainSlot.Type == Type_brain_hero)
-                    {            
-                        real32 TestDSq = LengthSq(TestEntity->P - Head->P);            
-                        if(ClosestHeroDSq > TestDSq)
+                    if(IsEqual(Traversable, Head->Occupying))
+                    {
+                        Blocked = false;
+                    }
+                    else
+                    {
+                        if(TransactionalOccupy(Head, &Head->Occupying, Traversable))
                         {
-                            ClosestHero = TestEntity;
-                            ClosestHeroDSq = TestDSq;
+                            Blocked = false;
                         }
                     }
                 }
-            }
-
-            if(ClosestHero && (ClosestHeroDSq > Square(3.0f)))
-            {
-                real32 Acceleration = 0.5f;
-                real32 OneOverLength = Acceleration / SquareRoot(ClosestHeroDSq);
-                Head->ddP = OneOverLength*(ClosestHero->P - Head->P);
+                
+                v3 TargetP = GetSimSpaceTraversable(Head->Occupying).P;
+                if(!Blocked)
+                {
+                    closest_entity Closest = 
+                        GetClosestEntityWithBrain(SimRegion, Head->P, Type_brain_hero);
+                    if(Closest.Entity) //  && (ClosestHeroDSq > Square(3.0f)))
+                    {
+                        traversable_reference TargetTraversable;
+                        if(GetClosestTraversableAlongRay(SimRegion, Head->P, NOZ(Closest.Delta),
+                                                         Head->Occupying, &TargetTraversable))
+                        {
+                            if(!IsOccupied(TargetTraversable))
+                            {
+                                TargetP = Closest.Entity->P;
+                            }
+                        }
+                    }
+                }
+                
+                Head->ddP = 10.0f*(TargetP - Head->P) - 8.0f*(Head->dP);
             }
         } break;
         

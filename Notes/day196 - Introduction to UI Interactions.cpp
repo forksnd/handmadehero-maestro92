@@ -423,9 +423,9 @@ so the idea is that we will count how many HalfTransitions occured, and we will 
 and EndInteract(); according to that.
 
 
--   then for the last if condition, we still have one half transition left.
+-   then for the last if condition, we still have 1 x half transition left.
     if for that half transition, we EndedDown, we do another BeginInteract();
-    [my understanding is that each half transition, we want to do a full BeginInteract() and EndInteract?] 
+    [i still think that it should be TransitionIndex-=2. For every 2 x half transitions, we want to do a BeginInteract(); and EndInteract();?] 
 
 
                 handmade_debug.cpp

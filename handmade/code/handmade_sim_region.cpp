@@ -271,8 +271,10 @@ BeginSim(memory_arena *SimArena, game_mode_world *WorldMode, world *World, world
                                 if(Dest->BrainID.Value)
                                 {
                                     brain *Brain = GetOrAddBrain(SimRegion, Dest->BrainID, (brain_type)Dest->BrainSlot.Type);
-                                    Assert(Dest->BrainSlot.Index < ArrayCount(Brain->Array));
-                                    Brain->Array[Dest->BrainSlot.Index] = Dest;
+                                    u8 *Ptr = (u8 *)&Brain->Array;
+                                    Ptr += sizeof(entity *)*Dest->BrainSlot.Index;
+                                    Assert(Ptr <= ((u8 *)Brain + sizeof(brain) - sizeof(entity *)));
+                                    *((entity **)Ptr) = Dest;
                                 }
                             }            
                             else
@@ -293,6 +295,8 @@ BeginSim(memory_arena *SimArena, game_mode_world *WorldMode, world *World, world
     }
     
     ConnectEntityPointers(SimRegion);
+
+    DEBUG_VALUE(SimRegion->EntityCount);
     
     return(SimRegion);
 }
@@ -577,6 +581,20 @@ EntitiesOverlap(entity *Entity, entity *TestEntity, v3 Epsilon = V3(0, 0, 0))
     return(Result);
 }
 
+inline b32
+IsOccupied(traversable_reference Ref)
+{
+    b32 Result = true;
+    
+    entity_traversable_point *Dest = GetTraversable(Ref);
+    if(Dest)
+    {
+        Result = (Dest->Occupier != 0);
+    }
+
+    return(Result);
+}
+
 internal b32
 TransactionalOccupy(entity *Entity, traversable_reference *DestRef, traversable_reference DesiredRef)
 {
@@ -804,6 +822,8 @@ internal b32
 GetClosestTraversable(sim_region *SimRegion, v3 FromP, traversable_reference *Result,
                       u32 Flags = 0)
 {
+    TIMED_FUNCTION();
+    
     b32 Found = false;
     
     // TODO(casey): Make spatial queries easy for things!
@@ -830,6 +850,7 @@ GetClosestTraversable(sim_region *SimRegion, v3 FromP, traversable_reference *Re
                 {
                     // P.P;
                     Result->Entity.Ptr = TestEntity;
+                    Result->Entity.Index = TestEntity->ID;
                     Result->Index = PIndex;
                     ClosestDistanceSq = TestDSq;
                     Found = true;
@@ -845,4 +866,64 @@ GetClosestTraversable(sim_region *SimRegion, v3 FromP, traversable_reference *Re
     }
     
     return(Found);
+}
+
+internal b32
+GetClosestTraversableAlongRay(sim_region *SimRegion, v3 FromP, v3 Dir,
+                              traversable_reference Skip, traversable_reference *Result,
+                              u32 Flags = 0)
+{
+    TIMED_FUNCTION();
+    
+    b32 Found = false;
+    
+    for(u32 ProbeIndex = 0;
+        ProbeIndex < 5;
+        ++ProbeIndex)
+    {
+        v3 SampleP = FromP + 0.5f*(r32)ProbeIndex*Dir;
+        if(GetClosestTraversable(SimRegion, SampleP, Result, Flags))
+        {
+            if(!IsEqual(Skip, *Result))
+            {
+                Found = true;
+                break;
+            }
+        }
+    }
+    
+    return(Found);
+}
+
+struct closest_entity
+{
+    entity *Entity;
+    v3 Delta;
+    r32 DistanceSq;
+};
+internal closest_entity
+GetClosestEntityWithBrain(sim_region *SimRegion, v3 P, brain_type Type, r32 MaxRadius = 20.0f)
+{
+    closest_entity Result = {};
+    Result.DistanceSq = Square(MaxRadius);
+
+    entity *TestEntity = SimRegion->Entities;
+    for(uint32 TestEntityIndex = 0;
+        TestEntityIndex < SimRegion->EntityCount;
+        ++TestEntityIndex, ++TestEntity)
+    {
+        if(IsType(TestEntity->BrainSlot, Type))
+        {            
+            v3 TestDelta = TestEntity->P - P;
+            real32 TestDSq = LengthSq(TestDelta);            
+            if(Result.DistanceSq > TestDSq)
+            {
+                Result.Entity = TestEntity;
+                Result.DistanceSq = TestDSq;
+                Result.Delta = TestDelta;
+            }
+        }
+    }   
+    
+    return(Result);
 }

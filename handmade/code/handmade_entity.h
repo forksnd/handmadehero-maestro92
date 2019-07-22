@@ -102,6 +102,7 @@ enum entity_movement_mode
 {
     MovementMode_Planted,
     MovementMode_Hopping,
+    MovementMode_Floating,
 };
 
 enum entity_visible_piece_flag
