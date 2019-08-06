@@ -103,6 +103,9 @@ enum entity_movement_mode
     MovementMode_Planted,
     MovementMode_Hopping,
     MovementMode_Floating,
+    
+    MovementMode_AngleOffset,
+    MovementMode_AngleAttackSwipe,
 };
 
 enum entity_visible_piece_flag
@@ -166,6 +169,14 @@ struct entity
     r32 tMovement;
     traversable_reference Occupying;
     traversable_reference CameFrom;
+    
+    v3 AngleBase;
+    r32 AngleCurrent;
+    r32 AngleStart;
+    r32 AngleTarget;
+    r32 AngleCurrentDistance;
+    r32 AngleBaseDistance;
+    r32 AngleSwipeDistance;
 
     v2 XAxis;
     v2 YAxis;

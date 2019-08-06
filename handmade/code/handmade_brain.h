@@ -16,6 +16,7 @@ struct brain_hero
 {
     entity *Head;
     entity *Body;
+    entity *Glove;
 };
 
 struct brain_monstar

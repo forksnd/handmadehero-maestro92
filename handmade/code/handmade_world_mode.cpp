@@ -160,7 +160,7 @@ AddStandardRoom(game_mode_world *WorldMode, u32 AbsTileX, u32 AbsTileY, u32 AbsT
     random_series *Series)
 {
     standard_room Result = {};
-    
+
     for(s32 OffsetY = -4;
         OffsetY <= 4;
         ++OffsetY)
@@ -171,7 +171,7 @@ AddStandardRoom(game_mode_world *WorldMode, u32 AbsTileX, u32 AbsTileY, u32 AbsT
         {
             world_position P = ChunkPositionFromTilePosition(
                 WorldMode->World, AbsTileX + OffsetX, AbsTileY + OffsetY, AbsTileZ);
-            
+
             P.Offset_.x += 0.25f*RandomBilateral(Series);
             P.Offset_.y += 0.25f*RandomBilateral(Series);
 
@@ -196,7 +196,7 @@ AddStandardRoom(game_mode_world *WorldMode, u32 AbsTileX, u32 AbsTileY, u32 AbsT
                 Entity->Traversables[0].Occupier = 0;
                 EndEntity(WorldMode, Entity, P);
             }
-    
+
             Result.P[OffsetX + 8][OffsetY + 4] = P;
             Result.Ground[OffsetX + 8][OffsetY + 4] = StandingOn;
         }
@@ -212,9 +212,9 @@ AddWall(game_mode_world *WorldMode, world_position P, traversable_reference Stan
     AddFlags(Entity, EntityFlag_Collides);
 
     AddPiece(Entity, Asset_Tree, 2.5f, V3(0, 0, 0), V4(1, 1, 1, 1));
-    
+
     Entity->Occupying = StandingOn;
-    
+
     EndEntity(WorldMode, Entity, P);
 }
 
@@ -242,16 +242,26 @@ AddPlayer(game_mode_world *WorldMode, sim_region *SimRegion, traversable_referen
     entity *Head = BeginGroundedEntity(WorldMode, WorldMode->HeroHeadCollision);
     AddFlags(Head, EntityFlag_Collides);
 
+    entity *Glove = BeginGroundedEntity(WorldMode, WorldMode->HeroGloveCollision);
+    AddFlags(Glove, EntityFlag_Collides);
+    Glove->MovementMode = MovementMode_AngleOffset;
+    Glove->AngleCurrent = -0.25f*Tau32;
+    Glove->AngleBaseDistance = 0.3f;
+    Glove->AngleSwipeDistance = 1.0f;
+    Glove->AngleCurrentDistance = 0.3f;
+
     InitHitPoints(Body, 3);
 
     // TODO(casey): We will probably need a creation-time system for
     // guaranteeing now overlapping occupation.
     Body->Occupying = StandingOn;
-    
+
     Body->BrainSlot = BrainSlotFor(brain_hero, Body);
     Body->BrainID = BrainID;
     Head->BrainSlot = BrainSlotFor(brain_hero, Head);
     Head->BrainID = BrainID;
+    Glove->BrainSlot = BrainSlotFor(brain_hero, Glove);
+    Glove->BrainID = BrainID;
 
     if(WorldMode->CameraFollowingEntityIndex.Value == 0)
     {
@@ -267,7 +277,10 @@ AddPlayer(game_mode_world *WorldMode, sim_region *SimRegion, traversable_referen
     AddPiece(Body, Asset_Cape, HeroSizeC*1.2f, V3(0, -0.1f, -0.001f), Color, PieceMove_AxesDeform|PieceMove_BobOffset);
 
     AddPiece(Head, Asset_Head, HeroSizeC*1.2f, V3(0, -0.7f, 0), Color);
-    
+
+    AddPiece(Glove, Asset_Sword, HeroSizeC*0.25f, V3(0, 0, 0), Color);
+
+    EndEntity(WorldMode, Glove, P);
     EndEntity(WorldMode, Head, P);
     EndEntity(WorldMode, Body, P);
 }
@@ -446,7 +459,7 @@ PlayWorld(game_state *GameState, transient_state *TranState)
     uint32 TilesPerHeight = 9;
 
     WorldMode->LastUsedEntityStorageIndex = ReservedBrainID_FirstFree;
-    
+
     WorldMode->EffectsEntropy = RandomSeed(1234);
     WorldMode->GameEntropy = RandomSeed(1234);
     WorldMode->TypicalFloorHeight = 3.0f;
@@ -468,6 +481,7 @@ PlayWorld(game_state *GameState, transient_state *TranState)
                                                             1.1f*TileDepthInMeters);
     WorldMode->HeroHeadCollision = MakeSimpleGroundedCollision(WorldMode, 1.0f, 0.5f, 0.5f, 0.7f);
     WorldMode->HeroBodyCollision = WorldMode->NullCollision; // MakeSimpleGroundedCollision(WorldMode, 1.0f, 0.5f, 0.6f);
+    WorldMode->HeroGloveCollision = WorldMode->NullCollision;
     WorldMode->MonstarCollision = WorldMode->NullCollision; // MakeSimpleGroundedCollision(WorldMode, 1.0f, 0.5f, 0.5f);
     WorldMode->FamiliarCollision = WorldMode->NullCollision; // MakeSimpleGroundedCollision(WorldMode, 1.0f, 0.5f, 0.5f);
     WorldMode->WallCollision = MakeSimpleGroundedCollision(WorldMode,
@@ -478,7 +492,7 @@ PlayWorld(game_state *GameState, transient_state *TranState)
         TileSideInMeters,
         TileSideInMeters,
         TileDepthInMeters);
-    
+
     uint32 ScreenBaseX = 0;
     uint32 ScreenBaseY = 0;
     uint32 ScreenBaseZ = 0;
@@ -535,14 +549,14 @@ PlayWorld(game_state *GameState, transient_state *TranState)
 
         brain_id SnakeBrainID = AddBrain(WorldMode);
         for(u32 SegmentIndex = 0;
-            SegmentIndex < 12;
+            SegmentIndex < 5;
             ++SegmentIndex)
         {
             u32 X = 2 + SegmentIndex;
             AddSnakeSegment(WorldMode, Room.P[X][2], Room.Ground[X][2], SnakeBrainID, SegmentIndex);
         }
 
-        
+
         for(uint32 TileY = 0;
             TileY < ArrayCount(Room.P[0]);
             ++TileY)
@@ -553,7 +567,7 @@ PlayWorld(game_state *GameState, transient_state *TranState)
             {
                 world_position P = Room.P[TileX][TileY];
                 traversable_reference Ground = Room.Ground[TileX][TileY];
-                
+
                 bool32 ShouldBeDoor = false;
                 if((TileX == 0) && (!DoorLeft || (TileY != (TilesPerHeight/2))))
                 {
@@ -574,7 +588,7 @@ PlayWorld(game_state *GameState, transient_state *TranState)
                 {
                     ShouldBeDoor = true;
                 }
-                
+
                 if(ShouldBeDoor)
                 {
                     AddWall(WorldMode, P, Ground);
@@ -732,7 +746,7 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
             }
         }
     }
-    
+
     // NOTE(casey): Run all brains
     for(u32 BrainIndex = 0;
         BrainIndex < SimRegion->BrainCount;
@@ -774,7 +788,7 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
             //
             // NOTE(casey): "Physics"
             //
-            
+
             switch(Entity->MovementMode)
             {
                 case MovementMode_Planted:
@@ -817,6 +831,37 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
                         Entity->tMovement = 1.0f;
                     }
                 } break;
+                
+                case MovementMode_AngleAttackSwipe:
+                {
+                    if(Entity->tMovement < 1.0f)
+                    {
+                        Entity->AngleCurrent = Lerp(Entity->AngleStart, 
+                                                    Entity->tMovement,
+                                                    Entity->AngleTarget);
+
+                        Entity->AngleCurrentDistance = Lerp(Entity->AngleBaseDistance, 
+                                                            Triangle01(Entity->tMovement),
+                                                            Entity->AngleSwipeDistance);
+                    }
+                    else
+                    {
+                        Entity->MovementMode = MovementMode_AngleOffset;
+                        Entity->AngleCurrent = Entity->AngleTarget;
+                        Entity->AngleCurrentDistance = Entity->AngleBaseDistance;
+                    }
+                    
+                    Entity->tMovement += 10.0f*dt;
+                    if(Entity->tMovement > 1.0f)
+                    {
+                        Entity->tMovement = 1.0f;
+                    }
+                }
+                case MovementMode_AngleOffset:
+                {
+                    v2 Arm = Entity->AngleCurrentDistance*Arm2(Entity->AngleCurrent + Entity->FacingDirection);
+                    Entity->P = Entity->AngleBase + V3(Arm.x, Arm.y + 0.5f, 0.0f);
+                } break;
             }
 
             r32 Cp = 100.0f;
@@ -829,7 +874,7 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
             {
                 MoveEntity(WorldMode, SimRegion, Entity, Input->dtForFrame, Entity->ddP);
             }
-            
+
             object_transform EntityTransform = DefaultUprightTransform();
             EntityTransform.OffsetP = GetEntityGroundPoint(Entity) - CameraP;
 
@@ -841,7 +886,7 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
             MatchVector.E[Tag_FacingDirection] = Entity->FacingDirection;
             asset_vector WeightVector = {};
             WeightVector.E[Tag_FacingDirection] = 1.0f;
-            
+
             for(u32 PieceIndex = 0;
                 PieceIndex < Entity->PieceCount;
                 ++PieceIndex)
@@ -858,7 +903,7 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
                     XAxis = Entity->XAxis;
                     YAxis = Entity->YAxis;
                 }
-               
+
                 r32 tBob = 0.0f;
                 v3 Offset = {};
                 if(Piece->Flags & PieceMove_BobOffset)
@@ -870,7 +915,7 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
 
                 PushBitmap(RenderGroup, EntityTransform, BitmapID, Piece->Height, Offset + Piece->Offset, Piece->Color, 1.0f, XAxis, YAxis);
             }
-            
+
             DrawHitpoints(Entity, RenderGroup, EntityTransform);
 
             for(uint32 VolumeIndex = 0;
@@ -946,7 +991,7 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
             }
         }
     }
-    
+
     RenderGroup->GlobalAlpha = 1.0f;
 
     Orthographic(RenderGroup, DrawBuffer->Width, DrawBuffer->Height, 1.0f);

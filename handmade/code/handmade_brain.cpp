@@ -17,6 +17,7 @@ ExecuteBrain(game_state *GameState, game_mode_world *WorldMode, game_input *Inpu
             brain_hero *Parts = &Brain->Hero;
             entity *Head = Parts->Head;
             entity *Body = Parts->Body;
+            entity *Glove = Parts->Glove;
 
             u32 ControllerIndex = Brain->ID.Value - ReservedBrainID_FirstHero;
             game_controller_input *Controller = GetController(Input, ControllerIndex);
@@ -127,22 +128,32 @@ ExecuteBrain(game_state *GameState, game_mode_world *WorldMode, game_input *Inpu
                 }
             }
             
+            b32 Attacked = false;
             dSword = {};
             if(Controller->ActionUp.EndedDown)
             {
+                Attacked = true;
                 dSword = V2(0.0f, 1.0f);
             }
             if(Controller->ActionDown.EndedDown)
             {
+                Attacked = true;
                 dSword = V2(0.0f, -1.0f);
             }
             if(Controller->ActionLeft.EndedDown)
             {
+                Attacked = true;
                 dSword = V2(-1.0f, 0.0f);
             }
             if(Controller->ActionRight.EndedDown)
             {
+                Attacked = true;
                 dSword = V2(1.0f, 0.0f);
+            }
+            
+            if(Glove && (Glove->MovementMode != MovementMode_AngleOffset))
+            {
+                Attacked = false;
             }
 
             if(WasPressed(Controller->Back))
@@ -150,14 +161,19 @@ ExecuteBrain(game_state *GameState, game_mode_world *WorldMode, game_input *Inpu
                 Exited = true;
             }
 
+            if(Glove && Attacked)
+            {
+                Glove->tMovement = 0;
+                Glove->MovementMode = MovementMode_AngleAttackSwipe;
+                Glove->AngleStart = Glove->AngleCurrent;
+                Glove->AngleTarget = (Glove->AngleCurrent > 0.0f) ? -0.25f*Tau32 : 0.25f*Tau32; 
+                Glove->AngleSwipeDistance = 2.0f;
+            }
+            
             if(Head)
             {
                 // TODO(casey): Change to using the acceleration vector
-                if((dSword.x == 0.0f) && (dSword.y == 0.0f))
-                {
-                    // NOTE(casey): Leave FacingDirection whatever it was
-                }
-                else
+                if(Attacked)
                 {
                     Head->FacingDirection = ATan2(dSword.y, dSword.x);
                 }
@@ -250,6 +266,12 @@ ExecuteBrain(game_state *GameState, game_mode_world *WorldMode, game_input *Inpu
                 }
                 Body->FloorDisplace = (0.25f*HeadDelta).xy;
                 Body->YAxis = V2(0, 1) + 0.5f*HeadDelta.xy;
+            }
+            
+            if(Glove && Body)
+            {
+                Glove->AngleBase = Body->P;
+                Glove->FacingDirection = Body->FacingDirection;
             }
 
             if(Exited)
