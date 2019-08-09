@@ -155,6 +155,8 @@ GetOrAddBrain(sim_region *SimRegion, brain_id ID, brain_type Type)
 internal void
 ConnectEntityPointers(sim_region *SimRegion)
 {
+    TIMED_FUNCTION();
+    
     for(u32 EntityIndex = 0;
         EntityIndex < SimRegion->EntityCount;
         ++EntityIndex)
@@ -181,6 +183,8 @@ BeginSim(memory_arena *SimArena, game_mode_world *WorldMode, world *World, world
     
     sim_region *SimRegion = PushStruct(SimArena, sim_region);
     
+    SimRegion->World = World;
+
     // TODO(casey): Try to make these get enforced more rigorously
     // TODO(casey): Perhaps try using a dual system here, where we support
     // entities larger than the max entity radius by adding them multiple times
@@ -190,7 +194,6 @@ BeginSim(memory_arena *SimArena, game_mode_world *WorldMode, world *World, world
     real32 UpdateSafetyMargin = SimRegion->MaxEntityRadius + dt*SimRegion->MaxEntityVelocity;
     real32 UpdateSafetyMarginZ = 1.0f;
     
-    SimRegion->World = World;
     SimRegion->Origin = Origin;
     SimRegion->UpdatableBounds = AddRadiusTo(Bounds, V3(SimRegion->MaxEntityRadius,
                                                         SimRegion->MaxEntityRadius,
@@ -201,11 +204,11 @@ BeginSim(memory_arena *SimArena, game_mode_world *WorldMode, world *World, world
     // TODO(casey): Need to be more specific about entity counts
     SimRegion->MaxEntityCount = 4096;
     SimRegion->EntityCount = 0;
-    SimRegion->Entities = PushArray(SimArena, SimRegion->MaxEntityCount, entity);
+    SimRegion->Entities = PushArray(SimArena, SimRegion->MaxEntityCount, entity, NoClear());
     
     SimRegion->MaxBrainCount = 256;
     SimRegion->BrainCount = 0;
-    SimRegion->Brains = PushArray(SimArena, SimRegion->MaxBrainCount, brain);
+    SimRegion->Brains = PushArray(SimArena, SimRegion->MaxBrainCount, brain, NoClear());
 
     world_position MinChunkP = MapIntoChunkSpace(World, SimRegion->Origin, GetMinCorner(SimRegion->Bounds));
     world_position MaxChunkP = MapIntoChunkSpace(World, SimRegion->Origin, GetMaxCorner(SimRegion->Bounds));
