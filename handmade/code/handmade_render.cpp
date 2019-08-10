@@ -62,12 +62,7 @@ internal void
 DrawRectangle(loaded_bitmap *Buffer, v2 vMin, v2 vMax, v4 Color, rectangle2i ClipRect)
 {
     IGNORED_TIMED_FUNCTION();
-
-    real32 R = Color.r;
-    real32 G = Color.g;
-    real32 B = Color.b;
-    real32 A = Color.a;
-
+    
     rectangle2i FillRect;
     FillRect.MinX = RoundReal32ToInt32(vMin.x);
     FillRect.MinY = RoundReal32ToInt32(vMin.y);
@@ -100,10 +95,9 @@ DrawRectangle(loaded_bitmap *Buffer, v2 vMin, v2 vMax, v4 Color, rectangle2i Cli
         Row += Buffer->Pitch;
     }
 #else
-    // NOTE(casey): Premultiply color up front   
-    Color.rgb *= Color.a;
     Color *= 255.0f;
-
+    Color.rgb *= 255.0f;
+    
     if(HasArea(FillRect))
     {
         __m128i StartClipMask = _mm_set1_epi8(-1);
@@ -193,9 +187,9 @@ DrawRectangle(loaded_bitmap *Buffer, v2 vMin, v2 vMax, v4 Color, rectangle2i Cli
                     __m128 Desta = _mm_cvtepi32_ps(_mm_and_si128(_mm_srli_epi32(OriginalDest, 24), MaskFF));
                     
                     // NOTE(casey): Modulate by incoming color
-                    __m128 Texelr = mmSquare(Colorr_4x);
-                    __m128 Texelg = mmSquare(Colorg_4x);
-                    __m128 Texelb = mmSquare(Colorb_4x);
+                    __m128 Texelr = Colorr_4x;
+                    __m128 Texelg = Colorg_4x;
+                    __m128 Texelb = Colorb_4x;
                     __m128 Texela = Colora_4x;
 
                     Texelr = _mm_min_ps(_mm_max_ps(Texelr, Zero), MaxColorValue);
@@ -375,10 +369,7 @@ DrawRectangleSlowly(loaded_bitmap *Buffer, v2 Origin, v2 XAxis, v2 YAxis, v4 Col
                     real32 PixelsToMeters)
 {
     IGNORED_TIMED_FUNCTION();
-
-    // NOTE(casey): Premultiply color up front   
-    Color.rgb *= Color.a;
-
+    
     real32 XAxisLength = Length(XAxis);
     real32 YAxisLength = Length(YAxis);
     
@@ -819,9 +810,6 @@ DrawRectangleQuickly(loaded_bitmap *Buffer, v2 Origin, v2 XAxis, v2 YAxis, v4 Co
 {
     IGNORED_TIMED_FUNCTION();
     
-    // NOTE(casey): Premultiply color up front   
-    Color.rgb *= Color.a;
-
     real32 XAxisLength = Length(XAxis);
     real32 YAxisLength = Length(YAxis);
     
@@ -1237,7 +1225,7 @@ RenderCommandsToBitmap(game_render_commands *Commands, loaded_bitmap *OutputTarg
 
                 DrawRectangle(OutputTarget, V2(0.0f, 0.0f),
                               V2((real32)OutputTarget->Width, (real32)OutputTarget->Height),
-                              V4(Entry->Color.xyz, 1.0f), ClipRect);
+                              V4(Entry->PremulColor.xyz, 1.0f), ClipRect);
             } break;
 
             case RenderGroupEntryType_render_entry_bitmap:
@@ -1254,7 +1242,7 @@ RenderCommandsToBitmap(game_render_commands *Commands, loaded_bitmap *OutputTarg
 #else
                 DrawRectangleQuickly(OutputTarget, Entry->P,
                                      Entry->XAxis,
-                                     Entry->YAxis, Entry->Color,
+                                     Entry->YAxis, Entry->PremulColor,
                                      Entry->Bitmap, NullPixelsToMeters, ClipRect);
 #endif
             } break;
@@ -1262,7 +1250,7 @@ RenderCommandsToBitmap(game_render_commands *Commands, loaded_bitmap *OutputTarg
             case RenderGroupEntryType_render_entry_rectangle:
             {
                 render_entry_rectangle *Entry = (render_entry_rectangle *)Data;
-                DrawRectangle(OutputTarget, Entry->P, Entry->P + Entry->Dim, Entry->Color, ClipRect);
+                DrawRectangle(OutputTarget, Entry->P, Entry->P + Entry->Dim, Entry->PremulColor, ClipRect);
             } break;
 
             case RenderGroupEntryType_render_entry_coordinate_system:

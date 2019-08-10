@@ -59,6 +59,9 @@ struct render_group_entry_header // TODO(casey): Don't store type here, store in
 {
     u16 Type;
     u16 ClipRectIndex;
+#if HANDMADE_SLOW
+    u32 DebugTag;
+#endif
 };
 
 struct render_entry_cliprect
@@ -69,7 +72,7 @@ struct render_entry_cliprect
 
 struct render_entry_clear
 {
-    v4 Color;
+    v4 PremulColor;
 };
 
 struct render_entry_saturation
@@ -80,10 +83,10 @@ struct render_entry_saturation
 struct render_entry_bitmap
 {
     loaded_bitmap *Bitmap;
-    
-    v4 Color;
+
+    v4 PremulColor;
     v2 P;
-    
+
     // NOTE(casey): X and Y axes are already scaled by the dimension.
     v2 XAxis;
     v2 YAxis;
@@ -91,7 +94,7 @@ struct render_entry_bitmap
 
 struct render_entry_rectangle
 {
-    v4 Color;
+    v4 PremulColor;
     v2 P;
     v2 Dim;
 };
@@ -139,7 +142,12 @@ struct camera_transform
 struct render_group
 {
     struct game_assets *Assets; 
-    real32 GlobalAlpha;
+    
+#if HANDMADE_SLOW
+    u32 DebugTag;
+#endif
+    v4 tGlobalColor;
+    v4 GlobalColor;
 
     v2 MonitorHalfDimInMeters;
 
@@ -149,7 +157,7 @@ struct render_group
     b32 RendersInBackground;
 
     u32 CurrentClipRectIndex;
-    
+
     u32 GenerationID;
     game_render_commands *Commands;
 };
@@ -173,7 +181,7 @@ struct used_bitmap_dim
 void DrawRectangleQuickly(loaded_bitmap *Buffer, v2 Origin, v2 XAxis, v2 YAxis, v4 Color,
                           loaded_bitmap *Texture, real32 PixelsToMeters,
                           rectangle2i ClipRect);
-                      
+
 inline object_transform
 DefaultUprightTransform(void)
 {

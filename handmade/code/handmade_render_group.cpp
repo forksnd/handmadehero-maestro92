@@ -67,6 +67,9 @@ PushRenderElement_(render_group *Group, uint32 Size, render_group_entry_type Typ
         render_group_entry_header *Header = (render_group_entry_header *)(Commands->PushBufferBase + Commands->PushBufferSize);
         Header->Type = (u16)Type;
         Header->ClipRectIndex = SafeTruncateToU16(Group->CurrentClipRectIndex);
+#if HANDMADE_SLOW
+        Header->DebugTag = Group->DebugTag;
+#endif
         Result = (uint8 *)Header + sizeof(*Header);
 
         Commands->SortEntryAt -= sizeof(sort_entry);
@@ -101,6 +104,22 @@ GetBitmapDim(render_group *Group, object_transform ObjectTransform,
     return(Dim);
 }
 
+inline v4
+StoreColor(render_group *Group, v4 Source)
+{
+    v4 Dest;
+    v4 t = Group->tGlobalColor;
+    v4 C = Group->GlobalColor;
+    
+    Dest.a = Lerp(Source.a, t.a, C.a);
+    
+    Dest.r = Dest.a*Lerp(Source.r, t.r, C.r);
+    Dest.g = Dest.a*Lerp(Source.g, t.g, C.g);
+    Dest.b = Dest.a*Lerp(Source.b, t.b, C.b);
+    
+    return(Dest);
+}
+
 inline void
 PushBitmap(render_group *Group, object_transform ObjectTransform,
     loaded_bitmap *Bitmap, real32 Height, v3 Offset, v4 Color = V4(1, 1, 1, 1), r32 CAlign = 1.0f,
@@ -115,7 +134,7 @@ PushBitmap(render_group *Group, object_transform ObjectTransform,
         {
             Entry->Bitmap = Bitmap;
             Entry->P = Dim.Basis.P;
-            Entry->Color = Group->GlobalAlpha*Color;
+            Entry->PremulColor = StoreColor(Group, Color);
             v2 Size = Dim.Basis.Scale*Dim.Size;
             Entry->XAxis = Size.x*XAxis;
             Entry->YAxis = Size.y*YAxis;
@@ -177,7 +196,7 @@ PushRect(render_group *Group, object_transform ObjectTransform, v3 Offset, v2 Di
         if(Rect)
         {
             Rect->P = Basis.P;
-            Rect->Color = Group->GlobalAlpha*Color;
+            Rect->PremulColor = StoreColor(Group, Color);
             Rect->Dim = Basis.Scale*Dim;
         }
     }
@@ -213,7 +232,7 @@ Clear(render_group *Group, v4 Color)
     render_entry_clear *Entry = PushRenderElement(Group, render_entry_clear, Real32Minimum);
     if(Entry)
     {
-        Entry->Color = Color;
+        Entry->PremulColor = StoreColor(Group, Color);
     }
 }
 
@@ -367,7 +386,6 @@ BeginRenderGroup(game_assets *Assets, game_render_commands *Commands, u32 Genera
 
     Result.Assets = Assets;
     Result.RendersInBackground = RendersInBackground;
-    Result.GlobalAlpha = 1.0f;
     Result.MissingResourceCount = 0;
     Result.GenerationID = GenerationID;
     Result.Commands = Commands;

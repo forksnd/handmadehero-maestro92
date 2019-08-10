@@ -700,7 +700,8 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
     real32 DistanceAboveGround = 9.0f;
     Perspective(RenderGroup, DrawBuffer->Width, DrawBuffer->Height, MetersToPixels, FocalLength, DistanceAboveGround);
 
-    Clear(RenderGroup, V4(0.25f, 0.25f, 0.25f, 0.0f));
+    v4 BackgroundColor = V4(0.15f, 0.15f, 0.15f, 1.0f);
+    Clear(RenderGroup, BackgroundColor);
 
     v2 ScreenCenter = {0.5f*(real32)DrawBuffer->Width,
                        0.5f*(real32)DrawBuffer->Height};
@@ -797,14 +798,22 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
             // TODO(casey): Probably indicates we want to separate update and render
             // for entities sometime soon?
             v3 CameraRelativeGroundP = GetEntityGroundPoint(Entity) - CameraP;
-            RenderGroup->GlobalAlpha = 1.0f;
+
             if(CameraRelativeGroundP.z > FadeTopStartZ)
             {
-                RenderGroup->GlobalAlpha = Clamp01MapToRange(FadeTopEndZ, CameraRelativeGroundP.z, FadeTopStartZ);
+                r32 t = Clamp01MapToRange(FadeTopStartZ, CameraRelativeGroundP.z, FadeTopEndZ);
+                RenderGroup->tGlobalColor = V4(0, 0, 0, t);
+                RenderGroup->GlobalColor = V4(0, 0, 0, 0);
             }
             else if(CameraRelativeGroundP.z < FadeBottomStartZ)
             {
-                RenderGroup->GlobalAlpha = Clamp01MapToRange(FadeBottomEndZ, CameraRelativeGroundP.z, FadeBottomStartZ);
+                r32 t = Clamp01MapToRange(FadeBottomStartZ, CameraRelativeGroundP.z, FadeBottomEndZ);
+                RenderGroup->tGlobalColor = V4(t, t, t, 0.0f);
+                RenderGroup->GlobalColor = BackgroundColor;
+            }
+            else
+            {   
+                RenderGroup->tGlobalColor = V4(0, 0, 0, 0);
             }
 
             //
@@ -940,9 +949,10 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
 
                 PushBitmap(RenderGroup, EntityTransform, BitmapID, Piece->Height, Offset + Piece->Offset, Piece->Color, 1.0f, XAxis, YAxis);
             }
-            
+
             DrawHitpoints(Entity, RenderGroup, EntityTransform);
             
+            EntityTransform.Upright = false;
             for(uint32 VolumeIndex = 0;
                 VolumeIndex < Entity->Collision->VolumeCount;
                 ++VolumeIndex)
@@ -964,7 +974,7 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
                                 V4(0, 0, 0, 1));
             }
             END_BLOCK();
-
+            
             if(DEBUG_UI_ENABLED)
             {
                 debug_id EntityDebugID = DEBUG_POINTER_ID((void *)Entity->ID.Value);
@@ -1022,7 +1032,7 @@ UpdateAndRenderWorld(game_state *GameState, game_mode_world *WorldMode, transien
     }
     END_BLOCK();
 
-    RenderGroup->GlobalAlpha = 1.0f;
+    RenderGroup->tGlobalColor = V4(0, 0, 0, 0);
 
     Orthographic(RenderGroup, DrawBuffer->Width, DrawBuffer->Height, 1.0f);
 

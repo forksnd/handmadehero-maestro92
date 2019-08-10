@@ -119,11 +119,11 @@ OpenGLSetScreenspace(s32 Width, s32 Height)
 }
 
 inline void
-OpenGLRectangle(v2 MinP, v2 MaxP, v4 Color, v2 MinUV = V2(0, 0), v2 MaxUV = V2(1, 1))
+OpenGLRectangle(v2 MinP, v2 MaxP, v4 PremulColor, v2 MinUV = V2(0, 0), v2 MaxUV = V2(1, 1))
 {                    
     glBegin(GL_TRIANGLES);
     
-    glColor4f(Color.r, Color.g, Color.b, Color.a);
+    glColor4f(PremulColor.r, PremulColor.g, PremulColor.b, PremulColor.a);
 
     // NOTE(casey): Lower triangle
     glTexCoord2f(MinUV.x, MinUV.y);
@@ -227,6 +227,11 @@ OpenGLRenderCommands(game_render_commands *Commands, s32 WindowWidth, s32 Window
                       Clip->Rect.MaxY - Clip->Rect.MinY);
         }
 
+        if(Header->DebugTag == 1)
+        {
+            int BreakHere = true;
+        }
+        
         void *Data = (uint8 *)Header + sizeof(*Header);
         switch(Header->Type)
         {
@@ -234,7 +239,10 @@ OpenGLRenderCommands(game_render_commands *Commands, s32 WindowWidth, s32 Window
             {
                 render_entry_clear *Entry = (render_entry_clear *)Data;
 
-                glClearColor(Entry->Color.r, Entry->Color.g, Entry->Color.b, Entry->Color.a);
+                glClearColor(Entry->PremulColor.r,
+                             Entry->PremulColor.g,
+                             Entry->PremulColor.b,
+                             Entry->PremulColor.a);
                 glClear(GL_COLOR_BUFFER_BIT);
             } break;
 
@@ -258,7 +266,9 @@ OpenGLRenderCommands(game_render_commands *Commands, s32 WindowWidth, s32 Window
 
                     glBegin(GL_TRIANGLES);
 
-                    glColor4fv(Entry->Color.E);
+                    // NOTE(casey): This value is NOT gamma-corrected by OpenGL!
+                    
+                    glColor4fv(Entry->PremulColor.E);
 
                     v2 MinXMinY = MinP;
                     v2 MinXMaxY = MinP + YAxis;
@@ -293,7 +303,7 @@ OpenGLRenderCommands(game_render_commands *Commands, s32 WindowWidth, s32 Window
             {
                 render_entry_rectangle *Entry = (render_entry_rectangle *)Data;
                 glDisable(GL_TEXTURE_2D);
-                OpenGLRectangle(Entry->P, Entry->P + Entry->Dim, Entry->Color);
+                OpenGLRectangle(Entry->P, Entry->P + Entry->Dim, Entry->PremulColor);
                 glEnable(GL_TEXTURE_2D);
             } break;
 
