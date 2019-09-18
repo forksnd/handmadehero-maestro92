@@ -165,7 +165,7 @@ then you can roughly know what the graphics card is doing.
 
 
 32:14
-After with no success, Casey proceeds to write the main structure.
+After awhile with no success, Casey proceeds to write the main structure.
 He will worry about the windows API to figure out the monitor refresh rate later.
 
 -   Casey first wrote some variables
@@ -358,6 +358,10 @@ Casey didnt actually implement anyting, just briefly mentioned it.
 
 47:35
 another thing we want to check is that we didnt actually miss a frame.
+
+so in this case TargetSecondsPerFrame is gonna be 33.33 ms.
+
+[so essentially we are comparing secondsElapsedForFrame vs TargetSecondsPerFrame]
 
 
                 win32_handmade.cpp

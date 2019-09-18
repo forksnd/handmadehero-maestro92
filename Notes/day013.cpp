@@ -1,7 +1,7 @@
 3:10
 function overloading
 
-you're allowed to define multiple functions with the same name, but with different inputs
+you are allowed to define multiple functions with the same name, but with different inputs
 
 17:40
 regarding input, you are always one frame behind
@@ -46,4 +46,5 @@ the state of the button now, and how many half transitions it went through
 1:20:08
 all of our functiosn are internal. They are all internal becuz we only have one translation unit, so everything has static in front of it.
 so that is faster for the compiler, so it will know that it does not have to do any external linking for anything
-
+
+

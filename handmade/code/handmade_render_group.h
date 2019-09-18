@@ -59,15 +59,23 @@ struct render_group_entry_header // TODO(casey): Don't store type here, store in
 {
     u16 Type;
     u16 ClipRectIndex;
+    
 #if HANDMADE_SLOW
     u32 DebugTag;
 #endif
+};
+
+struct clip_rect_fx
+{
+    v4 tColor;
+    v4 Color;
 };
 
 struct render_entry_cliprect
 {
     render_entry_cliprect *Next;
     rectangle2i Rect;
+    clip_rect_fx FX;
 };
 
 struct render_entry_clear
@@ -142,13 +150,13 @@ struct camera_transform
 struct render_group
 {
     struct game_assets *Assets; 
-    
-#if HANDMADE_SLOW
-    u32 DebugTag;
-#endif
+
     v4 tGlobalColor;
     v4 GlobalColor;
 
+#if HANDMADE_SLOW
+    u32 DebugTag;
+#endif
     v2 MonitorHalfDimInMeters;
 
     camera_transform CameraTransform;
@@ -202,3 +210,27 @@ DefaultFlatTransform(void)
 
     return(Result);
 }
+
+struct transient_clip_rect
+{
+    transient_clip_rect(render_group *RenderGroupInit, u32 NewClipRectIndex)
+    {
+        RenderGroup = RenderGroupInit;
+        OldClipRect = RenderGroup->CurrentClipRectIndex;
+        RenderGroup->CurrentClipRectIndex = NewClipRectIndex;
+    }
+    
+    transient_clip_rect(render_group *RenderGroupInit)
+    {
+        RenderGroup = RenderGroupInit;
+        OldClipRect = RenderGroup->CurrentClipRectIndex;
+    }
+
+    ~transient_clip_rect(void)
+    {
+        RenderGroup->CurrentClipRectIndex = OldClipRect;
+    }
+    
+    render_group *RenderGroup;
+    u32 OldClipRect;
+};

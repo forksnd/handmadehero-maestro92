@@ -263,7 +263,7 @@ CoordinateSystem(render_group *Group, v2 Origin, v2 XAxis, v2 YAxis, v4 Color,
 }
 
 inline u32
-PushClipRect(render_group *Group, u32 X, u32 Y, u32 W, u32 H)
+PushClipRect(render_group *Group, u32 X, u32 Y, u32 W, u32 H, clip_rect_fx FX = {})
 {
     u32 Result = 0;
 
